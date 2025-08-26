@@ -50,6 +50,7 @@
           </form>
 
           <ul class="navbar-nav">
+            {% if user.is_auth%}
             <li class="nav-item">
               <a class="nav-link active" href="">Register</a>
             </li>
