@@ -36,7 +36,7 @@ class Rating(models.Model):
     score = models.PositiveIntegerField(default=0)
 
     class Meta:
-        unique_together = ("user", "movie")
+        unique_together = ("user", "movie")  # забороняє дублікати
 
     def __str__(self):
         return f"{self.user.username} - {self.movie.title} ({self.score})"
@@ -56,6 +56,10 @@ class UserMovies(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     movie = models.ForeignKey(Movies, on_delete=models.CASCADE)
     added_to_wathclist = models.BooleanField(default=False)
+    watched = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("user", "movies")
 
     def __str__(self):
         return f"{self.user.username} - {self.movie.title}"

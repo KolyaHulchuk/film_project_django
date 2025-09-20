@@ -1,4 +1,13 @@
 {% extends "movies/base.html" %}
 {% block content %}
-    <h1>Home Page</h1>
-{% endblock %}
+    {% for movie in movies %}
+        <article class="media content-section">
+          <img  class="rounded-circle account-img" src="{{ movies.author.profile.image.url }}">
+          <div class="media-body">
+            <div class="article-metadata">
+              <a class="mr-2" href="#">{{ movies.author }}</a>
+            </div>
+          </div>
+        </article>
+    {% endfor %}
+{% endblock content %}
