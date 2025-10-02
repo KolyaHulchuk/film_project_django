@@ -1,0 +1,38 @@
+{% extends "movies/base.html" %}
+{% load static %}
+{% block content %}
+{% if results %}
+<div class="movie-container" >
+    {% for movie in results %}
+        <div class="movie-previe">
+            <div class="movie-poster">
+                {% if movie.poster_url %}
+                <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" class="movie-img">
+                {% else %}
+                <img src="{% static 'movies/image/default_poster.jpg' %}" alt="None" class="movie-img" >
+                {% endif %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-plus-fill" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M2 15.5V2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.74.439L8 13.069l-5.26 2.87A.5.5 0 0 1 2 15.5m6.5-11a.5.5 0 0 0-1 0V6H6a.5.5 0 0 0 0 1h1.5v1.5a.5.5 0 0 0 1 0V7H10a.5.5 0 0 0 0-1H8.5z"/>
+                </svg>
+            </div>
+            <div class="movie-info">
+                <p class="movie-title">
+                    {{ movie.title }}
+                </p>
+                <p class="movie-year">
+                    {{ movie.release_date|date:"Y" }}
+                </p>
+                <div class="more-movie-info" >
+                    <div class="movie-genre">
+                        <span class="genre-badge">Horror</span>
+                    </div> 
+                    <div class="movie-rating">
+                        <span class="rating-badge"><i class="bi bi-star-fill"></i>9.99</span>
+                    </div>                   
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
