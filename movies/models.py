@@ -18,7 +18,7 @@ class Actor(models.Model):
 
 class Movies(models.Model):
     title = models.CharField(max_length=200)
-    relase_date = models.DateTimeField(blank=True, null=True)
+    release_date = models.DateField(blank=True, null=True)
     country = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     poster_url = models.URLField(blank=True, null=True)
@@ -36,7 +36,9 @@ class Rating(models.Model):
     score = models.PositiveIntegerField(default=0)
 
     class Meta:
-        unique_together = ("user", "movie")  # забороняє дублікати
+        constraints = [
+            models.UniqueConstraint(fields=["user", "movie"], name="rating_unique_user_movie")
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.movie.title} ({self.score})"
@@ -59,7 +61,9 @@ class UserMovies(models.Model):
     watched = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ("user", "movies")
+        constraints = [
+            models.UniqueConstraint(fields=["user", "movie"], name="unique_user_movie") # забороняє дублікати
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.movie.title}"

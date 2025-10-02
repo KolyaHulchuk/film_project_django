@@ -1,0 +1,33 @@
+{% extends "movies/base.html" %}
+{% load static %}
+{% block content %}
+<div class=" mt-4">
+    <h2 class="mb-4">Result search: "{{ query }}"</h2>
+    {% if results %}
+        <div class="row row-cols-1 row-cols-md-6 g-4">
+            {% for movie in results %}
+                <div class="col">
+                    <div class="card h-100">
+                        {% if movie.poster_url %}
+                        <img src="{{ movie.poster_url }}" class="card-img-top" alt="{{ movie.title }}">
+                        {% else %}
+                        <img src="{% static 'movies/image/default_poster.jpg' %}" class="card-img-top" alt="None">
+                        {% endif %}
+                        <div class="card-body" >
+                            <h5 class="card-title" >{{ movie.title }}</h5>
+                            <p class="card-text" >
+                                <strong>Year:</strong>{{ movie.release_date|date:"Y" }}<br>
+                                <strong>Country:</strong>{{ movie.country }}<br>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-waring" role="alert">
+            Нічого не знайдено
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
