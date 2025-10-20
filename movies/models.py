@@ -18,7 +18,7 @@ class Actor(models.Model):
 
 class Movies(models.Model):
     title = models.CharField(max_length=200)
-    release_date = models.DateField(blank=True, null=True)
+    release_date = models.DateField(blank=True, null=True) # blank=True	Поле можна залишити порожнім у формі
     country = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     poster_url = models.URLField(blank=True, null=True)
@@ -26,12 +26,20 @@ class Movies(models.Model):
     genres = models.ManyToManyField(Genre, related_name="movies")
     author = models.CharField(max_length=200)
     actors = models.CharField(max_length=200)
+    media_type = models.CharField(max_length=20, default="movie")
+    tmdb_rating = models.FloatField(blank=True, null=True)
 
     def __str__(self):
         return self.title
+    
+    def average_user_ratings(self):
+        ratings = self.ratings.all()
+        if ratings.exists():
+            return round(sum(r.score for r in ratings) / ratings.count(), 1)
+        return None
 
 class Rating(models.Model):
-    movie = models.ForeignKey(Movies, on_delete=models.CASCADE, related_name="ratings")
+    movie = models.ForeignKey(Movies, on_delete=models.CASCADE, related_name="ratings") # Кожен рейтинг належить одному фільму
     user =models.ForeignKey(User, on_delete=models.CASCADE)
     score = models.PositiveIntegerField(default=0)
 
@@ -54,7 +62,7 @@ class Comment(models.Model):
         return f"{self.user.username} - {self.movie.title}"
 
 
-class UserMovies(models.Model):
+class Watchlist(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     movie = models.ForeignKey(Movies, on_delete=models.CASCADE)
     added_to_wathclist = models.BooleanField(default=False)
