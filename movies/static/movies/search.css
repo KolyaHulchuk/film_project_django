@@ -1,12 +1,17 @@
+.search-page {
+  background-color: black;
+  color: #333333;
+}
 
-.movie-container {
+
+.search-page .movie-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     column-gap: 20px;
     row-gap: 40px;
 }
 
-.movie-previe {
+.search-page .movie-previe {
     width: 100%;
     height: 100%;
     display: grid;
@@ -14,24 +19,24 @@
     background-color: rgb(17, 17, 17);
 }
 
-.movie-poster {
+.search-page .movie-poster {
     position: relative;
     height: 500px;
 }
 
-.movie-img {
+.search-page .movie-img {
     display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.movie-info {
+.search-page .movie-info {
     min-height: 100px;
     max-height: 150px;
 }
-
-.movie-title {
+ 
+.search-page  .movie-title {
     color: #fff;
     padding-top: 10px;
     padding-left: 15px;
@@ -48,13 +53,13 @@
     text-overflow: ellipsis;
 }
 
-.movie-title:hover {
+.search-page  .movie-title:hover {
     color: #ffcc00;
     text-shadow: 0 0 10px rgba(255, 204, 0, 0.8);
     cursor: pointer;
 }
 
-.movie-year {
+.search-page  .movie-year {
     color: rgb(189, 187, 187);
     padding-top: 10px;
     padding-left: 15px;
@@ -63,40 +68,42 @@
     margin-bottom: 0;
 }
 
-.bi-bookmark-plus-fill {
+.search-page .bi-bookmark-plus-fill {
     position: absolute;
     top: -2px;
     right: -7px;
     width: 45px;
     height: 45px;
-    transition: fill 0.25s ease, transform 0.25s ease;
+    transition: fill 0.25s ease, transform 0.25s ease; /* дозволяє рухати, обертати, масштабувати, нахиляти */
 
 }
 
-.bi-bookmark-plus-fill:hover {
+.search-page .bi-bookmark-plus-fill:hover {
     fill: #b3aeae;
 }
 
-.bi-bookmark-plus-fill:active {
+.search-page .bi-bookmark-plus-fill:active {
     fill: rgb(18, 201, 18);
     transform: scale(1.2);
 }
 
-.more-movie-info {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    height: 60px;
+.search-page .more-movie-info {
+    display: flex;
+    flex-wrap: wrap; /* дозволяє переносити жанри на новий рядок */
+    gap: 10px;
+    height: auto;
 }
 
-.movie-genre {
-    display: block;
+.search-page .movie-genre {
+    display: inline-block;
     margin-top: 10px;
-    margin-left: 10px;
+    margin-left: 5px;
 }
 
-.genre-badge {
+.search-page .genre-badge {
     display: inline-block;
     padding: 5px 12px;
+    margin-right: 5px;
     color: white;
     font-size: 14px;
     font-weight: bold;
@@ -109,16 +116,17 @@
     transition: background-color 0.35s ease;
 }
 
-.genre-badge:hover {
+.search-page .genre-badge:hover {
     background-color: rgb(147, 68, 238);
 }
 
-.movie-rating {
+.search-page .movie-rating {
     display: block;
     margin-top: 10px;
+    margin-left: 10px;
 }
 
-.rating-badge {
+.search-page .rating-badge {
     display: inline-block;
     padding: 5px 12px;
     color: rgb(12, 12, 12);
