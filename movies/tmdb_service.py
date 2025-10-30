@@ -24,147 +24,85 @@ def get_tv_by_tmdb_id(tmdb_id):
         return response.json()
     return None
 
+def add_poster_url(items):
+    for item in items:
+        path = item.get("poster_path")
+        item["poster_url"] = f"https://image.tmdb.org/t/p/w500{path}" if path else None
 
-def popular_movies(page):
+    return items
+
+
+def add_extra_fields(items):
+    for item in items:
+        media_type = item.get("media_type", "movie")
+        item["title"] = item.get("title") if media_type == "movie" else item.get("name")
+        item["release_date"] = item.get("release_date") if media_type == "movie" else item.get("first_air_date")
+        item["rating"] = item.get("vote_average")
+    
+    return items
+
+def all_func_movie(endpoint: str, page: int, languages=("en", "uk")):
     def fetch(language):
-        url = f"{BASE_URL}/movie/popular"
+        url = f"{BASE_URL}/{endpoint}"
         params = {
             "api_key": settings.TMDB_API_KEY,
             "language": language,
             "page": page
         }
-        response =  requests.get(url, params=params)
-        if response.status_code == 200:
-            return response.json().get("results", []) # витягує список фільмів і серіалів
-        else:
-            logging.warning(f"TMDB API error {response.status_code}")
-        return []
-    
-    results_uk = fetch("uk")
-    results_en = fetch("en")
-    
 
-    seens_id = set()
-    combinate = []
-    for movie in results_en + results_uk:
-        if movie["id"] not in seens_id:
-            combinate.append(movie)
-            seens_id.add(movie["id"])
-
-    return combinate
-
-def tv_popular(page):
-    def fetch(language):
-        url = f"{BASE_URL}/tv/popular"
-        params = {
-            "api_key": settings.TMDB_API_KEY,
-            "language": language, 
-            "page": page
-        }
         response = requests.get(url, params=params)
         if response.status_code == 200:
-            return response.json().get("results", [])
+            return response.json() # — це метод, який перетворює JSON-відповідь з сервера на Python-словник.
         else:
-            logging.warning(f"TMDB API error {response.status_code}")
-        return []
+            logging.warning(f"Error API {response.status_code}")
+        return {"results": [], "page": 1, "total_pages": 1}
     
-    results_uk = fetch("uk")
-    results_en = fetch("en")
+    all_results = []
+    base_data = None
 
-    seens_id = set()
-    combinate = []
-    for item in results_en + results_uk:
-        if item["id"] not in seens_id:
-            combinate.append(item)
-            seens_id.add(item["id"])
+    for lang in languages:
+        data = fetch(lang)
+        if lang == 'en':
+            base_data = data
+        all_results.extend(data.get("results"))
+
+    uniq_results = []
+    seen_id = set()
+    for movie in all_results:
+        if movie["id"] not in seen_id:
+            seen_id.add(movie["id"])
+            uniq_results.append(movie)
+        
+    uniq_results = add_poster_url(uniq_results)
+    uniq_results = add_extra_fields(uniq_results)
+
+    return {
+        "results": uniq_results,
+        "page": base_data.get("page", 1),
+        "total_pages": base_data.get("total_pages", 1)
+    }
     
-    return combinate
+
+
+def popular_movies(page):
+    return all_func_movie("movie/popular", page)
+        
+
+def tv_popular(page):
+    return all_func_movie("tv/popular", page)
 
 
 def movie_top_rated(page):
-    def fetch(language):
-        url = f"{BASE_URL}/movie/top_rated"
-        params = {
-            "api_key": settings.TMDB_API_KEY,
-            "language": language,
-            "page": page
-        }
-        response = requests.get(url, params=params)
-        if response.status_code == 200:
-            return response.json().get("results", [])
-        return []
-    
-    results_uk = fetch("uk")
-    results_en = fetch("en")
-
-    seens_id = set()
-    combinate = []
-
-    for movie in results_en + results_uk:
-        if movie["id"] not in seens_id:
-            combinate.append(movie)
-            seens_id.add(movie["id"])
-
-    return combinate
-
+    return all_func_movie("movie/top_rated", page)
+  
 
 def movie_now_playings(page):
-    def fetch(language):
-        url = f"{BASE_URL}/movie/now_playing"
-        params = {
-            "api_key": settings.TMDB_API_KEY,
-            "language": language,
-            "page": page
-        }
-        response = requests.get(url, params=params)
-        if response.status_code == 200:
-            return response.json().get("results", [])
-        return []
-    
-    results_uk = fetch("uk")
-    results_en = fetch("en")
-
-    seens_id = set()
-    combinate = []
-
-    for movie in results_en + results_uk:
-        if movie["id"] not in seens_id:
-            combinate.append(movie)
-            seens_id.add(movie["id"])
-            
-    return combinate
-
-def unique_upcoming(*lists):
-    seens_id = set()
-    result = []
-    for movie_list in lists:
-        for movie in movie_list:
-            if movie["id"] not in seens_id:
-                seens_id.add(movie["id"])
-                result.append(movie)
-
-    return result
-
+    return all_func_movie("movie/now_playing", page)
+      
 
 def movie_upcoming(page):
-    def fetch(language):
-        url = f"{BASE_URL}/movie/upcoming"
-        params = {
-            "api_key": settings.TMDB_API_KEY,
-            "language": language,
-            "page": page
-        }
-        response = requests.get(url, params=params)
-        if response.status_code == 200:
-            return response.json().get("results", [])
-        else:
-            logging.warning(f"TMDB API erro {response.status_code}")
-        return []
-
-    result_uk = fetch("uk")
-    result_en = fetch("en")
-
-    return unique_upcoming(result_uk, result_en)
+    return all_func_movie("movie/upcoming", page)
+        
 
 def search_movies(query): # query — це рядок із того, що ввів користувач у форму пошуку 
     def fetch(language):
@@ -186,6 +124,7 @@ def search_movies(query): # query — це рядок із того, що вві
 
     seen_ids = set()
     combined = []
+
     for item in results_uk + results_en:
         media_type = item.get("media_type")
         if media_type not in ["movie", "tv"]:

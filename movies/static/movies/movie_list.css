@@ -44,11 +44,19 @@
 }
 
 .home-page .all-movies:hover {
-  color: white;
   cursor: pointer;
   transform: scale(1.05);
 }
 
+.home-page .none-underline {
+    text-decoration: none; /* це для тегу <a> він прибирає нижню лінію */
+    color: #b4b2b2;
+    transition: color 0.3s ease-in;
+}
+
+.home-page .none-underline:hover{
+  color: white;
+}
 
 
 .home-page .movie-scroll-container {
