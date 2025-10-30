@@ -1,161 +1,17 @@
-{% extends "movies/base.html" %}
+{% extends 'movies/base.html' %}
 {% load static %}
+
 {% block body_class %}home-page{% endblock %}
+
 {% block content %}
-<div class="scroll-section">
-  <div class="type-movie">
-  <div class="left-sections">
-    <h3 class="name-type">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-film" viewBox="0 0 16 16">
-      <path d="M0 1a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm4 0v6h8V1zm8 8H4v6h8zM1 1v2h2V1zm2 3H1v2h2zM1 7v2h2V7zm2 3H1v2h2zm-2 3v2h2v-2zM15 1h-2v2h2zm-2 3v2h2V4zm2 3h-2v2h2zm-2 3v2h2v-2zm2 3h-2v2h2z"/>
-    </svg>   Popular Movies
-  </h3>
-  </div>
-  <div class="right-section">
-    <h5 class="all-movies">
-      Views All<i class="bi bi-chevron-right"></i>
-    </h5>
-  </div>
-</div>
+  {% include 'movies/movie_section.html' with title="Popular Movies" items=now_popular link='popular-movies' %}
 
-<div class="movie-scroll-container">
-  {% for movie in now_popular|slice:":14" %}
-  <div class="movie-card-scroll">
-    <div class="card-poster">
-      {% if movie.poster_path %}
-      <img src="https://image.tmdb.org/t/p/w500{{ movie.poster_path }}" alt="{{ movie.title }}">
-      {% else %}
-      <img src="{% static 'movies/image/default_poster.jpg' %}" alt="None" class="movie-img">
-      {% endif %}
-    </div>
-  </div>
-  {% endfor %}
-</div>
-</div>
+  {% include 'movies/movie_section.html' with title="TV Popular" items=tv_serials_popular link='popular-tv' %}
 
-<div class="scroll-section">
-    <div class="type-movie">
-    <div class="left-sections">
-      <h3 class="name-type">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-film" viewBox="0 0 16 16">
-        <path d="M0 1a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm4 0v6h8V1zm8 8H4v6h8zM1 1v2h2V1zm2 3H1v2h2zM1 7v2h2V7zm2 3H1v2h2zm-2 3v2h2v-2zM15 1h-2v2h2zm-2 3v2h2V4zm2 3h-2v2h2zm-2 3v2h2v-2zm2 3h-2v2h2z"/>
-      </svg>   Popular TV
-    </h3>
-    </div>
-    <div class="right-section">
-      <h5 class="all-movies">
-        Views All<i class="bi bi-chevron-right"></i>
-      </h5>
-    </div>
-  </div>
+  {% include 'movies/movie_section.html' with title="Top Rated" items=top_rated link='top-rated' %}
 
-  <div class="movie-scroll-container">
-    {% for serials in tv|slice:":14" %}
-      <div class="movie-card-scroll">
-        <div class="card-poster">
-        {% if serials.poster_path %}
-        <img src="https://image.tmdb.org/t/p/w500{{ serials.poster_path }}" alt="{{ serials.name }}">
-        {% else %}
-        <img src="{% static 'movies/image/default_poster.jpg' %}" alt="None"  class="movie-img">
-        {% endif %}
-        </div>
-      </div>
-    {% endfor %}
-  </div>
-</div>
+  {% include 'movies/movie_section.html' with title="Now Plyaings" items=filtered_now_playings link='now-playings' %}
 
-<div class="scroll-section">
-  <div class="type-movie">
-    <div class="left-sections">
-      <h3 class="name-type">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-film" viewBox="0 0 16 16">
-        <path d="M0 1a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm4 0v6h8V1zm8 8H4v6h8zM1 1v2h2V1zm2 3H1v2h2zM1 7v2h2V7zm2 3H1v2h2zm-2 3v2h2v-2zM15 1h-2v2h2zm-2 3v2h2V4zm2 3h-2v2h2zm-2 3v2h2v-2zm2 3h-2v2h2z"/>
-      </svg>   Top Rated Movie
-    </h3>
-    </div>
-    <div class="right-section">
-      <h5 class="all-movies">
-        Views All<i class="bi bi-chevron-right"></i>
-      </h5>
-    </div>
-</div>
-
-  <div class="movie-scroll-container">
-    {% for top in top_rated|slice:":14" %}
-    <div class="movie-card-scroll">
-      <div class="card-poster">
-        {% if top.poster_path %}
-        <img src="https://image.tmdb.org/t/p/w500{{ top.poster_path }}" alt="{{ top.title }}">
-        {% else %}
-        <img src="{% static 'movies/image/default_poster.jpg' %}" alt="None" class="movie-img">
-        {% endif %}
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</div>
-
-
-<div class="scroll-section">
-  <div class="type-movie">
-    <div class="left-sections">
-      <div class="name-type">
-        <h3 class="name-type">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-film" viewBox="0 0 16 16">
-            <path d="M0 1a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1zm4 0v6h8V1zm8 8H4v6h8zM1 1v2h2V1zm2 3H1v2h2zM1 7v2h2V7zm2 3H1v2h2zm-2 3v2h2v-2zM15 1h-2v2h2zm-2 3v2h2V4zm2 3h-2v2h2zm-2 3v2h2v-2zm2 3h-2v2h2z"/>
-          </svg>   On loan
-        </h3>
-      </div>
-    </div>
-    <div class="right-section">
-      <h5 class="all-movies">
-        Views all<i class="bi bi-chevron-right"></i>
-      </h5>
-    </div>
-  </div>
-
-<div class="movie-scroll-container">
-  {% for now_movie in filtered_now_plyaings|slice:":14" %}
-  <div class="movie-card-scroll">
-    <div class="movie-poster">
-      {% if now_movie.poster_path %}
-      <img src="https://image.tmdb.org/t/p/w500{{ now_movie.poster_path }}" alt="{{now_movie.title}}" >
-      {% else %}
-      <img src="{% static 'movies/image/default_poster.jpg' %}" alt="None" class="movie-img">
-      {% endif %}
-    </div>
-  </div>
-  {% endfor %}
-</div>
-
-</div>
-
-
-
-<div class="scroll-section">
-  <div class="type-movie">
-    <div class="left-sections">
-      <h3 class="name-type">🎥 Coming soon to theaters</h3>
-    </div>
-    <div class="right-section">
-      <h5 class="all-movies">
-          Views All<i class="bi-chevron-right"></i>
-      </h5>
-    </div>
-  </div>
-  <div class="movie-scroll-container">
-    {% for movie in filtered_upcoming|slice:":14" %}
-    <div class="movie-card-scroll">
-      <div class="card-poster">
-      {% if movie.poster_path %}
-        <img src="https://image.tmdb.org/t/p/w780{{ movie.poster_path }}" alt="{{ movie.title }}" >
-        {% else %}
-        <img src="{% static 'movies/image/default_poster.jpg' %}" alt="None">
-        {% endif %}
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</div>
-
-{% endblock content %}
+  {% include 'movies/movie_section.html' with title="Upcoming" items=filtered_upcoming link='upcoming' %}
+  
+{% endblock %}
