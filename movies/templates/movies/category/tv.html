@@ -1,5 +1,6 @@
 {% extends 'movies/base.html' %}
 {% load static %}
+{% block body_class %}search-page{% endblock %}
 {% block content %}
-<h4>TV page</h4>
+    {% include 'movies/movies_category.html' with title="TV Popular" %}
 {% endblock %}
