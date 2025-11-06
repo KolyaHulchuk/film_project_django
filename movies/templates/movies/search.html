@@ -30,7 +30,7 @@
                 </p>
                 <div class="more-movie-info" >
                     <div class="movie-genre">
-                        {% for genre in movie.genres.all|slice:":2" %}
+                        {% for genre in movie.genres.all|slice:":2" %} <!-- тут жанр отримуються з моделі  -->
                             <span class="genre-badge">{{ genre.name }}</span> <!--  forloop.last  — щоб не ставити кому після останнього жанру, використовувати у фігурних дужка з процентом-->
                         {% empty %} <!-- якщо жанрів нема -->
                             <span class="genre-badge">None</span>

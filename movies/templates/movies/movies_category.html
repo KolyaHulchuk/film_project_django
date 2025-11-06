@@ -1,0 +1,79 @@
+{% extends 'movies/base.html' %}
+{% load static %}
+{% block body_class %}search-page{% endblock %}
+{% block content %}
+<div >
+    <div class="name-page"></div>
+    <div class="genre-filter-list"></div>
+</div>
+<div class=" movie-container">
+    {% for item in items %}
+    <div class="movie-previe">
+        <div class="movie-poster">
+            {% if item.poster_url %}
+            <img src="{{ item.poster_url }}" alt="{{ item.title }}" class="movie-img">
+            {% else %}
+            <img src="{% static 'movies/image/default_poster.jpg' %}" alt="Nobe">
+            {% endif %}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-plus-fill" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M2 15.5V2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.74.439L8 13.069l-5.26 2.87A.5.5 0 0 1 2 15.5m6.5-11a.5.5 0 0 0-1 0V6H6a.5.5 0 0 0 0 1h1.5v1.5a.5.5 0 0 0 1 0V7H10a.5.5 0 0 0 0-1H8.5z"/>
+            </svg>
+        </div>
+        <div class="movie-info">
+            <p class="movie-title" >
+                {% if item.media_type == "movie" %}
+                    {{ item.title }}
+                    <span> - Movie </span>
+               {% else %}
+                    {{ item.name }}
+                    <span> - TV</span>
+               {% endif %}
+            </p>
+            <p class="movie-year">
+                {{ item.release_date }}
+            </p>
+            <div class="more-movie-info">
+                <div class="movie-genre">
+                    {% for genre in item.genres|slice:"2" %} <!--  тут жанри з айпі -->
+                        <span class="genre-badge">{{ genre }}</span>
+                    {% empty %}
+                        <span class="genre-badge">None</span>
+                    {% endfor %}
+                </div>
+                <div class="movie-rating">
+                    {% if item.tmdb_rating %}
+                    <span class="rating-badge">
+                        <i class="bi bi-star-fill">{{ item.tmdb_rating|floatformat:1 }}</i>
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if is_paginated %}
+    <div class="pagination">
+
+        {% if current_page > 1 %}
+            <a class="btn btn-outline-secondary" href="?page=1">First</a>
+            <a class="btn btn-outline-secondary" href="?page={{ current_page|add:'-1' }}">Previous</a>
+        {% endif %}
+
+        {% for num in page_range %}
+            {% if num == current_page %}
+                <span class="btn btn-secondary activate">{{ num }}</span>
+            {% else %}
+                <a class="btn btn-outline-secondary" href="?page={{ num }}">{{ num }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if current_page < total_pages %}
+            <a class="btn btn-outline-secondary" href="?page={{ current_page|add:'1' }}">Next</a>
+            <a class="btn btn-outline-secondary" href="?page={{ total_pages }}">Last</a>
+        {% endif %}
+    </div>
+{% endif %}
+
+{% endblock %}

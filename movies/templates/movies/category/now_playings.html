@@ -1,5 +1,7 @@
-{% extends "movies/base.html" %}
+{% extends 'movies/base.html' %}
 {% load static %}
+{% block body_class %}search-page{% endblock %}
 {% block content %}
-<h1>Now plyaings</h1>
-{% endblock %} 
+    {% include 'movies/movies_category.html' with title="Now Playings"%}
+
+{% endblock %}

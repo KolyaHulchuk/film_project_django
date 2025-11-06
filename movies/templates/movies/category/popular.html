@@ -2,34 +2,6 @@
 {% load static %}
 {% block body_class %}search-page{% endblock %}
 {% block content %}
-<div >
-    <div class="name-page"></div>
-    <div class="genre-filter-list"></div>
-</div>
-<div class=" movie-container">
-    {% for item in items %}
-    <div class="movie-previe">
-        <div class="movie-poster">
-            {% if item.poster_url %}
-            <img src="{{ item.poster_url }}" alt="{{ item.title }}" class="movie-img">
-            {% else %}
-            <img src="{% static 'movies/image/default_poster.jpg' %}" alt="Nobe">
-            {% endif %}
-        </div>
-        <div class="movie-info">
-            <p>
-               
-            </p>
-            <div class="more-movie-info">
-                <div class="genre">
-                
-                </div>
-                <div class="movie-rating">
+    {% include 'movies/movies_category.html' with title="Popualr Movies"%}
 
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endfor %}
-</div>
 {% endblock %}
