@@ -110,6 +110,7 @@ class TMDBClient:
             item["release_date"] = self.get_release_date(details, media_type)
             item["tmdb_rating"] = details.get("vote_average")
             item["genres"] = [ genre["name"] for genre in details.get("genres", [])]
+            item["media_type"] = media_type
             return item
     
     def enrich_items(self, items, media_type):
