@@ -1,3 +1,14 @@
 asgiref==3.9.1
 Django==5.2.5
 sqlparse==0.5.3
+certifi==2025.8.3
+charset-normalizer==3.4.3
+crispy-bootstrap4==2025.6
+django-crispy-forms==2.4
+git-filter-repo==2.47.0
+idna==3.10
+pillow==11.3.0
+pip==25.0
+python-dotenv==1.1.1
+requests==2.32.5
+urllib3==2.5.0
