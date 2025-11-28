@@ -1,7 +1,5 @@
-{% extends 'movies/base.html' %}
+
 {% load static %}
-{% block body_class %}search-page{% endblock %}
-{% block content %}
 <div >
     <div class="name-page"></div>
     <div class="genre-filter-list"></div>
@@ -15,9 +13,27 @@
             {% else %}
             <img src="{% static 'movies/image/default_poster.jpg' %}" alt="Nobe">
             {% endif %}
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-plus-fill" viewBox="0 0 16 16">
-                <path fill-rule="evenodd" d="M2 15.5V2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.74.439L8 13.069l-5.26 2.87A.5.5 0 0 1 2 15.5m6.5-11a.5.5 0 0 0-1 0V6H6a.5.5 0 0 0 0 1h1.5v1.5a.5.5 0 0 0 1 0V7H10a.5.5 0 0 0 0-1H8.5z"/>
-            </svg>
+            {% if user.is_authenticated %}
+                {% if item.tmdb_id %}
+                    <form method="post" action="{% url 'add_watchlist' item.tmdb_id item.media_type %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" class="btn btn-link p-0 text-secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-plus-fill" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M2 15.5V2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.74.439L8 13.069l-5.26 2.87A.5.5 0 0 1 2 15.5m6.5-11a.5.5 0 0 0-1 0V6H6a.5.5 0 0 0 0 1h1.5v1.5a.5.5 0 0 0 1 0V7H10a.5.5 0 0 0 0-1H8.5z"/>
+                            </svg>
+                        </button>
+                    </form>
+                {% else %}
+                    <p class="text-muted">Немає TMDB ID для цього фільму</p>
+                {% endif %}
+            {% else %}
+                <a class="back-register" href="{% url 'register' %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-plus-fill" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M2 15.5V2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.74.439L8 13.069l-5.26 2.87A.5.5 0 0 1 2 15.5m6.5-11a.5.5 0 0 0-1 0V6H6a.5.5 0 0 0 0 1h1.5v1.5a.5.5 0 0 0 1 0V7H10a.5.5 0 0 0 0-1H8.5z"/>
+                    </svg>
+                </a>
+            {% endif %}
         </div>
         <div class="movie-info">
             <p class="movie-title" >
@@ -75,5 +91,3 @@
         {% endif %}
     </div>
 {% endif %}
-
-{% endblock %}

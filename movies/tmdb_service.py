@@ -107,6 +107,7 @@ class TMDBClient:
                 else self.get_tv_by_tmdb_id(item["id"])
             )
 
+            item["tmdb_id"] = item["id"]
             item["release_date"] = self.get_release_date(details, media_type)
             item["tmdb_rating"] = details.get("vote_average")
             item["genres"] = [ genre["name"] for genre in details.get("genres", [])]

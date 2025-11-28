@@ -78,8 +78,25 @@
 
 }
 
-.search-page .bi-bookmark-plus-fill:hover {
+.search-page .bi-bookmark-dash-fill {
+    position: absolute;
+    top: -2px;
+    right: -7px;
+    width: 45px;
+    height: 45px;
+    transition: fill 0.25s ease, transform 0.25s ease; /* дозволяє рухати, обертати, масштабувати, нахиляти */
+
+}
+
+
+
+.search-page .bi-bookmark-plus-fill:hover  .bi-bookmark-dash-fill:hover{
     fill: #b3aeae;
+}
+
+.search-page .bi-bookmark-dash-fill:active {
+    fill: rgb(224, 12, 12);
+    transform: scale(1.2);
 }
 
 .search-page .bi-bookmark-plus-fill:active {
@@ -153,3 +170,6 @@
   color: white;
 }
 
+.back-register {
+    color: gray;
+}

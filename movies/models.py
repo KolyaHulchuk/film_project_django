@@ -62,17 +62,3 @@ class Comment(models.Model):
         return f"{self.user.username} - {self.movie.title}"
 
 
-class Watchlist(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    movie = models.ForeignKey(Movies, on_delete=models.CASCADE)
-    added_to_wathclist = models.BooleanField(default=False)
-    watched = models.BooleanField(default=False)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["user", "movie"], name="unique_user_movie") # забороняє дублікати
-        ]
-
-    def __str__(self):
-        return f"{self.user.username} - {self.movie.title}"
-    

@@ -22,6 +22,6 @@ urlpatterns = [
     path("tv-popular/", TVPopularView.as_view(), name="popular-tv"),
     path("top-rated/", TopRatedView.as_view(), name="top-rated"),
     path("now-playings/", NowPlayingsView.as_view(), name="now-playings"),
-    path("upcoming/", UpcomingView.as_view(), name="upcoming")
+    path("upcoming/", UpcomingView.as_view(), name="upcoming"),
 ]
 
