@@ -3,6 +3,9 @@ import logging
 from datetime import datetime
 from django.conf import settings
 
+from .models import Movies
+from .utils import COUNTRY_CODES, normalize_country
+
 class TMDBClient:
     BASE_URL = "https://api.themoviedb.org/3"
     IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
@@ -29,6 +32,8 @@ class TMDBClient:
     def get_tv_by_tmdb_id(self, tmdb_id):
         return self._request(f"tv/{tmdb_id}")
         
+
+   
 
     def _type_items(self, items):
         for item in items:
@@ -116,4 +121,5 @@ class TMDBClient:
     
     def enrich_items(self, items, media_type):
         return [self.enrich_item(item, media_type) for item in items]
-# шукає в цьому словнику ключ "results". Якщо він є  повертає значення (тобто список фільмів). Якщо його немає  повертає порожній список [] 
+    
+   

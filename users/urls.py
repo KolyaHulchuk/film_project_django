@@ -2,6 +2,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views # набір готових в’юх Django для автентифікації.
 from . import views
 
+
 urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout' ),
     path('register/', views.register, name='register'),
@@ -10,6 +11,8 @@ urlpatterns = [
 
     path('watchlist/', views.WatchlistView.as_view(), name="watchlist"),
     path('watchlist/add/<int:tmdb_id>/<str:media_type>', views.AddToWatchlist.as_view(), name="add_watchlist"),
+    path('watchlist/delete/<int:pk>', views.DeleteWatchlist.as_view(), name="delete_watchlist"), # Тільки pk (ID Watchlist запису)!
+    path('watchlist/search/', views.search_watchlist, name='search_watchlist' ),
     path('profile/', views.profile, name='profile'),
 
     # reset password

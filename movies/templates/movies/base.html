@@ -14,6 +14,16 @@
     <link rel="stylesheet" href="{% static 'movies/search.css' %}">
     <link rel="stylesheet" href="{% static 'movies/movie_list.css' %}">
 
+    
+    <!-- CSRF для HTMX -->
+    <script>
+        document.body.addEventListener('htmx:configRequest', (event) => {
+            event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+        });
+    </script>
+    
+    {% block extra_css %}{% endblock %}
+
     {% if title %}
       <title>Movies - {{ title }}</title>
     {% else %}
@@ -47,10 +57,11 @@
                 Category
               </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Horror</a></li>
-                <li><a class="dropdown-item" href="#">adventures</a></li>
-                <li><a class="dropdown-item" href="#">fantasy</a></li>
-                <li><a class="dropdown-item" href="#">romance</a></li>
+                <li><a class="dropdown-item" href="#">Movie</a></li>
+                <li><a class="dropdown-item" href="#">Tv</a></li>
+                <li><a class="dropdown-item" href="#">Dorams</a></li>
+                <li><a class="dropdown-item" href="#">Anime</a></li>
+                <li><a class="dropdown-item" href="#">Cartoon</a></li>
               </ul>
             </li>
           </ul>
@@ -102,5 +113,12 @@
     </main>
     <!-- Example Code End -->
         <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+
+         <!-- HTMX -->
+        <script src="https://unpkg.com/htmx.org@1.9.4/dist/htmx.min.js"></script>
+
+         <!-- Alpine.js -->
+        <script src="https://unpkg.com/alpinejs@3.12.0/dist/cdn.min.js" defer></script>
+
   </body>
 </html>

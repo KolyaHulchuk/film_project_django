@@ -2,6 +2,10 @@
 from django.contrib import admin
 from .models import Movies
 
-admin.site.register(Movies) # відправляєм нашу базу на сервер і там підвязуєм в admin сторінці
+class MoviesAdmin(admin.ModelAdmin):
+    list_display = ['title', 'release_date', 'country', 'description', 'poster_url', 'tmdb_id']
+
+
+admin.site.register(Movies, MoviesAdmin) # відправляєм нашу базу на сервер і там підвязуєм в admin сторінці
 
 

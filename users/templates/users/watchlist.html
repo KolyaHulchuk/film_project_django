@@ -1,64 +1,150 @@
 {% extends 'movies/base.html' %}
 {% load static %}
 {% block body_class %}search-page{% endblock %}
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'users/test_watchlist.css' %}">
+{% endblock %}
+
 {% block content %}
-<div >
-    <div class="name-page"></div>
-    <div class="genre-filter-list"></div>
-</div>
-<div class=" movie-container">
-    {% for my_movie in watchlist %}
-    <div class="movie-previe">
-        <div class="movie-poster">
-            {% if my_movie.movie.poster_url %}
-            <img src="{{ my_movie.movie.poster_url }}" alt="{{ my_movie.movie.title }}" class="movie-img">
-            {% else %}
-            <img src="{% static 'movies/image/default_poster.jpg' %}" alt="Nobe">
-            {% endif %}
-            {% if my_movie.movie.tmdb_id %}
-                <form method="#" action="#">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-link p-0 text-secondary">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-dash-fill" viewBox="0 0 16 16">
-                            <path fill-rule="evenodd" d="M2 15.5V2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.74.439L8 13.069l-5.26 2.87A.5.5 0 0 1 2 15.5M6 6a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1z"/>
-                        </svg>
-                    </button>
-                </form> 
-            {% endif %}   
-        </div>
-        <div class="movie-info">
-            <p class="movie-title" >
-                {% if my_movie.movie.media_type == "movie" %}
-                    {{ my_movie.movie.title }}
-                    <span> - Movie </span>
-               {% else %}
-                    {{ my_movie.movie.title }}
-                    <span> - TV</span>
-               {% endif %}
-            </p>
-            <p class="movie-year">
-                {{ my_movie.movie.release_date }}
-            </p>
-            <div class="more-movie-info">
-                <div class="movie-genre">
-                    {% for genre in my_movie.movie.genres.all|slice:"2" %} <!--  тут жанри з айпі -->
-                        <span class="genre-badge">{{ genre.name }}</span>
-                    {% empty %}
-                        <span class="genre-badge">None</span>
+
+
+<div class="filters">
+    <nav class="navbar-watchlist">
+        <form id="filter-form" style="display: flex; justify-content: space-between; width: 2000px;">
+            <div class="dropwodn filter-year">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Years
+                </a>
+                <ul class="dropdown-menu">
+                    <li>
+                        <input class="search-watcshlis-info"
+                        type="search" 
+                        placeholder="Years"
+                        name="years_search"
+                        hx-get="{% url 'search_watchlist' %}"
+                        hx-trigger="keyup changed delay:500ms"
+                        hx-target="#movie-list"
+                        hx-include="#filter-form">
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    {% for year in years %}
+                        <li>
+                            <button class="dropdown-item"
+                            type="button"
+                            hx-get="{% url 'search_watchlist' %}"
+                            hx-vals='{"years_search": "{{ year }}"}'
+                            hx-trigger="click"
+                            hx-target="#movie-list"
+                            hx-include="#filter-form">{{ year }}</button>
+                        </li>
                     {% endfor %}
-                </div>
-                <div class="movie-rating">
-                    {% if my_movie.movie.tmdb_rating %}
-                    <span class="rating-badge">
-                        <i class="bi bi-star-fill">{{ my_movie.movie.tmdb_rating|floatformat:1 }}</i>
-                    </span>
-                    {% endif %}
-                </div>
+                </ul>
+            </div> <!-- Made a list of the years movies -->
+            <div class="filter-country">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Country
+                </a>
+                <ul class="dropdown-menu">
+                    <input class="search-watcshlis-info"
+                        type="search"
+                        placeholder="Country"
+                        name="country_search"
+                        hx-get="{% url 'search_watchlist' %}"
+                        hx-trigger="keyup changed delay:500ms"
+                        hx-target="#movie-list"
+                        hx-include="#filter-form">
+                    <li><hr class="dropdown-divider"></li>
+                    {% for country in countries %} 
+                    <li>
+                        <button class="dropdown-item"
+                            type="button"
+                            hx-get="{% url 'search_watchlist' %}"
+                            hx-vals='{"country_search": "{{ country }}"}'
+                            hx-trigger="click"
+                            hx-target="#movie-list"
+                            hx-include="#filter-form">{{ country }}</button>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div> 
+            <div class="filter-genre">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Genre
+                </a>
+                <ul class="dropdown-menu">
+                    <li>
+                        <input class="search-watcshlis-info"
+                            type="search" 
+                            placeholder="Genre"
+                            name="genre_search"
+                            hx-get="{% url 'search_watchlist' %}"
+                            hx-trigger="keyup changed delay:500ms"
+                            hx-target="#movie-list"
+                            hx-include="#filter-form">
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    {% for genre in genres %}
+                    <li>
+                        <button type="button"
+                            class="dropdown-item"
+                            hx-get="{% url 'search_watchlist' %}"
+                            hx-vals='{"genre_search": "{{ genre }}"}'
+                            hx-trigger="click"
+                            hx-target="#movie-list"
+                            hx-include="#filter-form">
+                            {{ genre }}
+                        </button>
+                    </li>
+                    {% endfor %}
+                    
+                </ul>
             </div>
-        </div>
-    </div>
-    {% endfor %}
+            <div class="filter-rating">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Rating
+                </a>
+                <ul class="dropdown-menu">
+                    <input class="search-watcshlis-info"
+                        type="search" 
+                        placeholder="Rating"
+                        name="rating_search"
+                        hx-get="{% url 'search_watchlist' %}"
+                        hx-trigger="keyup changed delay:500ms"
+                        hx-target="#movie-list"
+                        hx-include="#filter-form"
+                        >
+                </ul>
+            </div>
+            <div class="filter-language">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Ttile
+                </a>
+                <ul class="dropdown-menu">
+                    <li>
+                        <input class="search-watcshlis-info"
+                        type="search" 
+                        placeholder="Title"
+                        name="name_search"
+                        hx-get="{% url 'search_watchlist' %}"
+                        hx-trigger="keyup changed delay:500ms"
+                        hx-target="#movie-list"
+                        hx-include="#filter-form">
+                    </li>
+                </ul>
+            </div>
+        </form>
+    </nav>
 </div>
+
+
+
+
+<div id="movie-list">
+    {% include 'users/partials/watchlist_result.html' %}
+</div>
+
+
+
 
 {% if is_paginated %}
     <div class="pagination">

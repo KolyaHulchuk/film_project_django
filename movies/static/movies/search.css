@@ -3,6 +3,10 @@
   color: #333333;
 }
 
+.search-page .test-bottom {
+    background-color: pink;
+    height: 70px;
+}
 
 .search-page .movie-container {
     display: grid;

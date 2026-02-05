@@ -12,6 +12,7 @@ from django.views.generic import (
     )
 from django.utils.timezone import make_aware
 from datetime import datetime
+from .utils import *
 
 
 class AllMoviesView(View):
@@ -93,6 +94,9 @@ class UpcomingView(AllMoviesView):
         self.item_func = lambda page: TMDBClient().get_list("movie/upcoming", page)
 
 
+
+
+
 class HomeView(View):
     def get(self, request):
         page = 1
@@ -156,6 +160,29 @@ class SerachView(View):
 
 
 
+def get_country(data, media_type):
+    """
+    Витягує коди країн з даних TMDB
+    
+    Args:
+        data: дані з TMDB API
+        media_type: "movie" або "tv"
+    
+    Returns:
+        Список кодів країн: ['US', 'UA']
+    """
+
+
+    if media_type == "tv":
+        # Для серіалів є origin_country
+        return data.get("origin_country", [])
+    else:
+        # Для фільмів витягуємо з production_countries
+        production_countries = data.get("production_countries", [])
+        return [country["iso_3166_1"] for country in production_countries]
+        
+
+
 def get_or_create_media(tmdb_id, media_type="movie"):
     client = TMDBClient()
 
@@ -174,6 +201,12 @@ def get_or_create_media(tmdb_id, media_type="movie"):
     if not data:
         return None
     
+    #  Отримуємо коди країн (універсально для movie і tv)
+    country_code = get_country(data, media_type)
+
+    #  Перетворюємо на повні назви
+    normalize = normalize_countries(country_code)
+
     movie, created = Movies.objects.get_or_create(
         tmdb_id=tmdb_id,
         defaults={
@@ -182,7 +215,7 @@ def get_or_create_media(tmdb_id, media_type="movie"):
             "poster_url": f"https://image.tmdb.org/t/p/w500{data.get('poster_path')}" if data.get("poster_path") else "",
             "media_type": media_type,
             "tmdb_rating": data.get("vote_average"),
-            "country": ", ".join(data.get("origin_country", [])),
+            "country": normalize,
             "author": data.get("production_companies")[0]["name"] if data.get("production_companies") else "",
         }
     )
@@ -223,3 +256,16 @@ def about(request):
 class MoviesDetailView(DetailView):
     model = Movies
     
+
+
+class Category(View):
+    def get(self, request, tmdb_id):
+        page = 1
+        client = TMDBClient()
+
+        data = client.get_tv_by_tmdb_id(tmdb_id)
+        language = data.get("original_language") if data else None
+
+
+    
+        
