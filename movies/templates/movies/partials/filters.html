@@ -1,0 +1,105 @@
+<nav class="navbar-watchlist">
+        <form id="filter-form" style="display: flex; justify-content: space-between; width: 2000px;">
+
+            <input type="hidden" name="genre_search" value="{{ request.GET.genre_search }}"> <!-- парамете hidden робить приховане поле його не видно на сайті -->
+            <input type="hidden" name="country_search", value="{{ request.GET.country_search }}"> <!-- тут я зберігаю значення для жанру бо там немає input -->
+
+            <div class="dropwodn filter-year">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Years
+                </a>
+                <ul class="dropdown-menu">
+                    <li>
+                        <input class="search-watcshlis-info"
+                        type="search" 
+                        placeholder="Years"
+                        name="years_search"
+                        value="{{ request.GET.years_search }}"
+                        hx-get="."
+                        hx-trigger="keyup changed delay:500ms"
+                        hx-target="#movie-list-filter"
+                        hx-include="#filter-form"
+                        hx-push-url="true">
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    
+                </ul>
+            </div> <!-- Made a list of the years movies -->
+            <div class="filter-country">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Country
+                </a>
+                <ul class="dropdown-menu">
+                    
+                    <li><hr class="dropdown-divider"></li>
+                    {% for code, name in countries.items %} 
+                    <li>
+                        <button class="dropdown-item"
+                            type="button"
+                            hx-get="."
+                            hx-vals='{"country_search": "{{ code }}"}'
+                            hx-trigger="click"
+                            hx-target="#movie-list-filter"
+                            hx-include="#filter-form">{{ name }}</button>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div> 
+            <div class="filter-genre">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Genre
+                </a>
+                <ul class="dropdown-menu">
+                    <li><hr class="dropdown-divider"></li>
+                    {% for genre in genres %}
+                    <li>
+                        <button type="button"
+                            class="dropdown-item"
+                            hx-get="."
+                            hx-vals='{"genre_search": "{{ genre.id }}"}'
+                            hx-trigger="click"
+                            hx-target="#movie-list-filter"
+                            hx-include="#filter-form">
+                            {{ genre.name }}
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="filter-rating">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Rating
+                </a>
+                <ul class="dropdown-menu">
+                    <input class="search-watcshlis-info"
+                        type="search" 
+                        placeholder="Rating"
+                        name="rating_search"
+                        value="{{ request.GET.rating_search }}"
+                        hx-get="."
+                        hx-trigger="keyup changed delay:500ms"
+                        hx-target="#movie-list-filter"
+                        hx-include="#filter-form"
+                        >
+                </ul>
+            </div>
+            <div class="filter-language">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Ttile
+                </a>
+                <ul class="dropdown-menu">
+                    <li>
+                        <input class="search-watcshlis-info"
+                        type="search" 
+                        placeholder="Title"
+                        name="name_search"
+                        value="{{ request.GET.name_search }}"
+                        hx-get="."
+                        hx-trigger="keyup changed delay:500ms"
+                        hx-target="#movie-list-filter"
+                        hx-include="#filter-form">
+                    </li>
+                </ul>
+            </div>
+        </form>
+</nav>

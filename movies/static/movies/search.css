@@ -177,3 +177,11 @@
 .back-register {
     color: gray;
 }
+
+.pagination-wrapper {
+    width: 100%;
+    display: flex;
+    grid-column: 1 / -1;  /* ← розтягує на ВСІ колонки! */
+    justify-content: center;
+    margin-top: 20px;
+}

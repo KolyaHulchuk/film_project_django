@@ -1,4 +1,8 @@
-from django.shortcuts import render, redirect ,get_object_or_404 # instance - сам об’єкт моделі . created - булеве значення (True або False): True, якщо об’єкт щойно створили; False, якщо об’єкт уже існував у базі.
+from django.shortcuts import render, redirect ,get_object_or_404 
+# instance – the model object
+# created – a boolean value:
+# True if the object was created,
+# False if it already existed in the database
 from django.http import HttpResponse
 from .models import Movies, Genre
 from django.views import View
@@ -16,8 +20,15 @@ from .utils import *
 
 
 class AllMoviesView(View):
+    """
+    Base view for all movie and TV category pages.
+    Subclasses override title, template_name, base_filters and media_type.
+    """
+
+
     title = "Default Title"
-    template_name = "movies/category/default.html" # це атрибути класу потім вони перевизначаються
+    template_name = "movies/category/default.html" # class attribute, can be overridden in subclasses
+    parials_name = "movies/partials/movie_list.html" # class attribute, overriden in subclasses
     item_func = None
     media_type = "movie"
     
@@ -28,14 +39,23 @@ class AllMoviesView(View):
             page = int(request.GET.get("page", 1))
         except ValueError:
             page = 1
+                                     
+        data = self.item_func(page)  #  Call the function that returns raw data from TMDB
 
-        data = self.item_func(page)  # це "сирі" дані з TMDB
-        # перший запит — дізнатись total_pages для запитаного page
         total_pages = data.get("total_pages", 1)
 
         page = max(1, min(page, total_pages))
+                                                                  
+        items = client.enrich_items(data["results"], self.media_type) #  Add extra data for each item (rating, genres, etc.)
 
-        items = client.enrich_items(data["results"], self.media_type) # додаю  до кожного фільма додаткові дані: рейтинг, жанри
+        genres = client.get_genres(self.media_type)
+
+
+        current_filters = request.GET.urlencode()
+
+        without_filters_page = request.GET.copy() # Copy current filters without the page parameter
+        without_filters_page.pop("page", None)    # Prevent duplicating the page parameter in the URL
+        current_filters = without_filters_page.urlencode()
 
         context = {
             "title": self.title,
@@ -46,10 +66,59 @@ class AllMoviesView(View):
             "page_range": range(
                 max(1, data["page"] - 3),
                 min(data["total_pages"] + 1, data["page"] + 3)
-            )
+            ),
+            "countries": COUNTRY_CODES,
+            "genres": genres,
+           "current_filters": current_filters
         }
 
-        return render(request, self.template_name, context)
+        # # If the request comes from HTMX, render only the partial template
+        if request.headers.get("HX-Request"):
+            template = self.parials_name
+        else:
+            template = self.template_name
+
+
+        return render(request, template, context)
+    
+
+    # Build extra filters from user input (query parameters)
+    def search_filter_movie(self, request):
+
+            extra_filters = {}
+
+            years = request.GET.get("years_search")
+            if years:
+                if self.media_type == "tv":
+                    extra_filters["first_air_date_year"] = years
+                else:
+                    extra_filters["primary_release_year"] = years
+
+
+            ratings = request.GET.get("rating_search")
+            if ratings:
+                try:
+                    rating = float(ratings)
+                    extra_filters["vote_average.gte"] = rating
+                except ValueError:
+                    pass
+
+            genres = request.GET.get("genre_search")
+            if genres:
+                extra_filters["with_genres"] = genres
+
+            country = request.GET.get("country_search")
+            if country:
+                extra_filters["with_origin_country"] = country
+
+
+            name = request.GET.get("name_search")
+            if name:
+                extra_filters["name"] = name
+
+            return extra_filters
+
+
 
 class PopularMoviesView(AllMoviesView):
     title = "Popular Movies"
@@ -102,7 +171,7 @@ class HomeView(View):
         page = 1
         client = TMDBClient()
 
-        now_playings = client.get_list("movie/now_playing", page) # виклик функції
+        now_playings = client.get_list("movie/now_playing", page) # Fetch data from TMDB
         upcoming = client.get_list("movie/upcoming", page)
         tv_serilas_popular = client.get_list("tv/popular", page)
         now_popular = client.get_list("movie/popular", page)
@@ -128,21 +197,21 @@ class SerachView(View):
     def get(self, request):
         query = request.GET.get("q", '')
         results = [] 
-        seen_ids = set() # множина для унікальних tmdb_id
+        seen_ids = set() # Fetch data from TMDB
 
 
        
-        if query: # шукаю в базі
-            local_movies = Movies.objects.filter(title__icontains=query)  # icontains - означає: пошук, який ігнорує регістр (case-insensitive) і перевіряє, чи міститься підрядок
+        if query: # Search in the local database first
+            local_movies = Movies.objects.filter(title__icontains=query)  # icontains performs a case-insensitive substring search
             for movie in local_movies:
                 if movie.tmdb_id and movie.tmdb_id not in seen_ids:
                     results.append(movie)
                     seen_ids.add(movie.tmdb_id)
 
-            tmdb_results = TMDBClient().search_movies(query) # повертає список фільмів
+            tmdb_results = TMDBClient().search_movies(query) # Returns a list of movies and TV shows from TMDB
             print("TMDB RESULTS:", tmdb_results)
 
-            for item in tmdb_results: # item — це словник з даними про один фільм.
+            for item in tmdb_results: # Each item is a dictionary with TMDB data
                 media_type = item.get("media_type")
                 if media_type not in ["movie", "tv"]:
                     continue
@@ -162,22 +231,23 @@ class SerachView(View):
 
 def get_country(data, media_type):
     """
+    pull code country from data TMDB
     Витягує коди країн з даних TMDB
     
     Args:
-        data: дані з TMDB API
-        media_type: "movie" або "tv"
+        data: data from  TMDB API
+        media_type: "movie" or "tv"
     
     Returns:
-        Список кодів країн: ['US', 'UA']
+        Lsit codes сщгтекн: ['US', 'UA']
     """
 
 
     if media_type == "tv":
-        # Для серіалів є origin_country
+        # For TV shows, use the origin_country field
         return data.get("origin_country", [])
     else:
-        # Для фільмів витягуємо з production_countries
+        # For movies, extract data from production_countries
         production_countries = data.get("production_countries", [])
         return [country["iso_3166_1"] for country in production_countries]
         
@@ -201,10 +271,10 @@ def get_or_create_media(tmdb_id, media_type="movie"):
     if not data:
         return None
     
-    #  Отримуємо коди країн (універсально для movie і tv)
+    # Get country codes for both movies and TV shows
     country_code = get_country(data, media_type)
 
-    #  Перетворюємо на повні назви
+    # Convert country codes to full country names
     normalize = normalize_countries(country_code)
 
     movie, created = Movies.objects.get_or_create(
@@ -227,13 +297,13 @@ def get_or_create_media(tmdb_id, media_type="movie"):
             movie.release_date = None
     movie.save()
 
-    movie.genres.clear() # видаляє всі жарни 
+    movie.genres.clear() # Remove all existing genres
     for genre_data in data.get("genres", []):
-        genre_obj, _ = Genre.objects.get_or_create( # genre_obj — це конкретний жанр
+        genre_obj, _ = Genre.objects.get_or_create(  # genre_obj represents a single genre
             tmdb_id =genre_data["id"],
             defaults= {"name": genre_data["name"]}
         )
-        if not  movie.genres.filter(tmdb_id=genre_obj.tmdb_id).exists():  # якщо в цього фільму немає жанру в базі даних 
+        if not  movie.genres.filter(tmdb_id=genre_obj.tmdb_id).exists(): # Add the genre if it is not already assigned to this movie
             movie.genres.add(genre_obj)
 
 
@@ -258,14 +328,113 @@ class MoviesDetailView(DetailView):
     
 
 
-class Category(View):
-    def get(self, request, tmdb_id):
-        page = 1
-        client = TMDBClient()
 
-        data = client.get_tv_by_tmdb_id(tmdb_id)
-        language = data.get("original_language") if data else None
+
+
+
+    #    data = client.get_tv_by_tmdb_id(genres_id)
 
 
     
+class TVViews(AllMoviesView):
+    title = "TV"
+    template_name = "movies/type/tv.html"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.base_filters = {"without_genres": 16, "max_page": 100}
+        self.media_type = "tv"
+
+
+
+    def get(self, request):
+        extra_filters = self.search_filter_movie(request)
+        filters = {**self.base_filters, **(extra_filters or {})}
+        self.item_func =  lambda page: TMDBClient().get_list("discover/tv", page, **filters) 
+        return super().get(request)
+
+    
+    
+       
         
+        
+
+
+# Type tv/movie
+
+class AnimeTVView(AllMoviesView):
+    title = "Anime TV"
+    template_name = "movies/type/anime.html"
+      
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.base_filters = {   # # Base TMDB query parameters
+                "with_genres": 16, # 16 = Animation in TMDB
+                "with_original_language": "ja",  # Japan language
+                "with_origin_country": "JP",  # Japanese production
+                "max_page": 100  
+                } 
+        
+        self.media_type = "tv"
+
+
+    def get(self, request):
+        extra_filters = self.search_filter_movie(request)
+        filters = {**self.base_filters, **(extra_filters or {})}
+        self.item_func =  lambda page: TMDBClient().get_list("discover/tv", page, **filters) 
+        return super().get(request)
+
+class DoramTVView(AllMoviesView):
+    title = "Dorams TV"
+    template_name = "movies/type/dorams.html"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.base_filters = {"with_original_language": "ko", "without_genres": 16, "max_page": 100}
+        self.media_type = "tv"
+
+
+    def get(self, request):
+        extra_filters = self.search_filter_movie(request)
+        filters = {**self.base_filters, **(extra_filters or {})}
+        self.item_func =  lambda page: TMDBClient().get_list("discover/tv", page, **filters) 
+        return super().get(request)
+
+class CartoonTVView(AllMoviesView):
+    title = "Cartoon TV"
+    template_name = "movies/type/cartoons.html"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)       
+        self.base_filters = {
+            "with_genres": 16,
+            "with_origin_country": "US|GB|FR|CA|AU",
+            "max_page": 100
+        }
+        self.media_type = "tv"
+
+    def get(self, request):
+        extra_filters = self.search_filter_movie(request) # Additional filters from user input
+        filters = {**self.base_filters, **(extra_filters or {})}
+        self.item_func =  lambda page: TMDBClient().get_list("discover/tv", page, **filters) 
+        return super().get(request)
+
+
+class MovieView(AllMoviesView):
+    title = "Movie"
+    template_name = "movies/type/movie.html"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.base_filters = {"max_page": 100}
+        self.media_type = "movie"
+
+    def get(self, request):
+        extra_filters = self.search_filter_movie(request)
+        filters = {**self.base_filters, **(extra_filters or {})}
+        self.item_func = lambda page: TMDBClient().get_list("discover/movie", page, **filters)
+        return super().get(request)
+
+
+
+

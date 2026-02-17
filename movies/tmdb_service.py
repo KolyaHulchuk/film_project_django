@@ -33,7 +33,23 @@ class TMDBClient:
         return self._request(f"tv/{tmdb_id}")
         
 
-   
+    def get_discover_tv(self, **kwargs):
+        return self._request(f"discover/tv", **kwargs)
+    
+    def get_discover_movie(self, **kwargs):
+       return self._request(f"discover/movie", **kwargs)
+    
+
+    def get_genres(self, media_type):
+        if media_type == "tv":
+            endpoint = f"genre/tv/list"
+        else:
+            endpoint = f"genre/movie/list"
+
+        data = self._request(endpoint)
+        return data.get("genres", [])
+      
+
 
     def _type_items(self, items):
         for item in items:
@@ -48,8 +64,9 @@ class TMDBClient:
         return items
     
     
-    def get_list(self, endpoint, page=1):
-        data = self._request(endpoint, {"language": "en", "page": page})
+    def get_list(self, endpoint, page=1, **kwargs):
+        data = self._request(endpoint, {"language": "en", "page": page, **kwargs})
+        max_page = kwargs.get("max_page", 10)
         if not data or "results" not in data:
             return {
                 "results": [],
@@ -60,6 +77,7 @@ class TMDBClient:
         uniq_results = []
         seen_id = set()
 
+        
         for result in data["results"]:
             if result["id"] not in seen_id:
                 seen_id.add(result["id"])
@@ -70,7 +88,7 @@ class TMDBClient:
         return {
             "results": uniq_results,
             "page": data.get("page", page),
-            "total_pages": min(data.get("total_pages", 1), 10)
+            "total_pages": min(data.get("total_pages", 1), max_page)
         }
 
 
@@ -107,14 +125,18 @@ class TMDBClient:
 
     def enrich_item(self, item, media_type):
             details = (
-                self.get_movie_by_tmdb_id(item["id"])
+                self.get_movie_by_tmdb_id(item["id"]) or
+                self.get_discover_movie(item["id"])
                 if media_type == "movie"
-                else self.get_tv_by_tmdb_id(item["id"])
+                else self.get_tv_by_tmdb_id(item["id"]) or
+                    self.get_discover_tv(item["id"])
             )
 
             item["tmdb_id"] = item["id"]
             item["release_date"] = self.get_release_date(details, media_type)
             item["tmdb_rating"] = details.get("vote_average")
+            item["original_language"] = details.get("original_language")
+            item["country"] = details.get("origin_country") if media_type == "tv" else details.get("production_countries")
             item["genres"] = [ genre["name"] for genre in details.get("genres", [])]
             item["media_type"] = media_type
             return item
@@ -122,4 +144,50 @@ class TMDBClient:
     def enrich_items(self, items, media_type):
         return [self.enrich_item(item, media_type) for item in items]
     
-   
+    """def discover_enrich_items(self, item, media_type):
+        details = (
+            self.get_discover_tv(item["id"])
+            if media_type == "tv"
+            else self.get_discover_movie(item["id"])
+        )
+
+        item["tmdb_id"] = item["id"]
+        item["relese_date"] = self.get_release_date(details, media_type)
+        item["tmdb_rating"] = details.get("vote_average")
+        item["genres"] = [ genre["name"] for genre in details.get("genres", [])]
+        item["media_type"] = media_type
+        return item"""
+    
+        
+
+# шукає в цьому словнику ключ "results". Якщо він є  повертає значення (тобто список фільмів). Якщо його немає  повертає порожній список [] 
+
+
+
+
+
+
+"""
+робиться запит до серіалів з tmdb
+далі з цього запиту я хочу витягнути genres=16 це аніме
+додаю мову якщо хочу фільтрувати по країнах
+
+
+якщо хочу аніме фільми тоді
+роблю запит до фільмів 
+і також фільтрую по жанру=16
+та мові
+
+
+
+
+
+щодо дорам теж саме роблю 
+окрім жанру він не треба
+просто беру серіали та мову китайську та корейську 
+
+
+я хочу зробити початкову сторінку спільну як китайські так і корейські дорами 
+і можна включити фільтри такі як країна китай або корея, жарни добавити а також добавити роки і рейтинг
+
+"""

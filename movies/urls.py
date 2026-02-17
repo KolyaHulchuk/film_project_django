@@ -8,7 +8,13 @@ from .views import  (
     TopRatedView,
     TVPopularView,
     HomeView,
-    SerachView
+    SerachView,
+    AnimeTVView,
+    DoramTVView,
+    CartoonTVView,
+    TVViews,
+    MovieView,
+    
     )
 
 
@@ -18,10 +24,18 @@ urlpatterns = [
     path('movies/<int:pk>/', MoviesDetailView.as_view(), name='movies-detail'),
     path('about/', views.about, name='movies-about'),
     path("search/", SerachView.as_view(), name="movies-search"),
+
     path("popular-movies/", PopularMoviesView.as_view(), name="popular-movies"),
     path("tv-popular/", TVPopularView.as_view(), name="popular-tv"),
     path("top-rated/", TopRatedView.as_view(), name="top-rated"),
     path("now-playings/", NowPlayingsView.as_view(), name="now-playings"),
     path("upcoming/", UpcomingView.as_view(), name="upcoming"),
+
+    path("anime-tv/", AnimeTVView.as_view(), name="anime-tv"),
+    path("dorams-tv/", DoramTVView.as_view(), name="dorams-tv"),
+    path("cartoon-tv/", CartoonTVView.as_view(), name="cartoon-tv"),
+    path("tv/", TVViews.as_view(), name="tv"),
+    path("movie/", MovieView.as_view(), name="movie"),
+    
 ]
 

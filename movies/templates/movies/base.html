@@ -57,11 +57,11 @@
                 Category
               </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Movie</a></li>
-                <li><a class="dropdown-item" href="#">Tv</a></li>
-                <li><a class="dropdown-item" href="#">Dorams</a></li>
-                <li><a class="dropdown-item" href="#">Anime</a></li>
-                <li><a class="dropdown-item" href="#">Cartoon</a></li>
+                <li><a class="dropdown-item" href="{% url 'movie' %}">Movie</a></li>
+                <li><a class="dropdown-item" href="{% url 'tv' %}">Tv</a></li>
+                <li><a class="dropdown-item" href="{% url 'dorams-tv' %}">Dorams</a></li>
+                <li><a class="dropdown-item" href="{% url 'anime-tv' %}">Anime</a></li>
+                <li><a class="dropdown-item" href="{% url 'cartoon-tv' %}">Cartoon</a></li>
               </ul>
             </li>
           </ul>
