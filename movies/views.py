@@ -17,7 +17,7 @@ from django.views.generic import (
 from django.utils.timezone import make_aware
 from datetime import datetime
 from .utils import *
-
+from users.models import Watchlist
 
 class AllMoviesView(View):
     """
@@ -50,6 +50,19 @@ class AllMoviesView(View):
 
         genres = client.get_genres(self.media_type)
 
+        watchlist = Watchlist.objects.filter(user=request.user)
+
+        watched_map = {}
+
+        for w in watchlist:
+            watched_map[w.movie.tmdb_id] = w
+
+        for item in items:
+            if item["id"] in watched_map:
+                watchlist_obj = watched_map[item["id"]]
+                item["is_watched"] = watchlist_obj.watched # is_watched це назва колонки яку ми створюєм в словнику який надходить з айпі
+                item["watchlist_id"] = watchlist_obj.id
+
 
         current_filters = request.GET.urlencode()
 
@@ -69,7 +82,7 @@ class AllMoviesView(View):
             ),
             "countries": COUNTRY_CODES,
             "genres": genres,
-           "current_filters": current_filters
+            "current_filters": current_filters
         }
 
         # # If the request comes from HTMX, render only the partial template
@@ -199,27 +212,50 @@ class SerachView(View):
         results = [] 
         seen_ids = set() # Fetch data from TMDB
 
+        watchlist = Watchlist.objects.filter(user=request.user)
+
+
+        watched_map = {}
+
+        for w in watchlist:
+            watched_map[w.movie.tmdb_id] = w
 
        
         if query: # Search in the local database first
             local_movies = Movies.objects.filter(title__icontains=query)  # icontains performs a case-insensitive substring search
             for movie in local_movies:
                 if movie.tmdb_id and movie.tmdb_id not in seen_ids:
+
+                    if movie.tmdb_id in watched_map:
+                        watchlist_obj = watched_map[movie.tmdb_id]
+                        movie.is_watched = watchlist_obj.watched
+                        movie.watchlist_id = watchlist_obj.id
+
+
+                
                     results.append(movie)
                     seen_ids.add(movie.tmdb_id)
-
+                    
             tmdb_results = TMDBClient().search_movies(query) # Returns a list of movies and TV shows from TMDB
-            print("TMDB RESULTS:", tmdb_results)
+       
 
+            
             for item in tmdb_results: # Each item is a dictionary with TMDB data
                 media_type = item.get("media_type")
                 if media_type not in ["movie", "tv"]:
                     continue
                 
                 tmdb_id = item["id"]
-
                 obj = get_or_create_media(tmdb_id, media_type)
+
                 
+                
+                if obj.tmdb_id in watched_map:
+                    watchlist_obj = watched_map[obj.tmdb_id]
+                    obj.is_watched = watchlist_obj.watched # is_watched це назва колонки яку ми створюєм в словнику який надходить з айпі
+                    obj.watchlist_id = watchlist_obj.id
+
+
 
                 if obj.tmdb_id not in seen_ids:
                     results.append(obj)
@@ -438,3 +474,6 @@ class MovieView(AllMoviesView):
 
 
 
+
+
+        

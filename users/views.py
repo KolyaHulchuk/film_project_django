@@ -13,6 +13,7 @@ from django.views.generic import (
     ListView,
     DeleteView
 )
+
 import math
 
 # Обрізати до 1 знаку
@@ -93,6 +94,15 @@ class DeleteWatchlist(DeleteView):
         if request.headers.get("HX-Request"):
             return HttpResponse("") # повертає порожню відповідь
         return redirect("watchlist") # якщо звичайни запит
+
+
+@login_required    
+def toggle_watched(request, watchlist_id):
+    item = Watchlist.objects.get(id=watchlist_id, user=request.user)
+    if request.method == "POST":
+        item.watched = not item.watched
+        item.save()
+        return HttpResponse("OK")
 
 
 @login_required

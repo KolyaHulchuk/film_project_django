@@ -21,7 +21,6 @@ COUNTRY_CODES = {
     'DK': 'Denmark',
     'FI': 'Finland',
     'PL': 'Poland',
-    'RU': 'Russia',
     'TR': 'Turkey',
     'EG': 'Egypt',
     'ZA': 'South Africa',

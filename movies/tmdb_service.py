@@ -10,7 +10,7 @@ class TMDBClient:
     BASE_URL = "https://api.themoviedb.org/3"
     IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 
-    def __init__(self, api_key=None, languages=("en", "uk")):
+    def __init__(self, api_key=None, languages="en"):
         self.api_key = api_key or settings.TMDB_API_KEY # Якщо api_key не передано, візьми settings.TMDB_API_KEY
         self.languages = languages
 
@@ -77,12 +77,13 @@ class TMDBClient:
         uniq_results = []
         seen_id = set()
 
-        
+     
         for result in data["results"]:
             if result["id"] not in seen_id:
                 seen_id.add(result["id"])
                 uniq_results.append(result)
-
+            
+            
         uniq_results = self._type_items(uniq_results)
 
         return {
@@ -102,7 +103,7 @@ class TMDBClient:
             for item in data.get("results", []):
                 media_type = item.get("media_type")
                 if media_type not in ["movie", "tv"]:
-                    continue # пропускаємо акторів та інше
+                    continue 
                 if item["id"] not in seen_ids:
                     combined.append(item)
                     seen_ids.add(item["id"])
@@ -144,50 +145,4 @@ class TMDBClient:
     def enrich_items(self, items, media_type):
         return [self.enrich_item(item, media_type) for item in items]
     
-    """def discover_enrich_items(self, item, media_type):
-        details = (
-            self.get_discover_tv(item["id"])
-            if media_type == "tv"
-            else self.get_discover_movie(item["id"])
-        )
-
-        item["tmdb_id"] = item["id"]
-        item["relese_date"] = self.get_release_date(details, media_type)
-        item["tmdb_rating"] = details.get("vote_average")
-        item["genres"] = [ genre["name"] for genre in details.get("genres", [])]
-        item["media_type"] = media_type
-        return item"""
-    
-        
-
-# шукає в цьому словнику ключ "results". Якщо він є  повертає значення (тобто список фільмів). Якщо його немає  повертає порожній список [] 
-
-
-
-
-
-
-"""
-робиться запит до серіалів з tmdb
-далі з цього запиту я хочу витягнути genres=16 це аніме
-додаю мову якщо хочу фільтрувати по країнах
-
-
-якщо хочу аніме фільми тоді
-роблю запит до фільмів 
-і також фільтрую по жанру=16
-та мові
-
-
-
-
-
-щодо дорам теж саме роблю 
-окрім жанру він не треба
-просто беру серіали та мову китайську та корейську 
-
-
-я хочу зробити початкову сторінку спільну як китайські так і корейські дорами 
-і можна включити фільтри такі як країна китай або корея, жарни добавити а також добавити роки і рейтинг
-
-"""
+ 
