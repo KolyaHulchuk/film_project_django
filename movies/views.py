@@ -50,18 +50,20 @@ class AllMoviesView(View):
 
         genres = client.get_genres(self.media_type)
 
-        watchlist = Watchlist.objects.filter(user=request.user)
 
-        watched_map = {}
+        if request.user.is_authenticated:
+            watchlist = Watchlist.objects.filter(user=request.user)
 
-        for w in watchlist:
-            watched_map[w.movie.tmdb_id] = w
+            watched_map = {}
 
-        for item in items:
-            if item["id"] in watched_map:
-                watchlist_obj = watched_map[item["id"]]
-                item["is_watched"] = watchlist_obj.watched # is_watched це назва колонки яку ми створюєм в словнику який надходить з айпі
-                item["watchlist_id"] = watchlist_obj.id
+            for w in watchlist:
+                watched_map[w.movie.tmdb_id] = w
+
+            for item in items:
+                if item["id"] in watched_map:
+                    watchlist_obj = watched_map[item["id"]]
+                    item["is_watched"] = watchlist_obj.watched # is_watched — flag from watchlist
+                    item["watchlist_id"] = watchlist_obj.id
 
 
         current_filters = request.GET.urlencode()
@@ -91,7 +93,7 @@ class AllMoviesView(View):
         else:
             template = self.template_name
 
-
+        print(context)    
         return render(request, template, context)
     
 
@@ -140,6 +142,7 @@ class PopularMoviesView(AllMoviesView):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.item_func = lambda page: TMDBClient().get_list("movie/popular", page)
+        print(self.item_func)
 
 
 class TVPopularView(AllMoviesView):
@@ -212,24 +215,27 @@ class SerachView(View):
         results = [] 
         seen_ids = set() # Fetch data from TMDB
 
-        watchlist = Watchlist.objects.filter(user=request.user)
-
-
         watched_map = {}
 
-        for w in watchlist:
-            watched_map[w.movie.tmdb_id] = w
+        if request.user.is_authenticated:
+            watchlist = Watchlist.objects.filter(user=request.user)
+
+            
+
+            for w in watchlist:
+                watched_map[w.movie.tmdb_id] = w
 
        
         if query: # Search in the local database first
             local_movies = Movies.objects.filter(title__icontains=query)  # icontains performs a case-insensitive substring search
-            for movie in local_movies:
+            for movie in local_movies:                                    # icontains is a built-in Django filter for case-insensitive substring search.
+
                 if movie.tmdb_id and movie.tmdb_id not in seen_ids:
 
                     if movie.tmdb_id in watched_map:
-                        watchlist_obj = watched_map[movie.tmdb_id]
-                        movie.is_watched = watchlist_obj.watched
-                        movie.watchlist_id = watchlist_obj.id
+                        watchlist_obj = watched_map[movie.tmdb_id] #  get the Watchlist object
+                        movie.is_watched = watchlist_obj.watched  # True if watched, False if not
+                        movie.watchlist_id = watchlist_obj.id  # attach watchlist data to movie object
 
 
                 
@@ -252,7 +258,7 @@ class SerachView(View):
                 
                 if obj.tmdb_id in watched_map:
                     watchlist_obj = watched_map[obj.tmdb_id]
-                    obj.is_watched = watchlist_obj.watched # is_watched це назва колонки яку ми створюєм в словнику який надходить з айпі
+                    obj.is_watched = watchlist_obj.watched # is_watched is the column name we create in the dictionary that comes from the API
                     obj.watchlist_id = watchlist_obj.id
 
 
@@ -260,22 +266,20 @@ class SerachView(View):
                 if obj.tmdb_id not in seen_ids:
                     results.append(obj)
                     seen_ids.add(obj.tmdb_id)
-
+       
         return render(request, "movies/search.html", {"query": query, "results": results})
 
 
 
 def get_country(data, media_type):
     """
-    pull code country from data TMDB
-    Витягує коди країн з даних TMDB
-    
+    pull code country from data TMDB    
     Args:
         data: data from  TMDB API
         media_type: "movie" or "tv"
     
     Returns:
-        Lsit codes сщгтекн: ['US', 'UA']
+        Lsit of country codes : ['US', 'UA']
     """
 
 
@@ -294,6 +298,7 @@ def get_or_create_media(tmdb_id, media_type="movie"):
 
     if media_type == "movie":
         data = client.get_movie_by_tmdb_id(tmdb_id)
+        print("Data", data)
         title = data.get("title") if data else None
         raw_date = data.get("release_date") if data else None
     else:
@@ -390,11 +395,6 @@ class TVViews(AllMoviesView):
         return super().get(request)
 
     
-    
-       
-        
-        
-
 
 # Type tv/movie
 
@@ -419,6 +419,8 @@ class AnimeTVView(AllMoviesView):
         filters = {**self.base_filters, **(extra_filters or {})}
         self.item_func =  lambda page: TMDBClient().get_list("discover/tv", page, **filters) 
         return super().get(request)
+
+
 
 class DoramTVView(AllMoviesView):
     title = "Dorams TV"

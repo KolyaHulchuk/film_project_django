@@ -16,10 +16,10 @@ from django.views.generic import (
 
 import math
 
-# Обрізати до 1 знаку
+# Truncate to 1 decimal place
 def truncate(number, decimals=1):
     multiplier = 10 ** decimals
-    return math.floor(number * multiplier) / multiplier # math.floor завжди округлює вниз.
+    return math.floor(number * multiplier) / multiplier # math.floor always rounds down
 
 def register(request):
     if request.method == 'POST':
@@ -68,7 +68,7 @@ class AddToWatchlist(View):
         movie = get_or_create_media(tmdb_id, media_type)
         if movie:
             watchlist_item, created =  Watchlist.objects.get_or_create(user=request.user, movie=movie)
-            if created: # якщо щойно створив
+            if created: # if just create
                 messages.success(request, f"{movie.title or movie.name} додано у ваш список")
             else:
                 messages.info(request, f"{movie.title or movie.name} вже є у вашом списку")
@@ -84,7 +84,7 @@ class AddToWatchlist(View):
 class DeleteWatchlist(DeleteView):
     model = Watchlist
 
-    def get_queryset(self): # фільтрую фільми по користувачеві
+    def get_queryset(self): # filter movies by current user
         return Watchlist.objects.filter(user=self.request.user)
 
     def delete(self, request, *args, **kwargs):
@@ -92,8 +92,8 @@ class DeleteWatchlist(DeleteView):
         self.object.delete()
 
         if request.headers.get("HX-Request"):
-            return HttpResponse("") # повертає порожню відповідь
-        return redirect("watchlist") # якщо звичайни запит
+            return HttpResponse("") # return empty response for HTMX requests
+        return redirect("watchlist") # regular request — redirect to watchlist page
 
 
 @login_required    
@@ -113,11 +113,11 @@ def search_watchlist(request):
     
     years_search = (request.GET.get("years_search") or "").strip()
     if years_search:
-        watchlist_items = watchlist_items.filter(movie__release_date__icontains=years_search) # __icontains від потрібний для DB шукає контекст без урахування регістру
+        watchlist_items = watchlist_items.filter(movie__release_date__icontains=years_search) #  __icontains performs case-insensitive search in the DB
 
     country_search = (request.GET.get("country_search") or "").strip()
     if country_search:
-        watchlist_items = watchlist_items.filter(movie__country__icontains=country_search) # movie це звязок з таблицею Movie та watchlist
+        watchlist_items = watchlist_items.filter(movie__country__icontains=country_search) #  movie is the relation between Movie and Watchlist tables
 
     genre_search = (request.GET.get("genre_search") or "").strip()
     if genre_search:
@@ -129,10 +129,10 @@ def search_watchlist(request):
         try:
             rating = float(rating_search)
         
-            # Роблю діапазон rating=5.0 далі додаю 1 буде 6.0 і робить діапазон від 5.0 до 6.0
+            # Create a range: rating=5.0, add 1 gives 6.0, resulting in range from 5.0 to 6.0
             watchlist_items = watchlist_items.filter(
-                movie__tmdb_rating__gte=rating, # оператор gte >= (більше або дорівнює)
-                movie__tmdb_rating__lt=rating + 1  # оператор lt < (менше)
+                movie__tmdb_rating__gte=rating, # gte operator >= (greater than or equal)
+                movie__tmdb_rating__lt=rating + 1  # lt operator < (less than)
                                                      )
         except ValueError:
             pass
@@ -158,7 +158,7 @@ class WatchlistView(ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        return Watchlist.objects.filter(user=self.request.user)
+        return Watchlist.objects.filter(user=self.request.user).order_by("-id")
 
 
 
@@ -170,16 +170,16 @@ class WatchlistView(ListView):
 
         countries_list = Watchlist.objects.filter(
             user=self.request.user
-        ).values_list("movie__country", flat=True).distinct() # distinct прибирає дублікати, flat прибирає tuple з списка і робить просто список
+        ).values_list("movie__country", flat=True).distinct() # distinct removes duplicates, flat returns a plain list instead of tuples
 
         all_countries = set()
 
         for country_str in countries_list:
             if country_str:
-                for country in country_str.split(','): # розділяю країни комою де в одному речені дві країни чи більше
+                for country in country_str.split(','): # split by comma where one entry may contain multiple countries
                     all_countries.add(country.strip())
                 
-        context["countries"] = sorted(all_countries) # за алфавітом
+        context["countries"] = sorted(all_countries) # sort alphabetically
 
         return context
 
