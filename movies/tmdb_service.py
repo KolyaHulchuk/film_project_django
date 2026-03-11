@@ -10,9 +10,9 @@ class TMDBClient:
     BASE_URL = "https://api.themoviedb.org/3"
     IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 
-    def __init__(self, api_key=None, languages="en"):
+    def __init__(self, api_key=None, languages=None):
         self.api_key = api_key or settings.TMDB_API_KEY # Якщо api_key не передано, візьми settings.TMDB_API_KEY
-        self.languages = languages
+        self.languages = languages or ["en"]
 
     def _request(self, endpoint, params=None):
         url = f"{self.BASE_URL}/{endpoint}"
@@ -52,7 +52,10 @@ class TMDBClient:
 
 
     def _type_items(self, items):
+        print(f"ITEMSSSSSSSSS {items}")
         for item in items:
+            print("&" * 100)
+            print(f"ITEMS {item}")
             path = item.get("poster_path")
             item["poster_url"] = f"https://image.tmdb.org/t/p/w500{path}" if path else None
 
@@ -66,6 +69,7 @@ class TMDBClient:
     
     def get_list(self, endpoint, page=1, **kwargs):
         data = self._request(endpoint, {"language": "en", "page": page, **kwargs})
+      
         max_page = kwargs.get("max_page", 10)
         if not data or "results" not in data:
             return {
@@ -100,6 +104,7 @@ class TMDBClient:
 
         for lang in self.languages:
             data = self._request("search/multi", {"query": query, "language": lang})
+            
             for item in data.get("results", []):
                 media_type = item.get("media_type")
                 if media_type not in ["movie", "tv"]:
@@ -108,6 +113,7 @@ class TMDBClient:
                     combined.append(item)
                     seen_ids.add(item["id"])
 
+        print("COMBINED",self._type_items(combined))
         return self._type_items(combined)
 
     @staticmethod
@@ -121,7 +127,7 @@ class TMDBClient:
             date_obj = datetime.strptime(raw_date, "%Y-%m-%d")
             return date_obj.strftime("%d.%m.%Y")
         except (TypeError, ValueError):
-            return "Uknown"
+            raise ValueError("Uknown")
         
 
     def enrich_item(self, item, media_type):
