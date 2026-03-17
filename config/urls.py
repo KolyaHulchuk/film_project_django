@@ -19,6 +19,10 @@ from django.urls import path, include
 from django.conf.urls.static import static
 from django.conf import settings
 from django.views.generic import RedirectView
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    )
 
 
 urlpatterns = [
@@ -26,6 +30,10 @@ urlpatterns = [
     path('movies/', include('movies.urls')),
     path('',  RedirectView.as_view(url='/movies/', permanent=False)),
     path('users/', include('users.urls')),
+
+    path('api/', include('api.urls')),
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtian'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh')
 ]
 
 if settings.DEBUG:  
