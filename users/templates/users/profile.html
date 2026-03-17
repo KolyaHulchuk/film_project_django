@@ -1,24 +1,85 @@
 {% extends "movies/base.html" %}
 {% load crispy_forms_tags %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'movies/profile.css' %}">
+{% endblock %}
+
 {% block content %}
-<div class="content-section">
-    <div class="media">
-        <img src="{{ user.profile.image.url }}" >
-        <div class="media-body">
-            <h2 class="account-heading">{{user.username}}</h2>
-            <p class="text-secondary">{{user.email}}</p>
+<div class="profile-page">
+  <div class="container" style="max-width: 980px;">
+    <div class="profile-card">
+
+      <div class="profile-left">
+        <div class="avatar-circle">
+          <img src="{{ user.profile.image.url }}" alt="{{ user.username }}" id="avatarPreview">
         </div>
+        <p class="profile-username">{{ user.username }}</p>
+        <p class="profile-since">З {{ user.date_joined|date:"d.m.Y" }}</p>
+      </div>
+
+      <div class="profile-right">
+        <p class="profile-right-title">Edit Profile</p>
+
+        <form method="POST" enctype="multipart/form-data">
+          {% csrf_token %}
+
+          <div class="row g-4">
+
+            <div class="col-md-6">
+              <div class="field-wrap">
+                <div class="field-tooltip">Public name on the website</div>
+                <label class="form-label">Name</label>
+                <input type="text" name="username" value="{{ user.username }}"
+                       class="form-control" maxlength="150">
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="field-wrap">
+                <div class="field-tooltip">Used for login</div>
+                <label class="form-label">Email</label>
+                <input type="email" name="email" value="{{ user.email }}" class="form-control">
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="field-wrap">
+                <div class="field-tooltip">JPG or PNG; a square photo is recommended</div>
+                <label class="form-label d-block mb-2">Profile photo</label>
+                <label for="id_image" class="btn-upload">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
+                    <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/>
+                  </svg>
+                  Select a photo
+                </label>
+                <input type="file" id="id_image" name="image" accept="image/*">
+              </div>
+            </div>
+
+          </div>
+
+          <div class="mt-5">
+            <button type="submit" class="btn-save">Save changes</button>
+          </div>
+        </form>
+      </div>
+
     </div>
-    <form method="POST">
-        {% csrf_token %}
-        <fieldset class="form-group">
-            <legend class="border-bottom mb-4">Profile Info</legend>
-            {{ u_form|crispy }}
-            {{ p_form|crispy }}
-        </fieldset>
-        <div class="form-group">
-            <button class="btn btn-outline-info" type="submit">Update</button>
-        </div>
-    </form>
+  </div>
 </div>
+
+<script>
+  document.getElementById('id_image').addEventListener('change', function () {
+    const name = this.files[0] ? this.files[0].name : 'Файл не вибрано';
+    document.getElementById('fileName').textContent = name;
+    if (this.files[0]) {
+      const reader = new FileReader();
+      reader.onload = e => document.getElementById('avatarPreview').src = e.target.result;
+      reader.readAsDataURL(this.files[0]);
+    }
+  });
+</script>
 {% endblock %}

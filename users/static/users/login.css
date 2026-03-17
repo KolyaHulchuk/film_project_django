@@ -1,0 +1,112 @@
+.login-page {
+  background-color: #0a0a0a;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+/* Картка */
+.login-card {
+  width: 100%;
+  max-width: 580px;
+  background-color: #141414;
+  border: 1px solid #252525;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.login-header {
+  background-color: #0e0e0e;
+  border-bottom: 1px solid #252525;
+  padding: 48px 56px 36px;
+  text-align: center;
+}
+
+.login-logo {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+
+.login-sub {
+  color: #666;
+  font-size: 1.05rem;
+}
+
+.login-body {
+  padding: 48px 56px 56px;
+}
+
+.login-body .form-label { display: none !important; }
+
+.login-body .form-control {
+  background-color: #1a1a1a !important;
+  border: 1px solid #2a2a2a !important;
+  color: #ffffff !important;
+  border-radius: 10px;
+  padding: 13px 16px;
+  font-size: 1.05rem;
+  transition: border-color 0.2s;
+}
+
+.login-body .form-control:focus {
+  border-color: #555 !important;
+  box-shadow: none !important;
+  color: #fff !important;
+}
+
+.login-body .form-control::placeholder {
+  color: #666;
+  font-size: 1rem;
+}
+
+.login-body .form-text,
+.login-body small.text-muted { display: none !important; }
+
+.link-reset {
+  color: #aaa;
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.link-reset:hover { color: #fff; }
+
+.btn-login {
+  width: 100%;
+  background-color: #ffffff;
+  color: #000;
+  border: none;
+  border-radius: 10px;
+  padding: 13px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.15s;
+  margin-top: 8px;
+}
+
+.btn-login:hover { background-color: #e0e0e0; transform: translateY(-1px); }
+
+.login-divider { border-color: #1e1e1e; margin: 28px 0; }
+
+.login-footer-text {
+  color: #aaa;
+  font-size: 1.05rem;
+  text-align: center;
+  margin-bottom: 0;
+}
+
+.login-footer-text a {
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 700;
+  transition: color 0.2s;
+}
+
+.login-footer-text a:hover { color: #ccc; }

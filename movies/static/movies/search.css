@@ -110,8 +110,9 @@
 
 .search-page .more-movie-info {
     display: flex;
-    flex-wrap: wrap; /* дозволяє переносити жанри на новий рядок */
-    gap: 10px;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
     height: auto;
 }
 
@@ -131,7 +132,7 @@
     background-color: rgb(100, 100, 100);
     border-radius: 999px;
     white-space: nowrap;
-    max-width: 100%;
+    max-width: 150px;
     text-overflow: ellipsis;
     overflow: hidden;
     transition: background-color 0.35s ease;
@@ -143,8 +144,8 @@
 
 .search-page .movie-rating {
     display: block;
-    margin-top: 10px;
-    margin-left: 10px;
+    margin-top: 7px;
+    margin-left: 7px;
 }
 
 .search-page .rating-badge {
@@ -156,7 +157,7 @@
     background-color: rgb(255, 255, 255);
     border-radius: 999px;
     white-space: nowrap;
-    max-width: 100%;
+    max-width: 60px;
     text-overflow: ellipsis;
     overflow: hidden;
 }

@@ -1,24 +1,48 @@
 {% extends "movies/base.html" %}
-{% load crispy_forms_tags %}
+{% load static %}
+{% block body_class %}search-page{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'movies/login.css' %}">
+{% endblock %}
+
 {% block content %}
-    <div class="content-section">
-        <form method="POST">
-            {% csrf_token %}
-            <fieldset class="form-group mb-4">
-                <legend class="border-bottom mb-4">Log In</legend>
-                {{ form|crispy}}
-            </fieldset>
-            <div class="form-group">
-                <button class="btn btn-outline-info mb-4" type="submit">Login</button>
-                <small class="text-muted mb-4">
-                    <a href="{% url 'password_reset' %}">Reset Password</a>
-                </small>
-            </div>
-        </form>
-        <div class="border-top pt-3">
-            <small class="text-muted">
-                Need An Account? <a href="{% url 'register' %}">Sign In</a>
-            </small>
-        </div>
+<div class="login-page">
+  <div class="login-card">
+
+    <div class="login-header">
+      <p class="login-logo">Movies.hub</p>
+      <p class="login-sub  mb-0">Sign in to your account</p>
     </div>
-{% endblock content %}
+
+    <div class="login-body">
+      <form method="POST">
+        {% csrf_token %}
+
+        <div class="mb-3">
+          <input type="text" name="username" class="form-control"
+                 placeholder="Name" maxlength="150" autofocus>
+        </div>
+
+        <div class="mb-2">
+          <input type="password" name="password" class="form-control"
+                 placeholder="Password">
+        </div>
+
+        <div class="text-end mb-3 mt-3">
+          <a href="{% url 'password_reset' %}" class="link-reset">Forgot your password?</a>
+        </div>
+
+        <button type="submit" class="btn-login">Sign in</button>
+      </form>
+
+      <hr class="login-divider">
+
+      <p class="login-footer-text">
+        Don't have an account? <a href="{% url 'register' %}">Sign up</a>
+      </p>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
