@@ -16,7 +16,6 @@ class Actor(models.Model):
     def __str__(self):
         return self.name
 
-# ForeignKey завжди ставиться на сторону **"багатьох"** — тобто в статті, не в юзері.
 
 
 class Movies(models.Model):

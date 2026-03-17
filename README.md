@@ -1,19 +1,123 @@
 # My Django Movie app
 
-## Project Description (English)
-This web application allows users to search for movies and TV shows using the TMDB API, add them to a personal watchlist, and view detailed information such as genres, ratings, and release dates.  
-It is built with Django, Bootstrap, and Sqlit3, and demonstrates clean architecture and user-friendly design.
+## Project Description 
+A full-stack web application for discovering movies and TV shows using the TMDB API. Users can search, filter, manage a personal watchlist  — all backed by a documented REST API with JWT authentication.
 
 ## Features
 - Search movies and TV shows
-- Add items to a personal watchlist
+-  Browse by category: Popular, Top Rated, Now Playing, Upcoming, Anime, Doramas
+- Filter by genre, year, rating, and country
+- Watchlist — add films, mark as watched/unwatched
 - Pagination for results
-- User authentication (register/login)
-- Display genres, ratings, and release dates
-- password reset
-- user profile
+- User profile with avatar upload and password reset
+- Authentication — register, login, JWT-based API access
+- REST API — full CRUD endpoints with JWT auth, tested in Postman
+
+
+## REST API
+
+Base URL: http://127.0.0.1:8000/api/
+
+# Authentication
+
+# Method   # Endpoint           # Auth      # Decription
+
+- POST    /api/token/                         Get JWT access + refresh tokens
+
+- POST    /api/token/refresh/                 Refresh access token
+
+# Movies
+
+- GET     /api/movies/           ❌           List all movies (filter: ?genre=Action)
+ 
+- GET     /api/movies/{id}/      ❌           Movie details
+
+- GET     /api/genres/           ❌           List all genres
+
+
+# USER DATA
+
+- GET     /api/ratings/          ✅           My ratings
+
+- POST    /api/ratings/          ✅           Rate a movie
+
+- GET     /api/watchlist/        ✅           My watchlist
+
+- POST    /api/watchlist/        ✅           Add movie to watchlist
+
+- PUT     /api/watchlist/{id}/   ✅           Update (mark as watched)
+
+- DELETE  /api/watchlist/{id}/   ✅           Remove from watchlist
+
+- GET     /api/profile/          ✅           My profile
+
+- PUT     /api/profile/          ✅           Update profile
+
+
+
+## Example: Get JWT token
+```bash
+curl -X POST http://127.0.0.1:8000/api/token/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "your_username", "password": "your_password"}'
+```
+
+## Example: Authenticated request
+```bash
+curl http://127.0.0.1:8000/api/watchlist/ \
+  -H "Authorization: Bearer <your_access_token>"
+```
+
+
+
+
+## Tech Stack
+
+# Category       # Technology
+Backend         - Django 5, Django ORM
+REST API        - Django REST Framework
+Auth            - JWT (djangorestframework-simplejwt)
+Frontend        - HTML, CSS, HTMX, Bootstrap
+Database        - SQLite3
+External API    - TMDB API
+API Testing     - Postman
+Version Control - Git
+
+
+
+
+
+## Installation
+``` bash
+1. Clone the repository:
+git clone https://github.com/KolyaHulchuk/film_project_django.git 
+cd film_project_django
+
+2. Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+
+3. Install dependencies:
+pip install -r requirements.txt
+
+4. Set up environment variables
+cp .env.example .env
+# Edit .env and add your TMDB_API_KEY and SECRET_KEY
+
+5. Run migrations:
+python manage.py migrate
+
+6. Create superuser (optional)
+python manage.py createsuperuser
+
+7. Start the server:
+python manage.py runserver
+```
+
 
 ## Screenshots
+
 ## Homepage
 ![Homepage Screenshot](screenshots/homepage.png)
 
@@ -27,101 +131,45 @@ It is built with Django, Bootstrap, and Sqlit3, and demonstrates clean architect
 ![Search Screenshots](screenshots/search.png)
 
 ## Loginpage
-![Loginpage Screenshots](screenshots/loginpage.png)
+![Loginpage Screenshots](screenshots/login.png)
 
 ## Register
 ![Register Screenshots](screenshots/register.png)
 
 
 
-## Technologies used
-- Django
-- Django OR
-- Django Rest Framework
-- TMDB API
-- Bootstrap
-- SQLite3
-- HTML
-- CSS
-- Git
+## Project Structure
+
+film_project_django/
+├── api/                  # REST API (serializers, views, urls)
+│   ├── serializers.py
+│   ├── views.py
+│   └── urls.py
+├── movies/               # Movies app (models, views, TMDB client)
+│   ├── models.py
+│   ├── views.py
+│   └── tmdb_service.py
+├── users/                # Users app (profile, watchlist)
+│   ├── models.py
+│   └── views.py
+├── templates/            # HTML templates
+├── static/               # CSS, JS, images
+└── manage.py
 
 
-## Installation
-1. Clone the repository:
-``` bash
-git clone https://github.com/KolyaHulchuk/film_project_django.git 
+## Environment Variables
+# Create a .env file in the root directory:
 
-2. Install dependencies:
-pip install -r requirements.txt
-
-3. Perform migrations:
-python manage.py migrate
-
-4. Start the server:
-python manage.py runserver
-```
-
-
-
-# Мій  Django сайт фільмів
-
-## Опис проекту (Українська)
-Ця веб-програма дозволяє користувачам шукати фільми та телевізійні шоу за допомогою API TMDB, додавати їх до особистого списку для перегляду та переглядати детальну інформацію, таку як жанри, рейтинги та дати виходу.  
-Вона створена за допомогою Django, Bootstrap та Sqlit3 і демонструє чітку архітектуру та зручний дизайн.
-
-## Функції
-- Пошук фільмів та телешоу
-- Додавання елементів до особистого списку для перегляду
-- Пагінація результатів
-- Аутентифікація користувачів (реєстрація/вхід)
-- Відображення жанрів, рейтингів та дат виходу
-- Скидання пароля
-- Профіль користувача
-
-
-## Скріншоти
-## Домашня сторінка
-![Homepage Screenshot](screenshots/homepage.png)
-
-## Список перегляду
-![Watchlist Screenshot](screenshots/watchlist.png)
-
-## Профіль
-![Profile Screenshot](screenshots/profile.png)
-
-## Пошук
-![Search Screenshots](screenshots/search.png)
-
-## Вхід
-![Loginpage Screenshots](screenshots/loginpage.png)
-
-## Регістрація
-![Register Screenshots](screenshots/register.png)
+SECRET_KEY=your_django_secret_key
+TMDB_API_KEY=your_tmdb_api_key
+DEBUG=True
 
 
 
-## Використані технології
-- Django
-- Django OR
-- Django Rest Framework
-- TMDB API
-- Bootstrap
-- SQLite3
-- HTML
-- CSS
-- Git
 
 
-## Встановлення
-1. Клонування репозиторію:
-``` bash
-git clone https://github.com/KolyaHulchuk/film_project_django.git 
 
-2. Встановлення залежностей:
-pip install -r requirements.txt
 
-3. Виконати міграції:
-python manage.py migrate
 
-4. Запустити сервер:
-python manage.py runserver
+
+
