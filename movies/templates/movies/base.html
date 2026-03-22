@@ -18,13 +18,10 @@
     <link rel="stylesheet" href="{% static 'users/login.css' %}">
     <link rel="stylesheet" href="{% static 'users/register.css' %}">
 
+    <link rel="stylesheet" href="{% static 'movies/ai_chat.css' %}">
+
     
-    <!-- CSRF для HTMX -->
-    <script>
-        document.body.addEventListener('htmx:configRequest', (event) => {
-            event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
-        });
-    </script>
+    
     
     {% block extra_css %}{% endblock %}
 
@@ -49,7 +46,7 @@
             </li>
             {% if user.is_authenticated %}
             <li class="nav-item">
-              <a class="nav-link ac" href="{% url 'watchlist' %}">Watchlist</a> <!-- якщо зареєстрований то перейде на сторінку і побачить її а якщо ні то піде до реєстрації -->
+              <a class="nav-link ac" href="{% url 'watchlist' %}">Watchlist</a> 
             </li>
             {% else %}
             <li class="nav-item">
@@ -58,7 +55,7 @@
             {% endif %}
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                Category
+                Type
               </a>
               <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="{% url 'movie' %}">Movie</a></li>
@@ -70,6 +67,14 @@
             </li>
           </ul>
 
+          {% if user.is_authenticated %}
+          <button class="btn btn-sm ai-nav-btn me-2"
+                  data-bs-toggle="offcanvas"
+                  data-bs-target="#aiPanel">
+               AI Assistant
+          </button>
+          {% endif %}
+
           <form action="{% url 'movies-search' %}" method="get" class="d-flex" role="search">
             <input class="form-control me-2" type="search" name="q" placeholder="Search" aria-label="Search">
           </form>
@@ -77,12 +82,11 @@
           <ul class="navbar-nav">
             {% if user.is_authenticated %}
             <li class=" nav-item">
-              <a class="nav-link" href="{% url 'profile' %}">profile</a>
+              <a class="nav-link" href="{% url 'profile' %}">Profile</a>
             </li>
             <li class="nav-item">
                 <form method="POST" action="{% url 'logout' %}" class="m-0 p-0 form-inline">
                     {% csrf_token %}
-                      <!-- Робимо кнопку виглядом як nav-link -->
                     <button type="submit" class="nav-link btn btn-link m-0">
                         Logout
                     </button>
@@ -115,14 +119,162 @@
                 {% block content %}{% endblock %}
             </div>
     </main>
-    <!-- Example Code End -->
+
+          <!-- Alpine.js -->
+        <script src="https://unpkg.com/alpinejs@3.12.0/dist/cdn.min.js"></script>
+
+
         <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+
 
          <!-- HTMX -->
         <script src="https://unpkg.com/htmx.org@1.9.4/dist/htmx.min.js"></script>
 
-         <!-- Alpine.js -->
-        <script src="https://unpkg.com/alpinejs@3.12.0/dist/cdn.min.js" defer></script>
+        <!-- CSRF для HTMX -->
+        <script>
+            document.body.addEventListener('htmx:configRequest', (event) => {
+                event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+            });
+        </script>
+
+       
+      <!-- AI Чат панель — перед </body> -->
+      <div class="offcanvas offcanvas-end ai-panel"
+            id="aiPanel"
+            tabindex="-1"
+            x-data="{
+                messages: [],    // array of all chat messages
+                input: '',       // current user input text
+                mediaType: 'all',
+                loading: false,  // true = show spinner
+
+                async sendMessage() {
+                    // do not send if input is empty or only whitespace
+                    if (!this.input.trim()) return;
+
+                    // add user message to chat immediately
+                    this.messages.push({ text: this.input, type: 'user' });
+
+                    // save text BEFORE clearing input — otherwise it will be lost
+                    const msg = this.input;
+                    this.input = '';
+                    this.loading = true;
+
+                    // wait for Alpine to update DOM then scroll to bottom
+                    this.$nextTick(() => {
+                        const chat = document.getElementById('ai-chat');
+                        chat.scrollTop = chat.scrollHeight;
+                    });
+
+                    try {
+                        // encodeURIComponent encodes text for URL (spaces → %20)
+                        const url = '/movies/ai/?message=' + encodeURIComponent(msg) + '&type=' + this.mediaType;
+                        const response = await fetch(url);
+                        const data = await response.json(); // { answer: '...', based_on: 25 }
+
+                        this.messages.push({
+                            text: data.answer || data.error || 'Error',
+                            type: 'ai'
+                        });
+
+                    } catch (e) {
+                        // fetch throws only on network failure
+                        // server errors (500, 404) do not reach this catch block
+                        this.messages.push({
+                            text: 'Connection error',
+                            type: 'ai'
+                        });
+                    }
+
+                    this.loading = false;
+
+                    // scroll to bottom after AI response is added
+                    this.$nextTick(() => {
+                        const chat = document.getElementById('ai-chat');
+                        chat.scrollTop = chat.scrollHeight;
+                    });
+                }
+            }">
+
+            <div class="ai-panel-header">
+                <div class="ai-panel-title">
+                    <span>Cinema Assistant</span>
+                </div>
+                <button class="btn-close btn-close-white btn-sm"
+                        data-bs-dismiss="offcanvas">
+                </button>
+            </div>
+
+            <div id="ai-chat" class="ai-chat">
+
+                <!-- show welcome message only when chat is empty -->
+                <template x-if="messages.length === 0">
+                    <div class="ai-welcome">
+                        <p class="ai-welcome-icon">🎬</p>
+                        <p style="font-size: 17px;">Ask about a movie, anime, or TV series</p>
+                        <p class="ai-welcome-hint">I can also make recommendations based on your watchlist</p>
+                    </div>
+                </template>
+
+                <!-- x-for renders each message from the messages array -->
+                <template x-for="(msg, index) in messages" :key="index">
+                    <div :class="msg.type === 'user' ? 'ai-msg-row-user' : 'ai-msg-row-ai'">
+                        <!-- different styles for user and AI messages -->
+                        <div :class="msg.type === 'user' ? 'ai-msg-user' : 'ai-msg-ai'"
+                            x-text="msg.text">
+                        </div>
+                    </div>
+                </template>
+
+                <!-- spinner visible only while loading = true -->
+                <template x-if="loading">
+                    <div class="ai-spinner-row">
+                        <div class="ai-spinner-bubble">
+                            <div class="spinner-border spinner-border-sm text-secondary"
+                                style="width:14px; height:14px; border-width:2px;">
+                            </div>
+                            <span>AI is thinking...</span>
+                        </div>
+                    </div>
+                </template>
+
+            </div>
+
+            <div class="ai-input-area">
+
+                <!-- type filter — active button gets the active class -->
+                <div class="ai-type-filters">
+                    <template x-for="opt in [
+                        {value: 'all',   label: 'All'},
+                        {value: 'movie', label: 'Movies'},
+                        {value: 'tv',    label: 'TV'}
+                    ]" :key="opt.value">
+                        <button @click="mediaType = opt.value"
+                                :class="mediaType === opt.value ? 'ai-type-btn active' : 'ai-type-btn'"
+                                x-text="opt.label">
+                        </button>
+                    </template>
+                </div>
+
+                <div class="ai-input-row">
+                    <!-- Enter sends message, Shift+Enter adds new line (prevent stops default Enter behavior) -->
+                    <textarea x-model="input"
+                              @keydown.enter.prevent="sendMessage()"
+                              rows="4"
+                              class="ai-textarea"
+                              placeholder="Ask about a movie or anime...">
+                    </textarea>
+
+                    <!-- button disabled while loading or input is empty -->
+                    <button @click="sendMessage()"
+                            :disabled="loading || !input.trim()"
+                            class="ai-send-btn">
+                        →
+                    </button>
+                </div>
+
+            </div>
+        </div>
 
   </body>
 </html>
