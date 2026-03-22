@@ -15,9 +15,12 @@ from django.views.generic import (
     UpdateView
     )
 from django.utils.timezone import make_aware
+from django.contrib.auth.decorators import login_required
 from datetime import datetime
 from .utils import *
 from users.models import Watchlist
+from movies.services import get_ai
+from django.http import JsonResponse
 
 class AllMoviesView(View):
     """
@@ -472,7 +475,14 @@ class MovieView(AllMoviesView):
         filters = {**self.base_filters, **(extra_filters or {})}
         self.item_func = lambda page: TMDBClient().get_list("discover/movie", page, **filters)
         return super().get(request)
+    
 
+@login_required
+def ai_recomendations(request):
+    message = request.GET.get("message", "")
+    media_type = request.GET.get("type", "all")
+    result = get_ai(request.user, message, media_type)
+    return JsonResponse(result)
 
 
 

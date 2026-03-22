@@ -1,5 +1,7 @@
 from django.shortcuts import render
-from rest_framework import generics
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import generics, status
 from .serializers import (
     MovieSerializer, 
     GerneSerializer, 
@@ -15,6 +17,8 @@ from rest_framework.permissions import (
     IsAuthenticated, 
     IsAuthenticatedOrReadOnly
     )
+from movies.services import get_ai
+
 
 
 class MovieListView(generics.ListAPIView):
@@ -77,3 +81,17 @@ class WatchlistDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return Watchlist.objects.filter(user=self.request.user)
+    
+
+
+
+class RecommendationsAiView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        message = request.query_params.get("message", "")
+        media_type = request.query_params.get("type", "all")
+        
+        result = get_ai(request.user, message, media_type)
+        return Response(result)
+        

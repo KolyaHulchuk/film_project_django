@@ -1,0 +1,6 @@
+{% if result.error %}
+    <p class="text-danger">{{ result.error }}</p>
+{% else %}
+    <p class="text-muted small">На основі {{ result.based_on }} фільмів з watchlist:</p>
+    <p style="white-space: pre-line;">{{ result.answer }}</p>
+{% endif %}
