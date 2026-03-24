@@ -48,6 +48,9 @@ class TMDBClient:
 
         data = self._request(endpoint)
         return data.get("genres", [])
+    
+    def get_credit(self, tmdb_id, media_type):
+        return self._request(f"{media_type}/{tmdb_id}/credits")
       
 
 

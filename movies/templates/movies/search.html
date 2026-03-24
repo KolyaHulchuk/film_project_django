@@ -6,14 +6,10 @@
 <div class="movie-container" >
     {% for movie in results %}
         <div class="movie-previe">
-            <div class="movie-poster">
-                {% if movie.poster_url %}
-                <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" class="movie-img">
-                {% else %}
-                <img src="{% static 'movies/image/default_poster.jpg' %}" alt="None" class="movie-img" >
-                {% endif %}
                 {% if user.is_authenticated %}
-                <form method="post" action="{% url 'add_watchlist' movie.tmdb_id movie.media_type %}">
+                <form method="post" 
+                      action="{% url 'add_watchlist' movie.tmdb_id movie.media_type %}"
+                      class="watchlist-form">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
                     <button type="submit" class="btn btn-link p-0 text-secondary">
@@ -44,40 +40,52 @@
                 </svg>   
                 </a>             
                 {% endif %}
-            </div>
-            <div class="movie-info">
-                <p class="movie-title">
-                    {{ movie.title }}
-                    {% if movie.media_type == "tv" %}
-                        <span> - TV</span>
+
+
+            <a href="{% url 'movie-detail' movie.tmdb_id movie.media_type %}" class="movie-card-link">
+                <div class="movie-poster">
+                    {% if movie.poster_url %}
+                    <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" class="movie-img">
                     {% else %}
-                        <span> - Movie</span>
+                    <img src="{% static 'movies/image/default_poster.jpg' %}" alt="None">
                     {% endif %}
-                </p>
-                <p class="movie-year">
-                    {{ movie.release_date|date:"Y" }}
-                </p>
-                <div class="more-movie-info" >
-                    <div class="movie-genre">
-                        {% for genre in movie.genres.all|slice:":2" %} <!-- тут жанр отримуються з моделі  -->
-                            <span class="genre-badge">{{ genre.name }}</span> <!--  forloop.last  — щоб не ставити кому після останнього жанру, використовувати у фігурних дужка з процентом-->
-                        {% empty %} <!-- якщо жанрів нема -->
-                            <span class="genre-badge">None</span>
-                        {% endfor %}
-                    </div> 
-                    <div class="movie-rating">
-                        {% if movie.tmdb_rating %}
-                            <span class="rating-badge">
-                                <i class="bi bi-star-fill"></i>{{ movie.tmdb_rating|floatformat:1 }} <!-- floatformat:1 заукруглює наприклад 7.8 -->
-                            </span>
-                        {% else %}
-                            <span class="rating-badge">
-                                <i class="bi bi-star-fill"></i>None
-                            </span>
-                        {% endif %}
-                    </div>                   
                 </div>
-            </div>
+            
+            
+                <div class="movie-info">
+                    <p class="movie-title">
+                        {{ movie.title }}
+                        {% if movie.media_type == "tv" %}
+                            <span> - TV</span>
+                        {% else %}
+                            <span> - Movie</span>
+                        {% endif %}
+                    </p>
+                    <p class="movie-year">
+                        {{ movie.release_date|date:"Y" }}
+                    </p>
+                    <div class="more-movie-info" >
+                        <div class="movie-genre">
+                            {% for genre in movie.genres.all|slice:":2" %} <!-- forloop.last  to avoid placing a comma after the last genre -->
+                                <span class="genre-badge">{{ genre.name }}</span>
+                            {% empty %} 
+                                <span class="genre-badge">None</span>
+                            {% endfor %}
+                        </div> 
+                        <div class="movie-rating">
+                            {% if movie.tmdb_rating %}
+                                <span class="rating-badge">
+                                    <i class="bi bi-star-fill"></i>{{ movie.tmdb_rating|floatformat:1 }} <!-- floatformat:1 rounds -->
+                                </span>
+                            {% else %}
+                                <span class="rating-badge">
+                                    <i class="bi bi-star-fill"></i>None
+                                </span>
+                            {% endif %}
+                        </div>                   
+                    </div>
+                </div>
+            </a>
         </div>
     {% endfor %}
 </div>
