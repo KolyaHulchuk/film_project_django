@@ -1,17 +1,183 @@
 {% extends "movies/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'movies/movie_detail.css' %}">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block body_class %}detail-body{% endblock %}
+{% block main_class %}detail-main-wrap{% endblock %}
+
 {% block content %}
-    <article class="media content-section">
-      <img  class="rounded-circle account-img" src="{{ object.author.profile.image.url }}">
-      <div class="media-body">
-        <h2 class="article-title"> {{ object.title }}</h2>
-        <p class="article-content">{{ object.genres }}</p>
-        <p class="article-content">{{ object.country }}</p>
-        <p class="article-content">{{ object.author }}</p>
-        <p class="article-content">{{ object.actors }}</p>
-        <div class="article-metadata">
-            <small class="text-muted">{{ object.relase_date | date:"d F, Y" }}</small>
-            <p class="article-content">{{ object.description }}</p>
+
+
+
+
+<div class="detail-hero">
+
+    <!-- A blurry full-screen poster -->
+    <div class="detail-bg" style="background-image: url('{{ data.poster_url }}');"></div>
+    <div class="detail-bg-overlay"></div>
+
+    <div class="detail-hero-inner">
+
+        <!-- Left column: poster + goal -->
+        <aside class="detail-sidebar">
+
+            <img src="{{ data.poster_url }}"
+                 alt="{{ data.title }}"
+                 class="detail-poster">
+
+            <!-- The goal under the poster in the column -->
+            <div class="detail-sidebar-meta">
+
+                {% if data.tmdb_rating %}
+                <div class="detail-meta-row">
+                    <span class="detail-meta-icon">⭐</span>
+                    <div>
+                        <div class="detail-meta-val">
+                            {{ data.tmdb_rating|floatformat:1 }}
+                            <span class="detail-meta-max">/10</span>
+                        </div>
+                        <div class="detail-meta-label">TMDB Rating</div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if data.average_user_ratings %}
+                <div class="detail-meta-row">
+                    <span class="detail-meta-icon">👥</span>
+                    <div>
+                        <div class="detail-meta-val">
+                            {{ data.average_user_ratings }}
+                            <span class="detail-meta-max">/10</span>
+                        </div>
+                        <div class="detail-meta-label">User Rating</div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if data.release_date %}
+                <div class="detail-meta-row">
+                    <span class="detail-meta-icon">📅</span>
+                    <div>
+                        <div class="detail-meta-val">{{ data.release_date|date:"Y" }}</div>
+                        <div class="detail-meta-label">{{ data.release_date|date:"d M Y" }}</div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if data.country %}
+                <div class="detail-meta-row">
+                    <span class="detail-meta-icon">🌍</span>
+                    <div>
+                        <div class="detail-meta-val">{{ data.country }}</div>
+                        <div class="detail-meta-label">Country</div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if director %}
+                <div class="detail-meta-row">
+                    <span class="detail-meta-icon">🎬</span>
+                    <div>
+                        <div class="detail-meta-val">{{ director.name }}</div>
+                        <div class="detail-meta-label">Director</div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if data.author %}
+                <div class="detail-meta-row">
+                    <span class="detail-meta-icon">🏢</span>
+                    <div>
+                        <div class="detail-meta-val">{{ data.author }}</div>
+                        <div class="detail-meta-label">Studio</div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if data.media_type %}
+                <div class="detail-meta-row">
+                    <span class="detail-meta-icon">
+                        {% if data.media_type == "movie" %}🎥{% else %}📺{% endif %}
+                    </span>
+                    <div>
+                        <div class="detail-meta-val">
+                            {% if data.media_type == "movie" %}Movie{% else %}TV Series{% endif %}
+                        </div>
+                        <div class="detail-meta-label">Type</div>
+                    </div>
+                </div>
+                {% endif %}
+
+            </div>
+        </aside>
+
+        <!-- Right column: title, genres, description, cast -->
+        <div class="detail-content">
+
+            <span class="detail-type-badge">
+                {% if data.media_type == "movie" %}🎬 Movie{% else %}📺 TV Series{% endif %}
+            </span>
+
+            <h1 class="detail-title">{{ data.title }}</h1>
+
+            {% if data.genres.all %}
+            <div class="detail-genres">
+                {% for genre in data.genres.all %}
+                <span class="detail-genre-tag">{{ genre.name }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if data.description %}
+            <p class="detail-description">{{ data.description }}</p>
+            {% endif %}
+
+            <div class="detail-actions">
+                {% if user.is_authenticated %}
+                <form method="post" action="{% url 'add_watchlist' data.tmdb_id data.media_type %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="detail-btn-watchlist">
+                        + Add to Watchlist
+                    </button>
+                </form>
+                {% else %}
+                <a href="{% url 'login' %}" class="detail-btn-watchlist">
+                    + Add to Watchlist
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- Cast -->
+            {% if cast %}
+            <div class="detail-cast-section">
+                <h3 class="detail-cast-title">Cast</h3>
+                <div class="detail-cast-grid">
+                    {% for actor in cast %}
+                    <div class="detail-cast-card">
+                        {% if actor.profile_path %}
+                        <img src="https://image.tmdb.org/t/p/w185{{ actor.profile_path }}"
+                             alt="{{ actor.name }}"
+                             class="detail-cast-photo">
+                        {% else %}
+                        <div class="detail-cast-photo detail-cast-nophoto">👤</div>
+                        {% endif %}
+                        <div class="detail-cast-name">{{ actor.name }}</div>
+                        {% if actor.character %}
+                        <div class="detail-cast-role">as {{ actor.character }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
         </div>
-      </div>
-    </article>
-{% endblock content %}
+    </div>
+</div>
+
+{% endblock %}

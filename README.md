@@ -124,9 +124,9 @@ python manage.py runserver
 |---------|--------|
 | ![Search](screenshots/search.png) | ![Profile](screenshots/profile.png) |
 
-| AI assistant|
-|-------------|
-| ![AI assistant](screenshots/AI.png) |
+| AI assistant| Movie Detail |
+|-------------|--------|
+| ![AI assistant](screenshots/AI.png) | ![Movie Detail](screenshots/detail.png) |
 
 | Login | Register |
 |-------|----------|

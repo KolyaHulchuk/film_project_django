@@ -20,9 +20,8 @@ from .views import  (
 
 
 urlpatterns = [
-    path('', HomeView.as_view(), name='movies-home' ),  # це створення шляху
-    path('movies/<int:pk>/', MoviesDetailView.as_view(), name='movies-detail'),
-    path('about/', views.about, name='movies-about'),
+    path('', HomeView.as_view(), name='movies-home' ), 
+    path('movie/<int:pk>/<str:media_type>/', MoviesDetailView.as_view(), name='movie-detail'),
     path("search/", SerachView.as_view(), name="movies-search"),
 
     path("popular-movies/", PopularMoviesView.as_view(), name="popular-movies"),

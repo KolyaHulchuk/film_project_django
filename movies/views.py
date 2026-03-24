@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect ,get_object_or_404 
+from django.shortcuts import render, redirect, get_object_or_404 
 # instance – the model object
 # created – a boolean value:
 # True if the object was created,
@@ -67,6 +67,9 @@ class AllMoviesView(View):
                     watchlist_obj = watched_map[item["id"]]
                     item["is_watched"] = watchlist_obj.watched # is_watched — flag from watchlist
                     item["watchlist_id"] = watchlist_obj.id
+                    print(f"✅ Знайшов: {item.get('title')} watched={watchlist_obj.watched}")
+                    
+                print(f"❌ Не в watchlist: {item.get('title')} id={item['id']}")
 
 
         current_filters = request.GET.urlencode()
@@ -356,27 +359,36 @@ def get_or_create_media(tmdb_id, media_type="movie"):
 
 
 
+class MoviesDetailView(View):
+    def get(self, request, pk, media_type="movie"):
+        data = Movies.objects.filter(tmdb_id=pk).first()
+        if not data:
+            data = get_or_create_media(pk, media_type)
+
+        client = TMDBClient()
+        credits = client.get_credit(pk, media_type)
+
+        director = next(
+            (p for p in credits.get("crew", []) if p["job"] == "Director"),
+            None
+        )
+
+        cast = credits.get("cast", [])[:12]
 
 
-        
+        context = {
+            "data": data,
+            "director": director,
+            "cast": cast,
+        }
 
 
-        
 
-def about(request):
-    return render(request, 'movies/about.html')
-
-
-class MoviesDetailView(DetailView):
-    model = Movies
-    
+        return render(request, "movies/movies_detail.html", context)
 
 
 
 
-
-
-    #    data = client.get_tv_by_tmdb_id(genres_id)
 
 
     
