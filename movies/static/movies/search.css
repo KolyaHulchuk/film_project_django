@@ -257,3 +257,49 @@
 .watch-lable:hover {
     opacity: 0.8;
 }
+
+
+
+/* Мобільна пагінація */
+.pagination-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+    padding: 0 16px;
+}
+
+.pagination-mobile-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: #1f2937;
+    color: #e2e8f0;
+    font-size: 18px;
+    text-decoration: none;
+    border: 1px solid #374151;
+    transition: all 0.2s;
+}
+
+.pagination-mobile-btn:hover {
+    background: #374151;
+    color: #fff;
+}
+
+.pagination-mobile-btn.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.pagination-mobile-current {
+    font-size: 15px;
+    font-weight: 600;
+    color: #f3f4f6;
+    min-width: 80px;
+    text-align: center;
+}
+

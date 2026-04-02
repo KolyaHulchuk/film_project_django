@@ -49,7 +49,7 @@
 }
 
 .home-page .none-underline {
-    text-decoration: none; /* це для тегу <a> він прибирає нижню лінію */
+    text-decoration: none; /* This is for the <a> tag; it removes the underline */
     color: #b4b2b2;
     transition: color 0.3s ease-in;
 }
@@ -150,4 +150,25 @@
   font-size: 14px;
   padding: 8px;
   text-align: center;
+}
+
+
+@media (max-width: 768px) {
+
+  .home-page .type-movie {
+    padding-right: 0px;
+    height: 40px;
+    width: 100%;
+  }
+
+  .home-page .name-type {
+    font-size: 18px;
+    padding-left: 0%;
+
+  }
+
+  .home-page .all-movies {
+    transform: scale(0.9);
+  }
+
 }

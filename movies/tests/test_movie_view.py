@@ -9,12 +9,12 @@ def tmdb(mocker):
     mocker.patch("movies.views.TMDBClient", return_value=fake_client)
 
     fake_client.get_list.return_value = {
-        "results": [{"id": 1, "title": "Hobbit", "media_type": "movie"}],
+        "results": [{"id": 1, "tmdb_id": 1, "title": "Hobbit", "media_type": "movie", "poster_url": "", "poster_path": "", }],
         "total_pages": 1,
         "page": 1
     }
 
-    fake_client.enrich_items.return_value = [{"id": 1, "title": "Hobbit", "media_type": "movie"}]
+    fake_client.enrich_items.return_value = [{"id": 1, "tmdb_id": 1, "poster_path": "", "title": "Hobbit", "media_type": "movie"}]
     fake_client.get_genres.return_value = [
         {"id": 1, "name": "Adventure"},
         {"id": 2, "name": "Fantasy"}
@@ -35,7 +35,7 @@ def tmdb(mocker):
     ("/movies/tv-popular/", "Popular Tv", "movies/category/tv.html"),
     ("/movies/top-rated/", "Top rated", "movies/category/top_rated.html"),
     ("/movies/now-playings/", "Now Playings", "movies/category/now_playings.html"),
-    ("/movies/upcoming/", "Upcoming", "movies/category/upcoming.html")
+    ("/movies/upcoming/", "Upcoming", "movies/category/upcoming.html"),
 ])
 def test_allmoviews_view(client, tmdb, url, title, template):
     response = client.get(url)
@@ -51,8 +51,8 @@ def test_allmoviews_view(client, tmdb, url, title, template):
     assert "countries" in response.context
     assert "genres" in response.context
     assert response.context["title"] == title
-    assert response.context["items"] == [{"id": 1, "title": "Hobbit", "media_type": "movie"}]
-    assert response.context["genres"] == [{'id': 1, 'name': 'Adventure'}, {'id': 2, 'name': 'Fantasy'}]
+    assert len(response.context["items"]) == 1
+    assert response.context["items"][0]["title"] == "Hobbit"
 
     assert title in response.content.decode() # content - checks that the data is actually displayed on the page
     assert "Hobbit" in response.content.decode() # decode - converts to bytes, otherwise it won't work

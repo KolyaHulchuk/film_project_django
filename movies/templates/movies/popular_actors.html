@@ -1,0 +1,116 @@
+{% extends "movies/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'movies/popular_actors.css' %}">
+{% endblock %}
+
+{% block body_class %}actors-page{% endblock %}
+
+{% block content %}
+
+<div class="actors-page-wrap">
+
+    <div class="actors-page-header">
+        <div class="actors-page-title-wrap">
+            <span class="actors-page-accent"></span>
+            <h1 class="actors-page-title">Popular Actors</h1>
+        </div>
+    </div>
+
+    <div class="actors-page-grid">
+        {% for actor in actors %}
+        <div class="actor-page-card">
+
+            <div class="actor-page-photo-wrap">
+                {% if actor.profile_path %}
+                <img src="https://image.tmdb.org/t/p/w342{{ actor.profile_path }}"
+                     alt="{{ actor.name }}"
+                     class="actor-page-photo">
+                {% else %}
+                <div class="actor-page-photo actor-page-nophoto">👤</div>
+                {% endif %}
+
+                <!-- Popularity badge -->
+                {% if actor.popularity %}
+                <div class="actor-page-popularity">
+                    🔥 {{ actor.popularity|floatformat:0 }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="actor-page-info">
+                <div class="actor-page-name">{{ actor.name }}</div>
+
+                {% if actor.known_for %}
+                    {% with actor.known_for|first as movie %}
+                    <div class="actor-page-movie">
+                        {% if movie.title %}{{ movie.title }}{% else %}{{ movie.name }}{% endif %}
+                    </div>
+                    {% endwith %}
+                {% endif %}
+            </div>
+
+        </div>
+        {% empty %}
+        <p style="color:#6b7280; text-align:center; grid-column:1/-1;">
+            No actors found
+        </p>
+        {% endfor %}
+    </div>
+
+</div>
+
+
+    
+<div class="pagination d-none d-md-flex">
+    {% if current_page > 1 %}
+        <a class="btn btn-outline-secondary" href="?page=1">First</a>
+        <a class="btn btn-outline-secondary" href="?page={{ current_page|add:'-1' }}">Previous</a>
+    {% endif %}
+
+    {% for num in page_range %}
+        {% if num == current_page %}
+            <span class="btn btn-secondary activate">{{ num }}</span>
+        {% else %}
+            <a class="btn btn-outline-secondary" href="?page={{ num }}">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {% if current_page < total_pages %}
+        <a class="btn btn-outline-secondary" href="?page={{ current_page|add:'1' }}">Next</a>
+        <a class="btn btn-outline-secondary" href="?page={{ total_pages }}">Last</a>
+    {% endif %}
+</div>
+
+<!-- Мобільна пагінація — показуємо тільки на мобільному -->
+<div class="pagination-mobile d-flex d-md-none">
+    {% if current_page > 1 %}
+    <a href="?page=1" class="pagination-mobile-btn">«</a>
+    <a href="?page={{ current_page|add:'-1' }}" class="pagination-mobile-btn">‹</a>
+    {% else %}
+    <span class="pagination-mobile-btn disabled">«</span>
+    <span class="pagination-mobile-btn disabled">‹</span>
+    {% endif %}
+
+    <span class="pagination-mobile-current">
+        {{ current_page }} / {{ total_pages }}
+    </span>
+
+    {% if current_page < total_pages %}
+    <a href="?page={{ current_page|add:'1' }}" class="pagination-mobile-btn">›</a>
+    <a href="?page={{ total_pages }}" class="pagination-mobile-btn">»</a>
+    {% else %}
+    <span class="pagination-mobile-btn disabled">›</span>
+    <span class="pagination-mobile-btn disabled">»</span>
+    {% endif %}
+</div>
+
+
+
+{% endblock %}
+
+
+
+
+

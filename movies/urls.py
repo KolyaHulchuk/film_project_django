@@ -14,6 +14,7 @@ from .views import  (
     CartoonTVView,
     TVViews,
     MovieView,
+    PopularActorView,
     ai_recomendations,
     )
 
@@ -37,6 +38,8 @@ urlpatterns = [
     path("movie/", MovieView.as_view(), name="movie"),
 
     path("ai/", ai_recomendations, name='ai-recomendations'),
+
+    path('popular-actors/', PopularActorView.as_view(), name="popular-actors")
     
 ]
 

@@ -9,14 +9,6 @@ class Genre(models.Model):
     def __str__(self):
         return self.name
     
-class Actor(models.Model):
-    name = models.CharField(max_length=200)
-    tmdb_id = models.IntegerField(null=True, blank=True, unique=True)
-
-    def __str__(self):
-        return self.name
-
-
 
 class Movies(models.Model):
     title = models.CharField(max_length=200)

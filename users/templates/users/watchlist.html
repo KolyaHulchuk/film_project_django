@@ -10,7 +10,7 @@
 
 <div class="filters">
     <nav class="navbar-watchlist">
-        <form id="filter-form" style="display: flex; justify-content: space-between; width: 2000px;">
+        <form id="filter-form" class="list-filter">
             <div class="dropwodn filter-year">
                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                     Years
@@ -146,27 +146,54 @@
 
 
 
+<!-- Десктоп — ховаємо на мобільному -->
 {% if is_paginated %}
-    <div class="pagination">
+<div class="pagination d-none d-md-flex">
+    {% if page_obj.has_previous %}
+        <a class="btn btn-outline-secondary" href="?page=1">First</a>
+        <a class="btn btn-outline-secondary" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+    {% endif %}
 
-        {% if page_obj.has_previous %}
-            <a class="btn btn-outline-secondary" href="?page=1">First</a>
-            <a class="btn btn-outline-secondary" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+    {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+            <span class="btn btn-secondary">{{ num }}</span>
+        {% else %}
+            <a class="btn btn-outline-secondary" href="?page={{ num }}">{{ num }}</a>
         {% endif %}
+    {% endfor %}
 
-        {% for num in page.obj.paginator.page_range %}
-            {% if page_obj.number == num %}
-                <a class="btn btn-info mb-4" href="?page={{ num }}">{{ num }}</a>
-            {% else %}
-                <a class="btn btn-outline-info mb-4" href="?page={{ num }}">{{ num }}</a>
-            {% endif %}
-        {% endfor %}
+    {% if page_obj.has_next %}
+        <a class="btn btn-outline-secondary" href="?page={{ page_obj.next_page_number }}">Next</a>
+        <a class="btn btn-outline-secondary" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+    {% endif %}
+</div>
 
-        {% if page_obj.has_next %}
-            <a class="btn btn-outline-secondary" href="?page={{ page_obj.next_page_number }}">Next</a>
-            <a class="btn btn-outline-secondary" href="?page={{ page_obj.paginator.num_page }}">Last</a>
-        {% endif %}
-    </div>
+<!-- Мобільна — показуємо тільки на телефоні -->
+<div class="pagination-mobile d-flex d-md-none">
+    {% if page_obj.has_previous %}
+    <a href="?page=1" class="pagination-mobile-btn">«</a>
+    <a href="?page={{ page_obj.previous_page_number }}" class="pagination-mobile-btn">‹</a>
+    {% else %}
+    <span class="pagination-mobile-btn disabled">«</span>
+    <span class="pagination-mobile-btn disabled">‹</span>
+    {% endif %}
+
+    <span class="pagination-mobile-current">
+        {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+    </span>
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}" class="pagination-mobile-btn">›</a>
+    <a href="?page={{ page_obj.paginator.num_pages }}" class="pagination-mobile-btn">»</a>
+    {% else %}
+    <span class="pagination-mobile-btn disabled">›</span>
+    <span class="pagination-mobile-btn disabled">»</span>
+    {% endif %}
+</div>
 {% endif %}
 
 {% endblock %}
+
+
+
+

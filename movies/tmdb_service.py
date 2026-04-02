@@ -51,6 +51,10 @@ class TMDBClient:
     
     def get_credit(self, tmdb_id, media_type):
         return self._request(f"{media_type}/{tmdb_id}/credits")
+    
+
+    def get_person(self, page=1):
+        return self._request(f"person/popular", {"page": page})
       
 
 

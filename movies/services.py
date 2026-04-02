@@ -52,6 +52,14 @@ def get_ai(user, message='' ,media_type='all'):
                         - Recommend 3-5 titles when user asks for recommendations, based on their watchlist: {type_instructions}
                         - If asked about anything unrelated to cinema — respond EXACTLY: "I only answer questions about movies and series."
 
+                        RECOMMENDATION LOGIC:
+                        - If watchlist exists, prioritize it
+                        - If the user says something like "I liked Naruto", "something like Interstellar", "anime like Death Note",
+                        use THAT as the main recommendation signal even if watchlist is empty
+                        - Never require watchlist to make recommendations
+                        - If user asks only a factual question, answer it without recommendations
+
+
                         FORMATTING RULES:
                         For recommendations use this exact format:
 

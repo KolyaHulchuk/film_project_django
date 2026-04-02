@@ -14,6 +14,8 @@ A full-stack web application for discovering movies and TV shows using the TMDB 
 -  User profile with avatar upload and password reset
 -  Authentication — register, login, JWT-based API access
 -  REST API — full CRUD endpoints with JWT auth, tested in Postman
+-  AI recommendation agent — suggests movies, series, anime, and doramas based on user watchlist or favorite titles
+-  Browse popular actors and explore their filmography
 
 ---
 
@@ -120,13 +122,18 @@ python manage.py runserver
 |----------|-----------|
 | ![Homepage](screenshots/homepage.png) | ![Watchlist](screenshots/watchlist.png) |
 
-| Profile | Search |
+| Search | Profile |
 |---------|--------|
 | ![Search](screenshots/search.png) | ![Profile](screenshots/profile.png) |
 
 | AI assistant| Movie Detail |
 |-------------|--------|
 | ![AI assistant](screenshots/AI.png) | ![Movie Detail](screenshots/detail.png) |
+
+| Popular Actors|
+|---------------|
+| ![Popular Actor](screenshots/Popular-Actor.png) |
+
 
 | Login | Register |
 |-------|----------|
