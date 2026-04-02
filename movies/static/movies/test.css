@@ -43,20 +43,18 @@ ul {
 }
 
 
-/* Темна панель навігації */
 .navbar {
-    background-color: #212529 !important; /* темно-сірий */
+    background-color: #212529 !important; 
 }
 
-/* Текст всередині панелі */
 .navbar .nav-link,
 .navbar .navbar-brand {
-    color: #f8f9fa !important; /* світлий текст */
+    color: #f8f9fa !important; 
 }
 
 .navbar .nav-link:hover,
 .navbar .navbar-brand:hover {
-    color: #0d6efd !important; /* синій при наведенні */
+    color: #0d6efd !important; 
 }
 
 .article-title {
@@ -114,4 +112,23 @@ a.article-title:hover {
 .main-content {
   width: 100%;
   padding-left: 0px;
+}
+
+.navbar-toggler {
+  background-color: rgb(83, 82, 76);
+}
+
+
+.type-menu {
+    background-color: rgb(156, 142, 142) !important;
+}
+
+.type-menu .dropdown-item {
+    background-color: rgb(156, 142, 142);
+    color: black;
+}
+
+.type-menu .dropdown-item:hover {
+    background-color: rgb(90, 77, 77);
+    color: white;
 }

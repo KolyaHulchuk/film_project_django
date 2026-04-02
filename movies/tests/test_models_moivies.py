@@ -30,6 +30,7 @@ def test_create_movie(movie, genre):
     assert movie.media_type == "movie"
 
 
+@pytest.mark.django_db
 def test_dublicat_genres():
     Genre.objects.create(name="Adventure")
     with pytest.raises(Exception):

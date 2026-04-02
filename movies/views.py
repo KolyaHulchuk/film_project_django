@@ -185,6 +185,59 @@ class UpcomingView(AllMoviesView):
         self.item_func = lambda page: TMDBClient().get_list("movie/upcoming", page)
 
 
+class PopularActorView(View):
+    def get(self, request):
+        client = TMDBClient()
+        try:
+            page = int(request.GET.get("page", 1))
+        except ValueError:
+            page = 1
+
+        data = client.get_person(page)
+
+        total_pages = min(data.get("total_pages", 1), 50)
+        persons = data.get("results", [])
+        page = max(1, min(page, total_pages))
+
+
+        actors = []
+        for person in persons:
+            if person.get("known_for_department") == "Acting":
+                actors.append(person)
+
+     
+        return render(request,"movies/popular_actors.html", 
+                      {"actors":
+                       actors,
+                        "current_page": page,
+                        "page_range": range(
+                        max(1, page - 3),
+                        min(total_pages + 1, data["page"] + 3)
+                        ),
+                        "total_pages": total_pages} 
+                    )                                       
+
+        
+
+
+"""
+отимую список з 10 людтми та декількома поязанаими фільмами
+там є (актори, режисери, продюсери і тд)
+мені треба лише актори,
+треба один фільтр який фільтрує по професії
+отримую тоді ті самі списки але без інших професій
+
+в html треба poster, name, title_movie, і все
+круглий постер в ряд, під Імя та назва одного фільму
+
+
+зроблю слайс по акторах на сторінку максимум 6 чи 5 
+
+
+
+"""
+        
+
 
 
 
@@ -200,6 +253,8 @@ class HomeView(View):
         top_rated = client.get_list("movie/top_rated", page)
         filtered_upcoming = [ m for m in upcoming["results"] if m["id"] not in {x["id"] for x in now_playings["results"]}]
         filtered_now_playings =  [ m for m in now_playings["results"] if m["id"] not in { x["id"] for x in now_popular["results"]}]
+        actors = client.get_person().get("results", [])
+        actors = [a for a in actors if a.get("known_for_department") == "Acting"]
 
         
         context  = {
@@ -210,6 +265,7 @@ class HomeView(View):
             "upcoming": upcoming["results"],
             "filtered_upcoming": filtered_upcoming,
             "filtered_now_playings": filtered_now_playings,
+            "actors": actors,
         }
     
         return render(request, 'movies/home.html', context)
@@ -453,6 +509,7 @@ class DoramTVView(AllMoviesView):
         self.item_func =  lambda page: TMDBClient().get_list("discover/tv", page, **filters) 
         return super().get(request)
 
+
 class CartoonTVView(AllMoviesView):
     title = "Cartoon TV"
     template_name = "movies/type/cartoons.html"
@@ -488,6 +545,8 @@ class MovieView(AllMoviesView):
         self.item_func = lambda page: TMDBClient().get_list("discover/movie", page, **filters)
         return super().get(request)
     
+    
+    
 
 @login_required
 def ai_recomendations(request):
@@ -496,6 +555,9 @@ def ai_recomendations(request):
     result = get_ai(request.user, message, media_type)
     return JsonResponse(result)
 
+
+
+    
 
 
 

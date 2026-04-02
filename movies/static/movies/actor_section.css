@@ -1,0 +1,163 @@
+/* ══ Popular Actors Section ══ */
+
+.actors-section {
+    padding: 48px 0 60px;
+    background: #0a0a0a;
+}
+
+.actors-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding: 0 40px;
+}
+
+.actors-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.actors-accent-bar {
+    display: inline-block;
+    width: 4px;
+    height: 28px;
+    background: #f5c518;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.actors-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: 0.3px;
+}
+
+.actors-view-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #9ca3af;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid #374151;
+    border-radius: 20px;
+    padding: 6px 16px;
+    transition: all 0.2s;
+}
+
+.actors-view-all:hover {
+    color: #ffffff;
+    border-color: #6b7280;
+    background: rgba(255,255,255,0.05);
+}
+
+.actors-arrow {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.actors-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 24px;
+    padding: 0 40px;
+}
+
+.actor-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.actor-card:hover {
+    transform: translateY(-6px);
+}
+
+.actor-photo-wrap {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #1f2937;
+    margin-bottom: 14px;
+    transition: border-color 0.2s;
+    flex-shrink: 0;
+}
+
+.actor-card:hover .actor-photo-wrap {
+    border-color: #f5c518;
+}
+
+.actor-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+}
+
+.actor-nophoto {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1f2937;
+    font-size: 48px;
+}
+
+.actor-name {
+    font-size: 19px;
+    font-weight: bold;
+    color: #f3f4f6;
+    margin-bottom: 5px;
+    line-height: 1.3;
+}
+
+.actor-movie {
+    font-size: 15px;
+    color: #e1e2e4;
+    line-height: 1.4;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .actors-row {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .actors-row {
+        grid-template-columns: repeat(3, 1fr);
+        padding: 0 20px;
+        gap: 16px;
+    }
+
+    .actors-header {
+        padding: 0 20px;
+    }
+
+    .actor-photo-wrap {
+        width: 100px;
+        height: 100px;
+    }
+}
+
+@media (max-width: 480px) {
+    .actors-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

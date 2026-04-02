@@ -1,0 +1,171 @@
+/* ══ Popular Actors Page ══ */
+
+.actors-page {
+    background: #0a0a0a;
+    min-height: 100vh;
+}
+
+.actors-page-wrap {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 40px 40px 40px;
+}
+
+.actors-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 36px;
+}
+
+.actors-page-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.actors-page-accent {
+    display: inline-block;
+    width: 4px;
+    height: 32px;
+    background: #f5c518;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.actors-page-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: 0.3px;
+}
+
+.actors-page-subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+}
+
+.actors-page-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 28px;
+}
+
+.actor-page-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+    min-width: 0;
+    width: 100%;
+}
+
+.actor-page-card:hover {
+    transform: translateY(-6px);
+}
+
+.actor-page-photo-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    border: 2px solid #1f2937;
+    transition: border-color 0.2s;
+    min-width: 0;
+}
+
+.actor-page-card:hover .actor-page-photo-wrap {
+    border-color: #f5c518;
+}
+
+.actor-page-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+    display: block;
+    transition: transform 0.3s;
+    min-width: 0;
+}
+
+.actor-page-card:hover .actor-page-photo {
+    transform: scale(1.04);
+}
+
+.actor-page-nophoto {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1f2937;
+    font-size: 64px;
+}
+
+/* Popularity badge */
+.actor-page-popularity {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.75);
+    color: #f5c518;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(245,197,24,0.3);
+}
+
+.actor-page-info {
+    width: 100%;
+}
+
+.actor-page-name {
+    font-size: 17px;
+    font-weight: 600;
+    color: #f3f4f6;
+    margin-bottom: 5px;
+    line-height: 1.3;
+}
+
+.actor-page-movie {
+    font-size: 16px;
+    font-weight: 500;
+    color: #a2a4a8;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .actors-page-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .actors-page-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+
+    .actors-page-wrap {
+        padding: 32px 24px 60px;
+    }
+}
+
+@media (max-width: 600px) {
+    .actors-page-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+}
