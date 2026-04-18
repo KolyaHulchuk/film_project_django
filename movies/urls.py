@@ -39,7 +39,7 @@ urlpatterns = [
 
     path("ai/", ai_recomendations, name='ai-recomendations'),
 
-    path('popular-actors/', PopularActorView.as_view(), name="popular-actors")
+    path("popular-actors/", PopularActorView.as_view(), name="popular-actors")
     
 ]
 

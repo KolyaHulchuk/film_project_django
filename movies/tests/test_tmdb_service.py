@@ -66,7 +66,7 @@ def item_value():
 
 
 
-@pytest.fixture
+@pytest.fixturejson
 def mock(mocker):
     return mocker.patch("movies.tmdb_service.requests.get")
 
@@ -169,3 +169,4 @@ def test_get_release_date_invalid(tmdb_client):
 
     with pytest.raises(ValueError):
         tmdb_client.get_release_date({"release_date": "invalid_date"}, "movie")
+        

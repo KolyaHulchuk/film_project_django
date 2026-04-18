@@ -55,6 +55,28 @@ class TMDBClient:
 
     def get_person(self, page=1):
         return self._request(f"person/popular", {"page": page})
+    
+    def get_popular_actors(self, page=1):
+        data = self.get_person(page)
+
+        total_pages = min(data.get("total_pages", 1), 50)
+        persons = data.get("results", [])
+        page = max(1, min(page, total_pages))
+
+        actors = []
+        for person in persons:
+            if person.get("known_for_department") == "Acting":
+                actors.append(person)
+
+        return {
+            "actors": actors,
+            "current_page": page,
+            "total_pages": total_pages,
+            "page_range": range(
+                max(1, page - 3),
+                min(total_pages + 1, page + 3)
+            ),
+        }
       
 
 

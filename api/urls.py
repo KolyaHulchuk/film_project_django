@@ -7,7 +7,8 @@ from .views import (
     WatchlistDetailView,
     RatingView,
     GenreListView,
-    RecommendationsAiView)
+    RecommendationsAiView,
+    PopularActorsView)
 
 
 urlpatterns = [
@@ -20,5 +21,7 @@ urlpatterns = [
     path('watchlist/', WatchlistListView.as_view(), name='api-watchlist'),
     path('watchlist/<int:pk>/', WatchlistDetailView.as_view(), name='api-watchlist-detail'),
 
-    path('recommendations/', RecommendationsAiView.as_view(), name="ai-recommendations")
+    path('recommendations/', RecommendationsAiView.as_view(), name="ai-recommendations"),
+
+    path('popular-actor/',  PopularActorsView.as_view(), name="popular-actor")
 ]
