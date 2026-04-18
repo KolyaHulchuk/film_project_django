@@ -102,4 +102,4 @@ def get_ai(user, message='' ,media_type='all'):
                             
                             
     
-    
+

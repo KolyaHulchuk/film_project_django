@@ -18,7 +18,7 @@ from rest_framework.permissions import (
     IsAuthenticatedOrReadOnly
     )
 from movies.services import get_ai
-
+from movies.tmdb_service import TMDBClient
 
 
 class MovieListView(generics.ListAPIView):
@@ -95,3 +95,12 @@ class RecommendationsAiView(APIView):
         result = get_ai(request.user, message, media_type)
         return Response(result)
         
+
+class PopularActorsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        client = TMDBClient()
+        page = int(request.GET.get("page", 1))
+        data = client.get_popular_actors(page)
+        return Response(data)

@@ -7,7 +7,7 @@ from django.http import HttpResponse
 from .models import Movies, Genre
 from django.views import View
 from .tmdb_service import (
-    TMDBClient
+    TMDBClient, 
     )
 from django.views.generic import (
     ListView,
@@ -193,29 +193,9 @@ class PopularActorView(View):
         except ValueError:
             page = 1
 
-        data = client.get_person(page)
-
-        total_pages = min(data.get("total_pages", 1), 50)
-        persons = data.get("results", [])
-        page = max(1, min(page, total_pages))
-
-
-        actors = []
-        for person in persons:
-            if person.get("known_for_department") == "Acting":
-                actors.append(person)
-
+        context = client.get_popular_actors(page)
      
-        return render(request,"movies/popular_actors.html", 
-                      {"actors":
-                       actors,
-                        "current_page": page,
-                        "page_range": range(
-                        max(1, page - 3),
-                        min(total_pages + 1, data["page"] + 3)
-                        ),
-                        "total_pages": total_pages} 
-                    )                                       
+        return render(request,"movies/popular_actors.html", context)                                       
 
         
 
