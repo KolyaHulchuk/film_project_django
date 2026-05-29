@@ -1,5 +1,5 @@
 from django.urls import path
-from django.contrib.auth import views as auth_views # набір готових в’юх Django для автентифікації.
+from django.contrib.auth import views as auth_views # A collection of ready-to-use Django plugins for authentication.
 from . import views
 
 
@@ -11,7 +11,7 @@ urlpatterns = [
 
     path('watchlist/', views.WatchlistView.as_view(), name="watchlist"),
     path('watchlist/add/<int:tmdb_id>/<str:media_type>', views.AddToWatchlist.as_view(), name="add_watchlist"),
-    path('watchlist/delete/<int:pk>', views.DeleteWatchlist.as_view(), name="delete_watchlist"), # Тільки pk (ID Watchlist запису)!
+    path('watchlist/delete/<int:pk>', views.DeleteWatchlist.as_view(), name="delete_watchlist"), # Only pk (ID Watchlist write)!
     path('watchlist/search/', views.search_watchlist, name='search_watchlist' ),
     path('watchlist/toggle/<int:watchlist_id>', views.toggle_watched, name="toggle-watchlist"),
     path('profile/', views.profile, name='profile'),
