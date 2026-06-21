@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN python manage.py collectstatic --noinput
+RUN DATABASE_URL=sqlite:///tmp.db python manage.py collectstatic --noinput
 
 EXPOSE 8001
 
