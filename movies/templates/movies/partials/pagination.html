@@ -1,31 +1,30 @@
 
-
 {% if is_paginated %}
     <div class="pagination d-none d-md-flex">
     {% if current_page > 1 %}
-        <a class="btn btn-outline-secondary" href="?page=1">First</a>
-        <a class="btn btn-outline-secondary" href="?page={{ current_page|add:'-1' }}">Previous</a>
+        <a class="btn btn-outline-secondary" href="?{% if current_filters %}{{ current_filters }}&{% endif %}page=1">First</a>
+        <a class="btn btn-outline-secondary" href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ current_page|add:'-1' }}">Previous</a>
     {% endif %}
 
     {% for num in page_range %}
         {% if num == current_page %}
             <span class="btn btn-secondary activate">{{ num }}</span>
         {% else %}
-            <a class="btn btn-outline-secondary" href="?page={{ num }}">{{ num }}</a>
+            <a class="btn btn-outline-secondary" href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ num }}">{{ num }}</a>
         {% endif %}
     {% endfor %}
 
     {% if current_page < total_pages %}
-        <a class="btn btn-outline-secondary" href="?page={{ current_page|add:'1' }}">Next</a>
-        <a class="btn btn-outline-secondary" href="?page={{ total_pages }}">Last</a>
+        <a class="btn btn-outline-secondary" href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ current_page|add:'1' }}">Next</a>
+        <a class="btn btn-outline-secondary" href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ total_pages }}">Last</a>
     {% endif %}
 </div>
 
 <!-- Мобільна пагінація — показуємо тільки на мобільному -->
 <div class="pagination-mobile d-flex d-md-none">
     {% if current_page > 1 %}
-    <a href="?page=1" class="pagination-mobile-btn">«</a>
-    <a href="?page={{ current_page|add:'-1' }}" class="pagination-mobile-btn">‹</a>
+    <a href="?{% if current_filters %}{{ current_filters }}&{% endif %}page=1" class="pagination-mobile-btn">«</a>
+    <a href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ current_page|add:'-1' }}" class="pagination-mobile-btn">‹</a>
     {% else %}
     <span class="pagination-mobile-btn disabled">«</span>
     <span class="pagination-mobile-btn disabled">‹</span>
@@ -36,8 +35,8 @@
     </span>
 
     {% if current_page < total_pages %}
-    <a href="?page={{ current_page|add:'1' }}" class="pagination-mobile-btn">›</a>
-    <a href="?page={{ total_pages }}" class="pagination-mobile-btn">»</a>
+    <a href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ current_page|add:'1' }}" class="pagination-mobile-btn">›</a>
+    <a href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ total_pages }}" class="pagination-mobile-btn">»</a>
     {% else %}
     <span class="pagination-mobile-btn disabled">›</span>
     <span class="pagination-mobile-btn disabled">»</span>
