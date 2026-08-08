@@ -2,6 +2,7 @@ import requests
 import logging
 from datetime import datetime
 from django.conf import settings
+from .redis_services import cache_data_movie, TMDBFetchError
 
 from .models import Movies
 from .utils import COUNTRY_CODES, normalize_country
@@ -97,34 +98,35 @@ class TMDBClient:
     
     
     def get_list(self, endpoint, page=1, **kwargs):
-        data = self._request(endpoint, {"language": "en", "page": page, **kwargs})
-      
-        max_page = kwargs.get("max_page", 10)
-        if not data or "results" not in data:
+        def fetch():
+            data = self._request(endpoint, {"language": "en", "page": page, **kwargs})
+        
+            max_page = kwargs.get("max_page", 10)
+            if not data or "results" not in data:
+                raise TMDBFetchError({
+                    "results": [],
+                    "page": page,
+                    "total_pages": 1
+                })
+
+            uniq_results = []
+            seen_id = set()
+
+        
+            for result in data["results"]:
+                if result["id"] not in seen_id:
+                    seen_id.add(result["id"])
+                    uniq_results.append(result)
+                
+                
+            uniq_results = self._type_items(uniq_results)
+
             return {
-                "results": [],
-                "page": page,
-                "total_pages": 1
+                "results": uniq_results,
+                "page": data.get("page", page),
+                "total_pages": min(data.get("total_pages", 1), max_page)
             }
-
-        uniq_results = []
-        seen_id = set()
-
-     
-        for result in data["results"]:
-            if result["id"] not in seen_id:
-                seen_id.add(result["id"])
-                uniq_results.append(result)
-            
-            
-        uniq_results = self._type_items(uniq_results)
-
-        return {
-            "results": uniq_results,
-            "page": data.get("page", page),
-            "total_pages": min(data.get("total_pages", 1), max_page)
-        }
-
+        return cache_data_movie(endpoint, page, fetch, **kwargs)
 
    
     def search_movies(self, query): # query — це рядок із того, що ввів користувач у форму пошуку 

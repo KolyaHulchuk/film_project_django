@@ -17,3 +17,5 @@ djangorestframework_simplejwt==5.5.1
 psycopg2-binary==2.9.11
 groq==1.1.1
 dj-database-url==3.1.2
+redis==8.1.0
+celery==5.6.3
