@@ -1,4 +1,5 @@
-from django.shortcuts import render, redirect, get_object_or_404 
+import time
+from django.shortcuts import render, redirect, get_object_or_404
 # instance – the model object
 # created – a boolean value:
 # True if the object was created,
@@ -37,24 +38,32 @@ class AllMoviesView(View):
     
                
     def get(self, request):
+        view_start = time.perf_counter()
         client = TMDBClient()
         try:
             page = int(request.GET.get("page", 1))
         except ValueError:
             page = 1
-                                     
+
+        step_start = time.perf_counter()
         data = self.item_func(page)  #  Call the function that returns raw data from TMDB
+        print(f"[timing] item_func/get_list: {(time.perf_counter() - step_start) * 1000:.1f}ms")
 
         total_pages = data.get("total_pages", 1)
 
         page = max(1, min(page, total_pages))
-                                                                  
-        items = client.enrich_items(data["results"], self.media_type) #  Add extra data for each item (rating, genres, etc.)
 
+        step_start = time.perf_counter()
+        items = client.enrich_items(data["results"], self.media_type) #  Add extra data for each item (rating, genres, etc.)
+        print(f"[timing] enrich_items: {(time.perf_counter() - step_start) * 1000:.1f}ms")
+
+        step_start = time.perf_counter()
         genres = client.get_genres(self.media_type)
+        print(f"[timing] get_genres: {(time.perf_counter() - step_start) * 1000:.1f}ms")
 
 
         if request.user.is_authenticated:
+            step_start = time.perf_counter()
             watchlist = Watchlist.objects.filter(user=request.user)
 
             watched_map = {}
@@ -68,8 +77,9 @@ class AllMoviesView(View):
                     item["is_watched"] = watchlist_obj.watched # is_watched — flag from watchlist
                     item["watchlist_id"] = watchlist_obj.id
                     print(f"✅ Знайшов: {item.get('title')} watched={watchlist_obj.watched}")
-                    
+
                 print(f"❌ Не в watchlist: {item.get('title')} id={item['id']}")
+            print(f"[timing] watchlist_annotation: {(time.perf_counter() - step_start) * 1000:.1f}ms")
 
 
         current_filters = request.GET.urlencode()
@@ -99,8 +109,12 @@ class AllMoviesView(View):
         else:
             template = self.template_name
 
-        print(context)    
-        return render(request, template, context)
+        print(context)
+        step_start = time.perf_counter()
+        response = render(request, template, context)
+        print(f"[timing] render: {(time.perf_counter() - step_start) * 1000:.1f}ms")
+        print(f"[timing] AllMoviesView.get total: {(time.perf_counter() - view_start) * 1000:.1f}ms")
+        return response
     
 
     # Build extra filters from user input (query parameters)

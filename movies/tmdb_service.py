@@ -1,8 +1,9 @@
 import requests
 import logging
+import time
 from datetime import datetime
 from django.conf import settings
-from .redis_services import cache_data_movie, TMDBFetchError
+from .redis_services import cache_data_movie, cache_item_detail, TMDBFetchError
 
 from .models import Movies
 from .utils import COUNTRY_CODES, normalize_country
@@ -51,7 +52,13 @@ class TMDBClient:
         return data.get("genres", [])
     
     def get_credit(self, tmdb_id, media_type):
-        return self._request(f"{media_type}/{tmdb_id}/credits")
+        def fetch():
+            data = self._request(f"{media_type}/{tmdb_id}/credits")
+            if not data:
+                raise TMDBFetchError({"cast": [], "crew": []})
+            return data
+
+        return cache_item_detail("credits", media_type, tmdb_id, fetch)
     
 
     def get_person(self, page=1):
@@ -126,7 +133,11 @@ class TMDBClient:
                 "page": data.get("page", page),
                 "total_pages": min(data.get("total_pages", 1), max_page)
             }
-        return cache_data_movie(endpoint, page, fetch, **kwargs)
+        start = time.perf_counter()
+        result = cache_data_movie(endpoint, page, fetch, **kwargs)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        print(f"[get_list] {endpoint} page={page} total {elapsed_ms:.1f}ms")
+        return result
 
    
     def search_movies(self, query): # query — це рядок із того, що ввів користувач у форму пошуку 
@@ -162,22 +173,37 @@ class TMDBClient:
         
 
     def enrich_item(self, item, media_type):
-            details = (
-                self.get_movie_by_tmdb_id(item["id"]) or
-                self.get_discover_movie(item["id"])
-                if media_type == "movie"
-                else self.get_tv_by_tmdb_id(item["id"]) or
-                    self.get_discover_tv(item["id"])
-            )
+        tmdb_id = item["id"]
 
-            item["tmdb_id"] = item["id"]
-            item["release_date"] = self.get_release_date(details, media_type)
-            item["tmdb_rating"] = details.get("vote_average")
-            item["original_language"] = details.get("original_language")
-            item["country"] = details.get("origin_country") if media_type == "tv" else details.get("production_countries")
-            item["genres"] = [ genre["name"] for genre in details.get("genres", [])]
-            item["media_type"] = media_type
-            return item
+        def fetch():
+            details = (
+                self.get_movie_by_tmdb_id(tmdb_id)
+                if media_type == "movie"
+                else self.get_tv_by_tmdb_id(tmdb_id)
+            )
+            if not details:
+                raise TMDBFetchError({
+                    "tmdb_id": tmdb_id,
+                    "release_date": None,
+                    "tmdb_rating": None,
+                    "original_language": None,
+                    "country": None,
+                    "genres": [],
+                    "media_type": media_type,
+                })
+            return {
+                "tmdb_id": tmdb_id,
+                "release_date": self.get_release_date(details, media_type),
+                "tmdb_rating": details.get("vote_average"),
+                "original_language": details.get("original_language"),
+                "country": details.get("origin_country") if media_type == "tv" else details.get("production_countries"),
+                "genres": [genre["name"] for genre in details.get("genres", [])],
+                "media_type": media_type,
+            }
+
+        enrichment = cache_item_detail("item", media_type, tmdb_id, fetch)
+        item.update(enrichment)
+        return item
     
     def enrich_items(self, items, media_type):
         return [self.enrich_item(item, media_type) for item in items]

@@ -36,8 +36,7 @@ Config is loaded via `python-dotenv` from a `.env` file at the repo root (no `.e
 - `GROQ_API_KEY` — Groq API access for the AI recommendation feature
 - `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` — comma-separated
 - `EMAIL_USER`, `EMAIL_PASS` — Gmail SMTP for password reset emails
-
-Celery/Redis config (`CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`) is hardcoded to `redis://localhost:6379/0` in settings, not env-driven.
+- `REDIS_URL` — Redis connection for both Celery (`CELERY_BROKER_URL`/`CELERY_RESULT_BACKEND`) and the TMDB list cache (`movies/redis_services.py`); defaults to `redis://localhost:6379/0` if unset. Docker Compose overrides it to `redis://redis:6379/0` (its own `redis` service) in `web`'s `environment:` block.
 
 ## Architecture
 
@@ -52,7 +51,8 @@ Four Django apps:
 
 `TMDBClient` wraps the TMDB REST API (`_request` does the raw HTTP call). Key methods:
 - `get_list()` — paginated discover/list endpoints, dedupes results by id, normalizes items via `_type_items` (adds `poster_url`, unified `title`/`release_date`).
-- `enrich_item(s)` — fetches full details for an item (genres, rating, country, language) to back detail pages.
+- `enrich_item(s)` — fetches full details for an item (genres, rating, country, language) to back detail pages; per-item Redis-cached (see Redis caching below).
+- `get_credit()` — cast/crew for a detail page; also per-item Redis-cached.
 - `get_popular_actors()` — filters TMDB "popular people" down to actors and paginates.
 
 `movies/views.py`'s `AllMoviesView` is the shared base class for every category page (popular, top rated, now playing, upcoming, anime, doramas, cartoons, TV, movie-only); subclasses set `item_func`, `template_name`, `media_type`, etc. It cross-references the logged-in user's `Watchlist` to annotate each item with watched state.
@@ -63,9 +63,27 @@ Local `Movies` DB records are separate from live TMDB data — TMDB is the sourc
 
 `get_ai(user, message, media_type)` builds a prompt from the user's `Watchlist` (title + watched status) and calls Groq's `llama-3.3-70b-versatile` with a fixed system prompt that enforces a strict output format and restricts answers to movies/TV topics. Used by both the template view (`movies/views.py: ai_recomendations`) and the API (`api/views.py: RecommendationsAiView`).
 
-### In-progress / untracked work
+### Redis caching (`movies/redis_services.py`, `movies/tmdb_service.py`)
 
-`config/celery.py`, `movies/tasks.py`, and `movies/redis_services.py` are new, not-yet-committed files introducing Celery task queueing and direct Redis caching for movie data — currently stubs/incomplete. Check their contents before assuming any caching or async task behavior is active.
+Cache-aside logic lives in a shared private helper, `_cache_aside(cache_key, fetch_function, ttl)` (Redis GET → on miss call `fetch_function()` → Redis SET), used by two public functions with different key schemes:
+
+- `cache_data_movie(endpoint, page, fetch_function, **kwargs)` — used by `TMDBClient.get_list()` (category/discover list endpoints). Key is `movies:list:v1:{endpoint}:{page}:{sorted filter kwargs}` — built from the already-normalized kwargs passed to `get_list`, not the raw querystring, so blank/omitted params and param order don't fragment the cache. `max_page` is excluded (it's a local pagination clamp, not a real TMDB filter). TTL 900s (15 min).
+- `cache_item_detail(kind, media_type, tmdb_id, fetch_function)` — used by `TMDBClient.enrich_item()` (`kind="item"`) and `get_credit()` (`kind="credits"`) for per-item detail data (genres, rating, release date, cast/crew). Key is `movies:{kind}:v1:{media_type}:{tmdb_id}`. TTL 21600s (6h) — much longer than the list cache since item detail data is far more static than list rankings/pagination.
+
+Shared behavior for both:
+- Caching happens *below* `AllMoviesView`'s per-user `Watchlist` annotation, so no per-user state is ever cached.
+- Fallback behavior: a Redis outage (`RedisError`) or a TMDB fetch failure (`TMDBFetchError`, raised by each `fetch()` closure) is never cached and never breaks page rendering — falls straight through to an uncached fetch.
+- Debug instrumentation: `print()` timing logs in `_cache_aside` (cache GET hit/miss + duration) and in `get_list`/`AllMoviesView.get()` (per-step and total call duration) — intentionally left in for profiling; remove or convert to `logger.debug` before considering this done.
+
+**enrich_item() bug fixed**: the pre-existing `enrich_item()` called `cache_data_movie(fetch, item, media_type)` — positionally mismatched against `cache_data_movie`'s real `(endpoint, page, fetch_function, **kwargs)` signature, binding `media_type` (a string) as `fetch_function`. This crashed with `TypeError: 'str' object is not callable` on any real cache miss (confirmed by direct reproduction in a container shell). Rewritten to build a small enrichment-fields dict via `cache_item_detail` and `item.update(...)` it in; also dropped a second latent bug where the `get_discover_movie/tv` fallback passed a positional arg into a `**kwargs`-only method.
+
+**Verified manually**: cache hit/miss cycle for both list and item/credits caches, canonical key collapsing, TTLs (confirmed via `redis-cli TTL`), Redis-down fallback (stopped the `redis` container, page still rendered, just uncached/slower), TMDB-failure-not-cached fallback, and end-to-end via `docker compose up`/`restart` (confirmed `web` reaches the `redis` service, pagination goes through this same path). Real measured impact on `/movies/popular-movies/`: cold request ~3.7-4.9s (dominated by `enrich_items`, ~90% of total), repeat request with warm item cache **~100ms**. Existing suite (`pytest movies/tests users/tests`, excluding `test_tmdb_service.py`'s pre-existing unrelated `@pytest.fixturejson` typo): 33 passed, 4 pre-existing failures (`users/tests` profile/watchlist, `test_view_actor.py`) unrelated to caching.
+
+**Not done yet**: `get_genres()` (`movies/tmdb_service.py`) is still uncached — one uncached TMDB call per category-page load (~150-200ms), smaller than the now-fixed `enrich_items` cost but still real. Not part of the per-item cache above since it's once-per-page, not once-per-item.
+
+**Known issue, not fixed**: on every dev-server start/reload, the full `DATABASE_URL` — including the Postgres username/password — is printed to stdout (visible in `docker compose logs web`). Worth moving behind a debug-only guard or removing before this is any less throwaway than local dev.
+
+`movies/tasks.py` (Celery) is still an empty stub — no async task behavior is active yet.
 
 ## Testing conventions
 
