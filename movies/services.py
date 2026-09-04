@@ -98,7 +98,7 @@ def get_ai(user, message='' ,media_type='all'):
                              "based_on": watchlist.count()}
 
         except Exception:
-            return {"error": "API is unavailable"},
+            return {"error": "API is unavailable"}
                             
                             
     

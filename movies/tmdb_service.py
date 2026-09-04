@@ -89,10 +89,7 @@ class TMDBClient:
 
 
     def _type_items(self, items):
-        print(f"ITEMSSSSSSSSS {items}")
         for item in items:
-            print("&" * 100)
-            print(f"ITEMS {item}")
             path = item.get("poster_path")
             item["poster_url"] = f"https://image.tmdb.org/t/p/w500{path}" if path else None
 
@@ -136,7 +133,7 @@ class TMDBClient:
         start = time.perf_counter()
         result = cache_data_movie(endpoint, page, fetch, **kwargs)
         elapsed_ms = (time.perf_counter() - start) * 1000
-        print(f"[get_list] {endpoint} page={page} total {elapsed_ms:.1f}ms")
+        logging.debug(f"[get_list] {endpoint} page={page} total {elapsed_ms:.1f}ms")
         return result
 
    
@@ -155,7 +152,6 @@ class TMDBClient:
                     combined.append(item)
                     seen_ids.add(item["id"])
 
-        print("COMBINED",self._type_items(combined))
         return self._type_items(combined)
 
     @staticmethod
@@ -205,7 +201,7 @@ class TMDBClient:
         item.update(enrichment)
         return item
     
-    def enrich_items(self, items, media_type):
+    def enrich_items(self, items, media_type):      
         return [self.enrich_item(item, media_type) for item in items]
     
  
