@@ -19,6 +19,21 @@ services:
           - db
           - redis
 
+    worker:
+        build: .
+        image: project
+        volumes:
+          - .:/app
+        environment:
+          - DATABASE_URL=${DATABASE_URL}
+          - REDIS_URL=redis://redis:6379/0
+        env_file:
+          - .env
+        command: celery -A config worker --loglevel=info
+        depends_on:
+          - db
+          - redis
+
     db:
         image: postgres:16
         env_file:

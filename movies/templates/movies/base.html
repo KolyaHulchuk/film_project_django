@@ -169,12 +169,15 @@
 
                     try {
                         // encodeURIComponent encodes text for URL (spaces → %20)
+                        // /movies/ai/ only enqueues the Celery task and returns its id right away
                         const url = '/movies/ai/?message=' + encodeURIComponent(msg) + '&type=' + this.mediaType;
                         const response = await fetch(url);
-                        const data = await response.json(); // { answer: '...', based_on: 25 }
+                        const data = await response.json(); // { task_id: '...' }
+
+                        const result = await this.pollAiTask(data.task_id);
 
                         this.messages.push({
-                            text: data.answer || data.error || 'Error',
+                            text: result.answer || result.error || 'Error',
                             type: 'ai'
                         });
 
@@ -194,6 +197,25 @@
                         const chat = document.getElementById('ai-chat');
                         chat.scrollTop = chat.scrollHeight;
                     });
+                },
+
+                // Polls the Celery task status every 1.5s until it finishes.
+                // The AI call itself takes a few seconds, so this keeps
+                // sendMessage() from blocking on a single long request.
+                async pollAiTask(taskId) {
+                    const maxAttempts = 30; // ~45s total before giving up
+
+                    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                        const res = await fetch('/movies/ai/status/' + taskId + '/');
+                        const data = await res.json();
+
+                        if (data.status === 'done') return data.result;
+                        if (data.status === 'failed') return { error: data.error || 'Error' };
+
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                    }
+
+                    return { error: 'Timed out waiting for a response' };
                 }
             }">
 

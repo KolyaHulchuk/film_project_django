@@ -20,7 +20,8 @@ from django.contrib.auth.decorators import login_required
 from datetime import datetime
 from .utils import *
 from users.models import Watchlist
-from movies.services import get_ai
+from movies.tasks import get_ai_recommendation_task
+from celery.result import AsyncResult
 from django.http import JsonResponse
 
 class AllMoviesView(View):
@@ -531,8 +532,25 @@ class MovieView(AllMoviesView):
 def ai_recomendations(request):
     message = request.GET.get("message", "")
     media_type = request.GET.get("type", "all")
-    result = get_ai(request.user, message, media_type)
-    return JsonResponse(result)
+    task = get_ai_recommendation_task.delay(request.user.id, message, media_type)
+    return JsonResponse({"task_id": task.id})
+
+
+@login_required
+def ai_recommendation_status(request, task_id):
+    task = AsyncResult(task_id)
+
+    if not task.ready():
+        # PENDING/STARTED/RETRY -> lowercase to keep the response shape uniform
+        return JsonResponse({"status": task.state.lower()})
+
+    if task.successful():
+        return JsonResponse({"status": "done", "result": task.result})
+
+    # Celery marks the task FAILURE only when get_ai() itself raised — it
+    # normally catches its own errors and returns {"error": ...} instead,
+    # which is covered by the "done" branch above.
+    return JsonResponse({"status": "failed", "error": str(task.result)})
 
 
 

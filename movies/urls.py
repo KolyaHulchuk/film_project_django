@@ -16,6 +16,7 @@ from .views import  (
     MovieView,
     PopularActorView,
     ai_recomendations,
+    ai_recommendation_status,
     )
 
 
@@ -38,6 +39,7 @@ urlpatterns = [
     path("movie/", MovieView.as_view(), name="movie"),
 
     path("ai/", ai_recomendations, name='ai-recomendations'),
+    path("ai/status/<str:task_id>/", ai_recommendation_status, name='ai-recommendation-status'),
 
     path("popular-actors/", PopularActorView.as_view(), name="popular-actors")
     
