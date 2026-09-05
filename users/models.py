@@ -1,8 +1,11 @@
-from django.db import models
-from django.contrib.auth.models import User
-from movies.models import Movies
-from PIL import Image
 import os
+
+from django.contrib.auth.models import User
+from django.db import models
+from PIL import Image
+
+from movies.models import Movies
+
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -10,17 +13,16 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} Profile"
-    
+
     def save(self, *args, **kwargs):
 
-        
         super().save(*args, **kwargs)
-        
+
         if os.path.exists(self.image.path):
             img = Image.open(self.image.path)
-        
+
             if img.height > 300 or img.width > 300:
-                outup_size = (300 , 300)
+                outup_size = (300, 300)
                 img.thumbnail(outup_size)
                 img.save(self.image.path)
 
@@ -32,7 +34,7 @@ class Watchlist(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["user", "movie"], name="unique_user_movie") # prohibits duplicates
+            models.UniqueConstraint(fields=["user", "movie"], name="unique_user_movie")  # prohibits duplicates
         ]
 
     def __str__(self):

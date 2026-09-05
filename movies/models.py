@@ -1,5 +1,5 @@
-from django.db import models
 from django.contrib.auth.models import User
+from django.db import models
 
 
 class Genre(models.Model):
@@ -8,7 +8,7 @@ class Genre(models.Model):
 
     def __str__(self):
         return self.name
-    
+
 
 class Movies(models.Model):
     title = models.CharField(max_length=200)
@@ -24,26 +24,25 @@ class Movies(models.Model):
     tmdb_rating = models.FloatField(blank=True, null=True)
 
     class Meta:
-        ordering = ['-id']
+        ordering = ["-id"]
 
     def __str__(self):
         return self.title
-    
+
     def average_user_ratings(self):
         ratings = self.ratings.all()
         if ratings.exists():
             return round(sum(r.score for r in ratings) / ratings.count(), 1)
         return None
 
+
 class Rating(models.Model):
     movie = models.ForeignKey(Movies, on_delete=models.CASCADE, related_name="ratings")
-    user =models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     score = models.PositiveIntegerField(default=0)
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["user", "movie"], name="rating_unique_user_movie")
-        ]
+        constraints = [models.UniqueConstraint(fields=["user", "movie"], name="rating_unique_user_movie")]
 
     def __str__(self):
         return f"{self.user.username} - {self.movie.title} ({self.score})"
@@ -57,5 +56,3 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.movie.title}"
-
-

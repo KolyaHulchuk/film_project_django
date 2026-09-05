@@ -1,51 +1,44 @@
-from groq import Groq
-from users.models import Watchlist
 from django.conf import settings
+from groq import Groq
+
+from users.models import Watchlist
 
 
-def get_ai(user, message='' ,media_type='all'):
-        # This message is a user request
-        
-        type_instructions = {
-            "movie": "Recommend only movies, animated films and anime movies — no series or episodes.",
-            "tv":    "Recommend only series, doramas, anime series and animated series — no movies.",
-            "all":   "Recommend any format — movies, series, anime, doramas, cartoons.",
-        }.get(media_type, "Recommend any format — movies, series, anime, doramas, cartoons.")
+def get_ai(user, message="", media_type="all"):
+    # This message is a user request
 
+    type_instructions = {
+        "movie": "Recommend only movies, animated films and anime movies — no series or episodes.",
+        "tv": "Recommend only series, doramas, anime series and animated series — no movies.",
+        "all": "Recommend any format — movies, series, anime, doramas, cartoons.",
+    }.get(media_type, "Recommend any format — movies, series, anime, doramas, cartoons.")
 
+    watchlist = Watchlist.objects.filter(user=user).select_related("movie")
 
+    if not watchlist.exists():
+        return {"error": "Please add movie for your wathclist"}
 
+    movie_list = []
+    for item in watchlist[:20]:
+        watchlist_status = "viewed" if item.watched else "not viewed"
+        movie_list.append(f"-{item.movie.title} - {watchlist_status}")
 
-        watchlist =  Watchlist.objects.filter(user=user).select_related('movie')
-         
-        if not watchlist.exists():
-            return {"error": "Please add movie for your wathclist"}
-        
+    movie_text = "\n".join(movie_list)
 
-        movie_list = []
-        for item in watchlist[:20]:
-            watchlist_status =  "viewed" if item.watched else "not viewed"
-            movie_list.append(f"-{item.movie.title} - {watchlist_status}")
-        
-        movie_text = "\n".join(movie_list)
+    if message:
+        final_message = f"My Watchlist:\n{movie_text}\n\nMy query: {message}"
+    else:
+        final_message = f"My Watchlist:\n{movie_text}\n\nWhat would you recommend watching?"
 
+    try:
+        client = Groq(api_key=settings.GROQ_API_KEY)
 
-        if message:
-            final_message = f"My Watchlist:\n{movie_text}\n\nMy query: {message}"
-        else:
-            final_message = f"My Watchlist:\n{movie_text}\n\nWhat would you recommend watching?"
-
-
-        try:
-
-            client = Groq(api_key=settings.GROQ_API_KEY)
-            
-            response = client.chat.completions.create(
-                model="openai/gpt-oss-120b",
-                messages=[
-                    {
-                        'role': 'system',
-                        'content': f"""You are a cinema expert assistant with deep knowledge of movies, series, anime, and doramas.
+        response = client.chat.completions.create(
+            model="openai/gpt-oss-120b",
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"""You are a cinema expert assistant with deep knowledge of movies, series, anime, and doramas.
 
                         WHAT YOU DO:
                         - Answer questions about specific movies, series, anime, directors, actors
@@ -83,23 +76,15 @@ def get_ai(user, message='' ,media_type='all'):
                         - NEVER recommend if user just asks a question
                         - Keep answers concise — max 150 words per recommendation
                         - Always use the formatting above — never plain unstructured text
-                        - Always respond in English"""
-                    },
-                    {
-                        'role': 'user',
-                        'content': final_message
-                    }
-                ],
-                max_tokens=800,
-                temperature=0.7
-            )
+                        - Always respond in English""",
+                },
+                {"role": "user", "content": final_message},
+            ],
+            max_tokens=800,
+            temperature=0.7,
+        )
 
-            return {"answer": response.choices[0].message.content,
-                             "based_on": watchlist.count()}
+        return {"answer": response.choices[0].message.content, "based_on": watchlist.count()}
 
-        except Exception:
-            return {"error": "API is unavailable"}
-                            
-                            
-    
-
+    except Exception:
+        return {"error": "API is unavailable"}

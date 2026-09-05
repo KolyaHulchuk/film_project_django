@@ -1,24 +1,14 @@
-from django.shortcuts import render
-from rest_framework.views import APIView
+from rest_framework import generics
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-from rest_framework import generics, status
-from .serializers import (
-    MovieSerializer, 
-    GerneSerializer, 
-    RatingSerializer, 
-    ProfileSerializer, 
-    WatchlistSerializer
-    )
-from movies.models import Movies, Genre, Rating
-from users.models import Profile, Watchlist
-from rest_framework.permissions import (
-    AllowAny, 
-    IsAdminUser, 
-    IsAuthenticated, 
-    IsAuthenticatedOrReadOnly
-    )
+from rest_framework.views import APIView
+
+from movies.models import Genre, Movies, Rating
 from movies.services import get_ai
 from movies.tmdb_service import TMDBClient
+from users.models import Watchlist
+
+from .serializers import GerneSerializer, MovieSerializer, ProfileSerializer, RatingSerializer, WatchlistSerializer
 
 
 class MovieListView(generics.ListAPIView):
@@ -27,9 +17,9 @@ class MovieListView(generics.ListAPIView):
 
     def get_queryset(self):
         queryset = Movies.objects.all()
-        genre = self.request.query_params.get('genre', '')
+        genre = self.request.query_params.get("genre", "")
         if genre:
-            queryset =queryset.filter(genres__name=genre)
+            queryset = queryset.filter(genres__name=genre)
         return queryset
 
 
@@ -45,23 +35,18 @@ class GenreListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
 
-
 class RatingView(generics.ListCreateAPIView):
     queryset = Rating.objects.all()
     serializer_class = RatingSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
 
-
-
 class ProfileView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
 
-
     def get_object(self):
         return self.request.user.profile
-    
 
 
 class WatchlistListView(generics.ListCreateAPIView):
@@ -70,7 +55,7 @@ class WatchlistListView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         return Watchlist.objects.filter(user=self.request.user)
-    
+
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
@@ -81,8 +66,6 @@ class WatchlistDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return Watchlist.objects.filter(user=self.request.user)
-    
-
 
 
 class RecommendationsAiView(APIView):
@@ -91,10 +74,10 @@ class RecommendationsAiView(APIView):
     def get(self, request):
         message = request.query_params.get("message", "")
         media_type = request.query_params.get("type", "all")
-        
+
         result = get_ai(request.user, message, media_type)
         return Response(result)
-        
+
 
 class PopularActorsView(APIView):
     permission_classes = [AllowAny]

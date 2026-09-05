@@ -1,12 +1,12 @@
-import requests
 import logging
 import time
 from datetime import datetime
-from django.conf import settings
-from .redis_services import cache_data_movie, cache_item_detail, cache_genres, TMDBFetchError
 
-from .models import Movies
-from .utils import COUNTRY_CODES, normalize_country
+import requests
+from django.conf import settings
+
+from .redis_services import TMDBFetchError, cache_data_movie, cache_genres, cache_item_detail
+
 
 class TMDBClient:
     BASE_URL = "https://api.themoviedb.org/3"
@@ -30,20 +30,17 @@ class TMDBClient:
         # keeps a failed TMDB call from ever being written to the Redis cache.
         return {}
 
-
     def get_movie_by_tmdb_id(self, tmdb_id):
         return self._request(f"movie/{tmdb_id}")
 
     def get_tv_by_tmdb_id(self, tmdb_id):
         return self._request(f"tv/{tmdb_id}")
-        
 
     def get_discover_tv(self, **kwargs):
-        return self._request(f"discover/tv", **kwargs)
-    
+        return self._request("discover/tv", **kwargs)
+
     def get_discover_movie(self, **kwargs):
-       return self._request(f"discover/movie", **kwargs)
-    
+        return self._request("discover/movie", **kwargs)
 
     def get_genres(self, media_type):
         def fetch():
@@ -54,7 +51,7 @@ class TMDBClient:
             return data["genres"]
 
         return cache_genres(media_type, fetch)
-    
+
     def get_credit(self, tmdb_id, media_type):
         def fetch():
             data = self._request(f"{media_type}/{tmdb_id}/credits")
@@ -63,11 +60,10 @@ class TMDBClient:
             return data
 
         return cache_item_detail("credits", media_type, tmdb_id, fetch)
-    
 
     def get_person(self, page=1):
-        return self._request(f"person/popular", {"page": page})
-    
+        return self._request("person/popular", {"page": page})
+
     def get_popular_actors(self, page=1):
         data = self.get_person(page)
 
@@ -84,13 +80,8 @@ class TMDBClient:
             "actors": actors,
             "current_page": page,
             "total_pages": total_pages,
-            "page_range": range(
-                max(1, page - 3),
-                min(total_pages + 1, page + 3)
-            ),
+            "page_range": range(max(1, page - 3), min(total_pages + 1, page + 3)),
         }
-      
-
 
     def _type_items(self, items):
         for item in items:
@@ -101,10 +92,9 @@ class TMDBClient:
             item["title"] = item.get("title") if media_type == "movie" else item.get("name")
             item["release_date"] = item.get("release_date") if media_type == "movie" else item.get("first_air_date")
             item["rating"] = item.get("vote_average")
-        
+
         return items
-    
-    
+
     def get_list(self, endpoint, page=1, **kwargs):
         # `fetch` is only ever invoked by cache_data_movie() below on a cache
         # miss, so its return value is exactly what ends up written to Redis.
@@ -116,11 +106,7 @@ class TMDBClient:
 
             max_page = kwargs.get("max_page", 10)
             if not data or "results" not in data:
-                raise TMDBFetchError({
-                    "results": [],
-                    "page": page,
-                    "total_pages": 1
-                })
+                raise TMDBFetchError({"results": [], "page": page, "total_pages": 1})
 
             # TMDB can repeat the same item across discover pages when filters
             # overlap; drop duplicates by id before normalizing.
@@ -137,26 +123,26 @@ class TMDBClient:
             return {
                 "results": uniq_results,
                 "page": data.get("page", page),
-                "total_pages": min(data.get("total_pages", 1), max_page)
+                "total_pages": min(data.get("total_pages", 1), max_page),
             }
+
         start = time.perf_counter()
         result = cache_data_movie(endpoint, page, fetch, **kwargs)
         elapsed_ms = (time.perf_counter() - start) * 1000
         logging.debug(f"[get_list] {endpoint} page={page} total {elapsed_ms:.1f}ms")
         return result
 
-   
     def search_movies(self, query):
         seen_ids = set()
         combined = []
 
         for lang in self.languages:
             data = self._request("search/multi", {"query": query, "language": lang})
-            
+
             for item in data.get("results", []):
                 media_type = item.get("media_type")
                 if media_type not in ["movie", "tv"]:
-                    continue 
+                    continue
                 if item["id"] not in seen_ids:
                     combined.append(item)
                     seen_ids.add(item["id"])
@@ -165,17 +151,13 @@ class TMDBClient:
 
     @staticmethod
     def get_release_date(details, media_type):
-        raw_date = (
-            details.get("release_date") if media_type == "movie" 
-            else details.get("first_air_date")
-        )
+        raw_date = details.get("release_date") if media_type == "movie" else details.get("first_air_date")
 
         try:
             date_obj = datetime.strptime(raw_date, "%Y-%m-%d")
             return date_obj.strftime("%d.%m.%Y")
         except (TypeError, ValueError):
             raise ValueError("Uknown")
-        
 
     def enrich_item(self, item, media_type):
         tmdb_id = item["id"]
@@ -184,21 +166,19 @@ class TMDBClient:
         # enrichment fields get cached (per tmdb_id, not per list/page), so
         # every category page sharing an item reuses the same cache entry.
         def fetch():
-            details = (
-                self.get_movie_by_tmdb_id(tmdb_id)
-                if media_type == "movie"
-                else self.get_tv_by_tmdb_id(tmdb_id)
-            )
+            details = self.get_movie_by_tmdb_id(tmdb_id) if media_type == "movie" else self.get_tv_by_tmdb_id(tmdb_id)
             if not details:
-                raise TMDBFetchError({
-                    "tmdb_id": tmdb_id,
-                    "release_date": None,
-                    "tmdb_rating": None,
-                    "original_language": None,
-                    "country": None,
-                    "genres": [],
-                    "media_type": media_type,
-                })
+                raise TMDBFetchError(
+                    {
+                        "tmdb_id": tmdb_id,
+                        "release_date": None,
+                        "tmdb_rating": None,
+                        "original_language": None,
+                        "country": None,
+                        "genres": [],
+                        "media_type": media_type,
+                    }
+                )
             return {
                 "tmdb_id": tmdb_id,
                 "release_date": self.get_release_date(details, media_type),
@@ -212,8 +192,6 @@ class TMDBClient:
         enrichment = cache_item_detail("item", media_type, tmdb_id, fetch)
         item.update(enrichment)
         return item
-    
-    def enrich_items(self, items, media_type):      
+
+    def enrich_items(self, items, media_type):
         return [self.enrich_item(item, media_type) for item in items]
-    
- 

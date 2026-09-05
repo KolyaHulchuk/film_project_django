@@ -1,0 +1,33 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = [
+    "migrations",
+    "venv",
+    "staticfiles",
+    "media",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (import sorting)
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "DJ",  # flake8-django
+]
+ignore = [
+    "E501",  # line length is enforced by the formatter where it can be; long strings/urls are left alone
+]
+
+[tool.ruff.lint.per-file-ignores]
+"*/migrations/*.py" = ["E", "F"]
+"movies/tests/*.py" = ["F401"]
+"users/tests/*.py" = ["F401"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
