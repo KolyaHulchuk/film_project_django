@@ -41,7 +41,7 @@ def get_ai(user, message='' ,media_type='all'):
             client = Groq(api_key=settings.GROQ_API_KEY)
             
             response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="openai/gpt-oss-120b",
                 messages=[
                     {
                         'role': 'system',
