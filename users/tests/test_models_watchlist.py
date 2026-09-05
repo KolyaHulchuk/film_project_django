@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth.models import User
+from django.db import IntegrityError
 
 from movies.models import Movies
 from users.models import Watchlist
@@ -22,7 +23,7 @@ def test_watchlist_created(user, movie):
 
     assert watchlist.user.username == "Kolya"
     assert watchlist.movie.title == "The Lord of the Rings"
-    assert watchlist.watched == False
+    assert not watchlist.watched
 
 
 @pytest.mark.django_db
@@ -32,5 +33,5 @@ def test_watchlist_dublicat(user, movie):
     Watchlist.objects.create(user=user, movie=movie)
 
     # we are trying to create the same record
-    with pytest.raises(Exception):
+    with pytest.raises(IntegrityError):
         Watchlist.objects.create(user=user, movie=movie)  #  should fall with an error

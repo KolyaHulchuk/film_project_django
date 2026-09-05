@@ -57,6 +57,7 @@ def test_dublicate(tmdb, db):
     result = get_or_create_media(12, "movie")
     result2 = get_or_create_media(12, "movie")
     assert result.title == "Berserk"
+    assert result2.id == result.id
     assert Movies.objects.count() == 1
 
 

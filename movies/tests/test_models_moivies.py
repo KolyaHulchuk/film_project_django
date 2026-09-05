@@ -1,6 +1,7 @@
 import datetime
 
 import pytest
+from django.db import IntegrityError
 
 from movies.models import Genre, Movies
 
@@ -39,5 +40,5 @@ def test_create_movie(movie, genre):
 @pytest.mark.django_db
 def test_dublicat_genres():
     Genre.objects.create(name="Adventure")
-    with pytest.raises(Exception):
+    with pytest.raises(IntegrityError):
         Genre.objects.create(name="Adventure")

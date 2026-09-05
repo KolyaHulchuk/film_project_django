@@ -156,8 +156,8 @@ class TMDBClient:
         try:
             date_obj = datetime.strptime(raw_date, "%Y-%m-%d")
             return date_obj.strftime("%d.%m.%Y")
-        except (TypeError, ValueError):
-            raise ValueError("Uknown")
+        except (TypeError, ValueError) as err:
+            raise ValueError("Uknown") from err
 
     def enrich_item(self, item, media_type):
         tmdb_id = item["id"]

@@ -14,8 +14,8 @@ class Movies(models.Model):
     title = models.CharField(max_length=200)
     release_date = models.DateField(blank=True, null=True)  # optional: TMDB doesn't always provide a release date
     country = models.CharField(max_length=100)
-    description = models.TextField(blank=True, null=True)
-    poster_url = models.URLField(blank=True, null=True)
+    description = models.TextField(blank=True)
+    poster_url = models.URLField(blank=True)
     tmdb_id = models.IntegerField(null=True, blank=True, unique=True)
     genres = models.ManyToManyField(Genre, related_name="movies")
     author = models.CharField(max_length=200)

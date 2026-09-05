@@ -72,7 +72,7 @@ def test_toggle_watchlist(client, user, movie, login, watchlist):
     assert response.content == b"OK"
 
     item = Watchlist.objects.get(id=1)
-    assert item.watched == True
+    assert item.watched
 
 
 @pytest.mark.django_db

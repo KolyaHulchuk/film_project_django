@@ -85,7 +85,7 @@ def test_search_with_watchlist(client, tmdb, db_movie, user):
 
     movie = response.context["results"][0]
 
-    assert movie.is_watched == True
+    assert movie.is_watched
 
     # if a film is in both the local database and TMDB, it should only appear once:
     assert len(response.context["results"]) == 1

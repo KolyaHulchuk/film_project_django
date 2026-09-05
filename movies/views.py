@@ -19,7 +19,7 @@ from .models import Genre, Movies
 from .tmdb_service import (
     TMDBClient,
 )
-from .utils import *
+from .utils import COUNTRY_CODES, normalize_countries
 
 
 class AllMoviesView(View):
