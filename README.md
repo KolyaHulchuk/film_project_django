@@ -80,7 +80,7 @@ curl http://127.0.0.1:8000/api/watchlist/ \
 | REST API | Django REST Framework |
 | Auth | JWT (djangorestframework-simplejwt) |
 | Frontend | HTML, CSS, HTMX, Bootstrap |
-| Database | SQLite3 |
+| Database | PostgreSQL (SQLite fallback for local dev) |
 | External API | TMDB API |
 | API Testing | Postman |
 | Version Control | Git |
