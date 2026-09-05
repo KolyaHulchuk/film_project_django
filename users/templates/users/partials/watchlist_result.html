@@ -62,7 +62,7 @@
                 </p>
                 <div class="more-movie-info">
                     <div class="movie-genre">
-                        {% for genre in my_movie.movie.genres.all|slice:"2" %} <!--  Here are the genres from IP -->
+                        {% for genre in my_movie.movie.genres.all|slice:"2" %} <!-- slice:"2" == slice:":2" — first 2 genres only -->
                             <span class="genre-badge">{{ genre.name }}</span>
                         {% empty %}
                             <span class="genre-badge">None</span>

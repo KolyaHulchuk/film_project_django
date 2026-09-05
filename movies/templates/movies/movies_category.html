@@ -20,6 +20,8 @@
                         </svg>
                     </button>
 
+                    {# is_watched is only set on items the view found in the user's Watchlist,
+                       so the toggle only appears once the item has actually been added #}
                     {% if item.is_watched %}
                     <input type="checkbox"
                         id="watch-{{ item.id }}"

@@ -18,6 +18,8 @@
                         </svg>
                     </button>
 
+                            {# is_watched is only set on results the view found in the user's Watchlist,
+                               so the toggle only appears once the item has actually been added #}
                             {% if movie.is_watched %}
                                 <input type="checkbox" 
                                     id="watch-{{ movie.id }}" 
@@ -66,7 +68,7 @@
                     </p>
                     <div class="more-movie-info" >
                         <div class="movie-genre">
-                            {% for genre in movie.genres.all|slice:":2" %} <!-- forloop.last  to avoid placing a comma after the last genre -->
+                            {% for genre in movie.genres.all|slice:":2" %} <!-- show at most 2 genres -->
                                 <span class="genre-badge">{{ genre.name }}</span>
                             {% empty %} 
                                 <span class="genre-badge">None</span>
