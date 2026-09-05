@@ -61,7 +61,13 @@ Local `Movies` DB records are separate from live TMDB data — TMDB is the sourc
 
 ### AI recommendations (`movies/services.py`)
 
-`get_ai(user, message, media_type)` builds a prompt from the user's `Watchlist` (title + watched status) and calls Groq's `llama-3.3-70b-versatile` with a fixed system prompt that enforces a strict output format and restricts answers to movies/TV topics. Used by both the template view (`movies/views.py: ai_recomendations`) and the API (`api/views.py: RecommendationsAiView`).
+`get_ai(user, message, media_type)` builds a prompt from the user's `Watchlist` (title + watched status) and calls Groq's `llama-3.3-70b-versatile` with a fixed system prompt that enforces a strict output format and restricts answers to movies/TV topics. Used by the API (`api/views.py: RecommendationsAiView`) directly, and by the template flow asynchronously via Celery (below).
+
+**Template AI flow is now async (Celery)**: `movies/views.py: ai_recomendations` no longer calls `get_ai()` inline — it enqueues `movies/tasks.py: get_ai_recommendation_task` (`.delay(user_id, message, media_type)`) and immediately returns `{"task_id": ...}`. A new `ai_recommendation_status(request, task_id)` view polls `AsyncResult` and returns `{"status": "pending"}`, `{"status": "done", "result": {...}}`, or `{"status": "failed", "error": ...}`. The Alpine.js chat panel in `movies/templates/movies/base.html` polls `ai/status/<task_id>/` every 1.5s (up to ~45s) after posting a message. `docker-compose.yml` has a dedicated `worker` service (`celery -A config worker --loglevel=info`) alongside `web`; `config/__init__.py` now imports `celery_app` so Celery autodiscovers `movies/tasks.py`. The API's `RecommendationsAiView` is unchanged — still synchronous.
+
+**Verified manually** (2026-09-05): full round trip via `docker compose up` — enqueue → `worker` picks up the task (confirmed in `docker compose logs worker`) → status endpoint returns `done` with the real result. Confirmed both the "no watchlist" error path and a real Groq call reach the worker.
+
+**New issue found, not fixed**: the real Groq call now fails with `HTTP 404 Not Found` from `https://api.groq.com/openai/v1/chat/completions` (caught by `get_ai`'s broad `except Exception`, surfaced to the user as `{"error": "API is unavailable"}`) — most likely `llama-3.3-70b-versatile` has been renamed/decommissioned on Groq's side. Needs a model-name check/update in `movies/services.py`; not caused by and not related to the Celery migration.
 
 ### Redis caching (`movies/redis_services.py`, `movies/tmdb_service.py`)
 
@@ -82,8 +88,6 @@ Shared behavior for both:
 **Not done yet**: `get_genres()` (`movies/tmdb_service.py`) is still uncached — one uncached TMDB call per category-page load (~150-200ms), smaller than the now-fixed `enrich_items` cost but still real. Not part of the per-item cache above since it's once-per-page, not once-per-item.
 
 **Known issue, not fixed**: on every dev-server start/reload, the full `DATABASE_URL` — including the Postgres username/password — is printed to stdout (visible in `docker compose logs web`). Worth moving behind a debug-only guard or removing before this is any less throwaway than local dev.
-
-`movies/tasks.py` (Celery) is still an empty stub — no async task behavior is active yet.
 
 ## Testing conventions
 
