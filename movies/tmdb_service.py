@@ -3,7 +3,7 @@ import logging
 import time
 from datetime import datetime
 from django.conf import settings
-from .redis_services import cache_data_movie, cache_item_detail, TMDBFetchError
+from .redis_services import cache_data_movie, cache_item_detail, cache_genres, TMDBFetchError
 
 from .models import Movies
 from .utils import COUNTRY_CODES, normalize_country
@@ -46,13 +46,14 @@ class TMDBClient:
     
 
     def get_genres(self, media_type):
-        if media_type == "tv":
-            endpoint = f"genre/tv/list"
-        else:
-            endpoint = f"genre/movie/list"
+        def fetch():
+            endpoint = "genre/tv/list" if media_type == "tv" else "genre/movie/list"
+            data = self._request(endpoint)
+            if not data or "genres" not in data:
+                raise TMDBFetchError([])
+            return data["genres"]
 
-        data = self._request(endpoint)
-        return data.get("genres", [])
+        return cache_genres(media_type, fetch)
     
     def get_credit(self, tmdb_id, media_type):
         def fetch():

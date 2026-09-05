@@ -30,7 +30,7 @@ def _cache_aside(cache_key, fetch_function, ttl):
     except redis.exceptions.RedisError:
         logger.warning("Redis unavailable, skipping cache lookup for %s", cache_key)
     lookup_ms = (time.perf_counter() - lookup_start) * 1000
-    print(f"[cache] GET {cache_key} -> {'HIT' if cached is not None else 'MISS'} in {lookup_ms:.1f}ms")
+    logger.debug("[cache] GET %s -> %s in %.1fms", cache_key, "HIT" if cached is not None else "MISS", lookup_ms)
 
     if cached is not None:
         return json.loads(cached)
@@ -40,10 +40,10 @@ def _cache_aside(cache_key, fetch_function, ttl):
         result = fetch_function()
     except TMDBFetchError as exc:
         fetch_ms = (time.perf_counter() - fetch_start) * 1000
-        print(f"[cache] TMDB fallback for {cache_key} FAILED after {fetch_ms:.1f}ms")
+        logger.debug("[cache] TMDB fallback for %s FAILED after %.1fms", cache_key, fetch_ms)
         return exc.fallback
     fetch_ms = (time.perf_counter() - fetch_start) * 1000
-    print(f"[cache] TMDB fallback for {cache_key} took {fetch_ms:.1f}ms")
+    logger.debug("[cache] TMDB fetch for %s took %.1fms", cache_key, fetch_ms)
 
     try:
         r.set(cache_key, json.dumps(result), ex=ttl)
@@ -63,3 +63,10 @@ def cache_data_movie(endpoint, page, fetch_function, **kwargs):
 def cache_item_detail(kind, media_type, tmdb_id, fetch_function):
     cache_key = f"movies:{kind}:v1:{media_type}:{tmdb_id}"
     return _cache_aside(cache_key, fetch_function, ttl=21600)
+
+
+def cache_genres(media_type, fetch_function):
+    cache_key = f"movies:genres:v1:{media_type}"
+    # TTL is much longer than even cache_item_detail's: TMDB's genre list is
+    # effectively static, unlike per-item ratings/details.
+    return _cache_aside(cache_key, fetch_function, ttl=86400)
