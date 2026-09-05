@@ -22,9 +22,22 @@ pytest movies/tests/test_movie_view.py::test_name -v   # single test
 
 # Django's own test runner also works against the same test modules
 python manage.py test
+
+# Lint/format (ruff; config in pyproject.toml — not pinned in requirements.txt, install manually if missing)
+pip install ruff pre-commit
+ruff check .              # lint
+ruff check . --fix        # lint, auto-fixing what's safe to fix
+ruff format .              # format (line-length 120, double quotes)
+pre-commit install         # optional: wire ruff into a git pre-commit hook (.pre-commit-config.yaml)
 ```
 
-There is no configured linter/formatter in this repo (no lint config files present).
+Ruff (`pyproject.toml`) is configured with `E`, `W`, `F`, `I`, `UP`, `B`, `C4`, `DJ` rule sets, `E501` ignored (formatter handles most line-length, and long strings/URLs are left alone on purpose), migrations excluded from linting. `.pre-commit-config.yaml` runs `ruff check --fix` + `ruff format` (rev pinned to match the installed ruff version — bump both together).
+
+**First full-repo run** (2026-09-05): `ruff check . --fix` + `ruff format .` fixed 226 auto-fixable issues (mostly `I001` unsorted imports, `F401` unused imports, `W291`/`W293` trailing whitespace) across 43 files; existing suite still 33 passed / 4 pre-existing failures (same ones noted below), `python manage.py check` clean. 12 issues remain, not auto-fixable — worth a manual pass:
+- `movies/views.py` — `from .utils import *` (flagged `F403`/`F405` for `COUNTRY_CODES` and `normalize_countries`) — pre-existing star import, works fine but ruff can't verify the names; fix would be switching to explicit imports.
+- `movies/models.py:17-18` — `DJ001`: `null=True` on `TextField`/`URLField` (Django convention is `blank=True` alone for optional string fields, since Django already treats `""` as "empty" for strings — `null=True` here just creates a second, redundant "no value" state). Pre-existing, would need a migration to change.
+- `movies/tmdb_service.py:160` — `B904`: `raise ValueError("Uknown")` inside an `except` block should be `raise ValueError("Uknown") from err` (or `from None`) to preserve/suppress the original traceback correctly.
+- A handful of pre-existing test-only issues: `E712` (`== True`/`== False` instead of truthy/falsy asserts) and `B017` (`pytest.raises(Exception)` too broad) in `users/tests/test_models_watchlist.py`, `users/tests/test_watchlist.py`, `movies/tests/test_search_view.py`, `movies/tests/test_models_moivies.py`; one unused variable (`F841`) in `movies/tests/test_get_or_create_media.py`.
 
 ## Environment
 
