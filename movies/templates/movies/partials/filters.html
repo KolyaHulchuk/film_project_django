@@ -1,8 +1,11 @@
 <nav class="navbar-watchlist">
         <form id="filter-form"  class="list-filter" >
 
-            <input type="hidden" name="genre_search" value="{{ request.GET.genre_search }}"> <!-- парамете hidden робить приховане поле його не видно на сайті -->
-            <input type="hidden" name="country_search", value="{{ request.GET.country_search }}"> <!-- тут я зберігаю значення для жанру бо там немає input -->
+            <!-- Genre/country are chosen by clicking a dropdown item (see hx-vals below), not typed into
+                 an input, so these hidden fields are what actually persists the current selection across
+                 HTMX requests via hx-include="#filter-form". -->
+            <input type="hidden" name="genre_search" value="{{ request.GET.genre_search }}">
+            <input type="hidden" name="country_search", value="{{ request.GET.country_search }}">
 
             <div class="dropwodn filter-year">
                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">

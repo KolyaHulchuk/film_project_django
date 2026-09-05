@@ -17,7 +17,7 @@ def test_profile(client):
                                               })
     
 
-    user.refresh_from_db() #  оновлює дані user з бази
+    user.refresh_from_db()  # pick up the changes saved by the view's POST handler
 
     assert user.email == "mack@gmail.com"
     assert user.username == "Mac_Dub"

@@ -12,7 +12,7 @@ class Genre(models.Model):
 
 class Movies(models.Model):
     title = models.CharField(max_length=200)
-    release_date = models.DateField(blank=True, null=True) # blank=True	Поле можна залишити порожнім у формі
+    release_date = models.DateField(blank=True, null=True)  # optional: TMDB doesn't always provide a release date
     country = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     poster_url = models.URLField(blank=True, null=True)
@@ -36,7 +36,7 @@ class Movies(models.Model):
         return None
 
 class Rating(models.Model):
-    movie = models.ForeignKey(Movies, on_delete=models.CASCADE, related_name="ratings") # Кожен рейтинг належить одному фільму
+    movie = models.ForeignKey(Movies, on_delete=models.CASCADE, related_name="ratings")
     user =models.ForeignKey(User, on_delete=models.CASCADE)
     score = models.PositiveIntegerField(default=0)
 

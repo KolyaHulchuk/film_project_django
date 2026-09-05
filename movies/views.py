@@ -200,6 +200,9 @@ class UpcomingView(AllMoviesView):
 
 
 class PopularActorView(View):
+    # TMDB's "popular people" endpoint returns actors, directors, producers,
+    # etc. mixed together; get_popular_actors() filters that down to actors
+    # only, since the template just needs poster/name/one known-for title.
     def get(self, request):
         client = TMDBClient()
         try:
@@ -213,24 +216,6 @@ class PopularActorView(View):
 
         
 
-
-"""
-отимую список з 10 людтми та декількома поязанаими фільмами
-там є (актори, режисери, продюсери і тд)
-мені треба лише актори,
-треба один фільтр який фільтрує по професії
-отримую тоді ті самі списки але без інших професій
-
-в html треба poster, name, title_movie, і все
-круглий постер в ряд, під Імя та назва одного фільму
-
-
-зроблю слайс по акторах на сторінку максимум 6 чи 5 
-
-
-
-"""
-        
 
 
 

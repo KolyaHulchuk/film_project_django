@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameModel(  # перейменував одну таблицю
+        migrations.RenameModel(  # UserMovies renamed to Watchlist to better reflect its purpose
             old_name='UserMovies',
             new_name='Watchlist',  
         ),

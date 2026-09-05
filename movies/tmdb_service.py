@@ -13,19 +13,22 @@ class TMDBClient:
     IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 
     def __init__(self, api_key=None, languages=None):
-        self.api_key = api_key or settings.TMDB_API_KEY # Якщо api_key не передано, візьми settings.TMDB_API_KEY
+        self.api_key = api_key or settings.TMDB_API_KEY
         self.languages = languages or ["en"]
 
     def _request(self, endpoint, params=None):
         url = f"{self.BASE_URL}/{endpoint}"
-        params = params or {} # # якщо параметри не передані  створюю порожній словник
-        params["api_key"] = self.api_key # додаю до параметрів ключ API, щоб авторизувати запит до TMDB
+        params = params or {}
+        params["api_key"] = self.api_key
         response = requests.get(url, params=params)
         if response.status_code == 200:
-            return response.json() # — це метод, який перетворює JSON-відповідь з сервера на Python-словник.
+            return response.json()
         else:
             logging.warning(f"TMDB API error {response.status_code} for endpoint '{endpoint}")
-        return {} # тут пусто бо дані даля обробляюст і там вже будуть добавлений результ та сторінки
+        # Empty dict on failure, not an exception: callers (get_list/enrich_item/etc.)
+        # check for missing keys and raise TMDBFetchError themselves, which is what
+        # keeps a failed TMDB call from ever being written to the Redis cache.
+        return {}
 
 
     def get_movie_by_tmdb_id(self, tmdb_id):
@@ -102,9 +105,14 @@ class TMDBClient:
     
     
     def get_list(self, endpoint, page=1, **kwargs):
+        # `fetch` is only ever invoked by cache_data_movie() below on a cache
+        # miss, so its return value is exactly what ends up written to Redis.
+        # Raising TMDBFetchError instead of returning on failure is what tells
+        # _cache_aside() to hand the fallback straight back to the caller
+        # without caching it (see redis_services.TMDBFetchError).
         def fetch():
             data = self._request(endpoint, {"language": "en", "page": page, **kwargs})
-        
+
             max_page = kwargs.get("max_page", 10)
             if not data or "results" not in data:
                 raise TMDBFetchError({
@@ -113,16 +121,16 @@ class TMDBClient:
                     "total_pages": 1
                 })
 
+            # TMDB can repeat the same item across discover pages when filters
+            # overlap; drop duplicates by id before normalizing.
             uniq_results = []
             seen_id = set()
 
-        
             for result in data["results"]:
                 if result["id"] not in seen_id:
                     seen_id.add(result["id"])
                     uniq_results.append(result)
-                
-                
+
             uniq_results = self._type_items(uniq_results)
 
             return {
@@ -137,7 +145,7 @@ class TMDBClient:
         return result
 
    
-    def search_movies(self, query): # query — це рядок із того, що ввів користувач у форму пошуку 
+    def search_movies(self, query):
         seen_ids = set()
         combined = []
 
@@ -171,6 +179,9 @@ class TMDBClient:
     def enrich_item(self, item, media_type):
         tmdb_id = item["id"]
 
+        # Same cache-aside/TMDBFetchError pattern as get_list(): only the
+        # enrichment fields get cached (per tmdb_id, not per list/page), so
+        # every category page sharing an item reuses the same cache entry.
         def fetch():
             details = (
                 self.get_movie_by_tmdb_id(tmdb_id)

@@ -146,7 +146,7 @@
 
 
 
-<!-- Десктоп — ховаємо на мобільному -->
+<!-- Desktop pagination — hidden on small screens -->
 {% if is_paginated %}
 <div class="pagination d-none d-md-flex">
     {% if page_obj.has_previous %}
@@ -168,7 +168,7 @@
     {% endif %}
 </div>
 
-<!-- Мобільна — показуємо тільки на телефоні -->
+<!-- Mobile pagination — shown only on small screens -->
 <div class="pagination-mobile d-flex d-md-none">
     {% if page_obj.has_previous %}
     <a href="?page=1" class="pagination-mobile-btn">«</a>

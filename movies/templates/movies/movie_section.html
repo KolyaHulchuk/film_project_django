@@ -24,7 +24,8 @@
         <div class="movie-card-scroll">
             <div class="card-poster">
                 {% if item.poster_path %}
-                    <img src="https://image.tmdb.org/t/p/w500{{ item.poster_path }}" alt="{% if title %}{{ item.title }}{% else %}{{ item.name }}{% endif %}">  <!-- якщо фільм то тайтл інакше тв  по дефолту -->
+                    <img src="https://image.tmdb.org/t/p/w500{{ item.poster_path }}" alt="{% if title %}{{ item.title }}{% else %}{{ item.name }}{% endif %}">  <!-- movies use "title", TV shows use "name" -->
+
                 {% else %}
                     <img src="{% static 'movies/image/default_poster.jpg' %}" alt="None">
                 {% endif %}

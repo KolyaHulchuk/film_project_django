@@ -68,10 +68,12 @@ COUNTRY_CODES = {
 def normalize_country(country_code):
 
 
-    if not country_code:  # якщо користувач нічого не ввів чи не вибрав
-        return None   #  повертаєм нічого
-    
-    return COUNTRY_CODES.get(country_code.strip().upper(),  country_code) # take country in COUNTRY_CODES EXAMPLE: UA==UA = Ukrain 
+    if not country_code:  # no country filter selected/submitted
+        return None
+
+    # Look up the full country name; fall back to the raw code if TMDB
+    # returns an ISO code we haven't mapped yet (e.g. "UA" -> "Ukraine").
+    return COUNTRY_CODES.get(country_code.strip().upper(), country_code)
 
 
 def normalize_countries(country_list):
