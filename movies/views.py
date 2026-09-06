@@ -16,6 +16,7 @@ from movies.tasks import get_ai_recommendation_task
 from users.models import Watchlist
 
 from .models import Genre, Movies
+from .throttling import AIRecommendationThrottle
 from .tmdb_service import (
     TMDBClient,
 )
@@ -488,6 +489,19 @@ class MovieView(AllMoviesView):
 def ai_recomendations(request):
     message = request.GET.get("message", "")
     media_type = request.GET.get("type", "all")
+
+    throttle = AIRecommendationThrottle()
+    if not throttle.allow_request(request, view=None):
+        wait_seconds = throttle.wait() or 3600
+        minutes = max(1, round(wait_seconds / 60))
+        return JsonResponse(
+            {
+                "error": f"AI request limit exceeded. Please try again in {minutes} minutes.",
+                "retry_after": round(wait_seconds),
+            },
+            status=429,
+        )
+
     task = get_ai_recommendation_task.delay(request.user.id, message, media_type)
     return JsonResponse({"task_id": task.id})
 

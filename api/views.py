@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 
 from movies.models import Genre, Movies, Rating
 from movies.services import get_ai
+from movies.throttling import AIRecommendationAnonThrottle, AIRecommendationThrottle
 from movies.tmdb_service import TMDBClient
 from users.models import Watchlist
 
@@ -70,6 +71,7 @@ class WatchlistDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class RecommendationsAiView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [AIRecommendationThrottle, AIRecommendationAnonThrottle]
 
     def get(self, request):
         message = request.query_params.get("message", "")

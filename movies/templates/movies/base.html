@@ -172,14 +172,21 @@
                         // /movies/ai/ only enqueues the Celery task and returns its id right away
                         const url = '/movies/ai/?message=' + encodeURIComponent(msg) + '&type=' + this.mediaType;
                         const response = await fetch(url);
-                        const data = await response.json(); // { task_id: '...' }
+                        const data = await response.json(); // { task_id: '...' } or { error: '...' } when rate-limited
 
-                        const result = await this.pollAiTask(data.task_id);
+                        if (response.status === 429 || !data.task_id) {
+                            this.messages.push({
+                                text: data.error || 'Ліміт запитів вичерпано, спробуйте пізніше.',
+                                type: 'ai'
+                            });
+                        } else {
+                            const result = await this.pollAiTask(data.task_id);
 
-                        this.messages.push({
-                            text: result.answer || result.error || 'Error',
-                            type: 'ai'
-                        });
+                            this.messages.push({
+                                text: result.answer || result.error || 'Error',
+                                type: 'ai'
+                            });
+                        }
 
                     } catch (e) {
                         // fetch throws only on network failure
