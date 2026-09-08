@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import ssl
 from datetime import timedelta
 from pathlib import Path
 
@@ -44,15 +45,24 @@ CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
-CELERY_BROKER_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = "Europe/Kyiv"
+
+if REDIS_URL.startswith("rediss://"):
+    # Upstash (and other hosted Redis) require TLS - kombu's redis transport
+    # needs ssl_cert_reqs set explicitly, it won't infer it from the URL scheme.
+    _redis_ssl_options = {"ssl_cert_reqs": ssl.CERT_REQUIRED}
+    CELERY_BROKER_USE_SSL = _redis_ssl_options
+    CELERY_REDIS_BACKEND_USE_SSL = _redis_ssl_options
 
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+        "LOCATION": REDIS_URL,
     }
 }
 

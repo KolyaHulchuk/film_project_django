@@ -27,8 +27,8 @@ def _cache_aside(cache_key, fetch_function, ttl):
     cached = None
     try:
         cached = r.get(cache_key)
-    except redis.exceptions.RedisError:
-        logger.warning("Redis unavailable, skipping cache lookup for %s", cache_key)
+    except redis.exceptions.RedisError as exc:
+        logger.warning("Redis unavailable, skipping cache lookup for %s: %r", cache_key, exc)
     lookup_ms = (time.perf_counter() - lookup_start) * 1000
     logger.debug("[cache] GET %s -> %s in %.1fms", cache_key, "HIT" if cached is not None else "MISS", lookup_ms)
 
@@ -47,8 +47,8 @@ def _cache_aside(cache_key, fetch_function, ttl):
 
     try:
         r.set(cache_key, json.dumps(result), ex=ttl)
-    except redis.exceptions.RedisError:
-        logger.warning("Redis unavailable, skipping cache store for %s", cache_key)
+    except redis.exceptions.RedisError as exc:
+        logger.warning("Redis unavailable, skipping cache store for %s: %r", cache_key, exc)
 
     return result
 
