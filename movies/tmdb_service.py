@@ -5,7 +5,7 @@ from datetime import datetime
 import requests
 from django.conf import settings
 
-from .redis_services import TMDBFetchError, cache_data_movie, cache_genres, cache_item_detail
+from .redis_services import TMDBFetchError, cache_data_movie, cache_genres, cache_item_detail, cache_items_detail
 
 
 class TMDBClient:
@@ -159,12 +159,10 @@ class TMDBClient:
         except (TypeError, ValueError) as err:
             raise ValueError("Uknown") from err
 
-    def enrich_item(self, item, media_type):
-        tmdb_id = item["id"]
-
-        # Same cache-aside/TMDBFetchError pattern as get_list(): only the
-        # enrichment fields get cached (per tmdb_id, not per list/page), so
-        # every category page sharing an item reuses the same cache entry.
+    def _enrichment_fetcher(self, tmdb_id, media_type):
+        # Same TMDBFetchError pattern as get_list(): only the enrichment
+        # fields get cached (per tmdb_id, not per list/page), so every
+        # category page sharing an item reuses the same cache entry.
         def fetch():
             details = self.get_movie_by_tmdb_id(tmdb_id) if media_type == "movie" else self.get_tv_by_tmdb_id(tmdb_id)
             if not details:
@@ -189,9 +187,22 @@ class TMDBClient:
                 "media_type": media_type,
             }
 
-        enrichment = cache_item_detail("item", media_type, tmdb_id, fetch)
+        return fetch
+
+    def enrich_item(self, item, media_type):
+        tmdb_id = item["id"]
+        enrichment = cache_item_detail("item", media_type, tmdb_id, self._enrichment_fetcher(tmdb_id, media_type))
         item.update(enrichment)
         return item
 
     def enrich_items(self, items, media_type):
-        return [self.enrich_item(item, media_type) for item in items]
+        # Batched: one Redis MGET for every item's cache key up front, then
+        # one pipelined write for whatever missed - see cache_items_detail()
+        # for why this matters a lot more against a hosted Redis than a
+        # local one.
+        lookups = [(item["id"], self._enrichment_fetcher(item["id"], media_type)) for item in items]
+        enrichment_by_id = cache_items_detail("item", media_type, lookups)
+
+        for item in items:
+            item.update(enrichment_by_id[item["id"]])
+        return items
