@@ -51,6 +51,11 @@ CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = "Europe/Kyiv"
+# kombu's redis transport defaults to a 1s BRPOP timeout when idle, re-issuing BRPOP
+# in a tight loop - on a metered Redis provider (commands/month quota) this alone
+# burns through the quota. 10s cuts idle BRPOP volume ~10x with no real task-pickup
+# latency cost, since BRPOP still wakes immediately when a task is actually pushed.
+CELERY_BROKER_TRANSPORT_OPTIONS = {"polling_interval": 10.0}
 
 if REDIS_URL.startswith("rediss://"):
     # Upstash (and other hosted Redis) require TLS - kombu's redis transport
