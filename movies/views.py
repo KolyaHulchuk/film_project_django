@@ -63,7 +63,7 @@ class AllMoviesView(View):
 
         if request.user.is_authenticated:
             step_start = time.perf_counter()
-            watchlist = Watchlist.objects.filter(user=request.user)
+            watchlist = Watchlist.objects.filter(user=request.user).select_related("movie")
 
             watched_map = {}
 
@@ -75,12 +75,7 @@ class AllMoviesView(View):
                     watchlist_obj = watched_map[item["id"]]
                     item["is_watched"] = watchlist_obj.watched  # is_watched — flag from watchlist
                     item["watchlist_id"] = watchlist_obj.id
-                    print(f"✅ Знайшов: {item.get('title')} watched={watchlist_obj.watched}")
-
-                print(f"❌ Не в watchlist: {item.get('title')} id={item['id']}")
             print(f"[timing] watchlist_annotation: {(time.perf_counter() - step_start) * 1000:.1f}ms")
-
-        current_filters = request.GET.urlencode()
 
         without_filters_page = request.GET.copy()  # Copy current filters without the page parameter
         without_filters_page.pop("page", None)  # Prevent duplicating the page parameter in the URL
@@ -104,7 +99,6 @@ class AllMoviesView(View):
         else:
             template = self.template_name
 
-        print(context)
         step_start = time.perf_counter()
         response = render(request, template, context)
         print(f"[timing] render: {(time.perf_counter() - step_start) * 1000:.1f}ms")
