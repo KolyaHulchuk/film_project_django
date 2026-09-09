@@ -8,4 +8,5 @@ media/*
 
 staticfiles/
 .env
+CV_NOTES.md
 	
