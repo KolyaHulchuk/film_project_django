@@ -66,12 +66,12 @@ def test_add_watchlist_without_login(client, mocker, movie):
 
 @pytest.mark.django_db
 def test_toggle_watchlist(client, user, movie, login, watchlist):
-    response = client.post("/users/watchlist/toggle/1")
+    response = client.post(f"/users/watchlist/toggle/{watchlist.id}")
 
     assert response.status_code == 200
     assert response.content == b"OK"
 
-    item = Watchlist.objects.get(id=1)
+    item = Watchlist.objects.get(id=watchlist.id)
     assert item.watched
 
 
@@ -91,7 +91,7 @@ def test_search_watchlist(client, movie, user, login, watchlist):
 @pytest.mark.django_db
 def test_delete_watchlist(client, login, user, movie, watchlist):
 
-    response = client.delete("/users/watchlist/delete/1")
+    response = client.delete(f"/users/watchlist/delete/{watchlist.id}")
 
     assert response.status_code == 302
     assert Watchlist.objects.count() == 0

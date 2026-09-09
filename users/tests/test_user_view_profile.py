@@ -16,7 +16,7 @@ def test_profile(client):
 
     user.refresh_from_db()  # pick up the changes saved by the view's POST handler
 
-    assert user.email == "mack@gmail.com"
+    assert user.email == "mac@gmail.com"
     assert user.username == "Mac_Dub"
 
     assert response.status_code == 200

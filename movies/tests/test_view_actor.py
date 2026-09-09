@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from movies.tmdb_service import TMDBClient
@@ -75,13 +73,7 @@ def value():
 
 @pytest.fixture
 def tmdb(mocker, value):
-    fake_client = MagicMock()
-
-    mocker.patch("movies.views.TMDBClient", return_value=fake_client)
-
-    fake_client.get_person.return_value = value
-
-    return fake_client
+    return mocker.patch.object(TMDBClient, "get_person", return_value=value)
 
 
 def test_popular_actor(client, tmdb, value):
