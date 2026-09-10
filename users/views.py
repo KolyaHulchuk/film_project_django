@@ -144,6 +144,7 @@ def search_watchlist(request):
     )
 
 
+@method_decorator(login_required, name="dispatch")
 class WatchlistView(ListView):
     model = Watchlist
     template_name = "users/watchlist.html"

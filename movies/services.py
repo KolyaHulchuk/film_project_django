@@ -16,7 +16,7 @@ def get_ai(user, message="", media_type="all"):
     watchlist = Watchlist.objects.filter(user=user).select_related("movie")
 
     if not watchlist.exists():
-        return {"error": "Please add movie for your wathclist"}
+        return {"error": "Please add a movie to your watchlist"}
 
     movie_list = []
     for item in watchlist[:20]:
