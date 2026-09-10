@@ -153,6 +153,9 @@ class TMDBClient:
     def get_release_date(details, media_type):
         raw_date = details.get("release_date") if media_type == "movie" else details.get("first_air_date")
 
+        if not raw_date:
+            return None
+
         try:
             date_obj = datetime.strptime(raw_date, "%Y-%m-%d")
             return date_obj.strftime("%d.%m.%Y")
