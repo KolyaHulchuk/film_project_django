@@ -150,25 +150,35 @@
                     + Add to Watchlist
                 </a>
                 {% endif %}
-
-                {% if trailer %}
-                <a href="#trailer" class="detail-btn-trailer">
-                    <i class="bi bi-play-circle-fill"></i>
-                    Trailer
-                </a>
-                {% endif %}
             </div>
+
+            <!-- Gallery -->
+            {% if gallery %}
+            <div class="detail-gallery-section">
+                <div class="detail-gallery-scroll">
+                    {% for image_url in gallery %}
+                    <img src="{{ image_url }}"
+                         alt="{{ data.title }} still {{ forloop.counter }}"
+                         class="detail-gallery-img"
+                         loading="lazy">
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Trailer -->
             {% if trailer %}
-            <div class="detail-trailer-section" id="trailer">
-                <h3 class="detail-trailer-title">Trailer</h3>
+            <div class="detail-trailer-section">
                 <div class="detail-trailer-wrapper">
+                    <!-- playsinline avoids iOS pushing playback into the native fullscreen
+                         player; sandbox (no allow-top-navigation) stops a stray tap on the
+                         player's own YouTube logo/link overlays from navigating this page away. -->
                     <iframe
-                        src="https://www.youtube.com/embed/{{ trailer.key }}"
+                        src="https://www.youtube.com/embed/{{ trailer.key }}?playsinline=1&rel=0&modestbranding=1"
                         title="{{ trailer.name|default:'Trailer' }}"
                         referrerpolicy="strict-origin-when-cross-origin"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation"
                         allowfullscreen>
                     </iframe>
                 </div>

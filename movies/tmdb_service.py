@@ -78,22 +78,37 @@ class TMDBClient:
 
         return None
 
+    @staticmethod
+    def _select_backdrops(images, limit=6):
+        """Return up to `limit` full-size URLs from a TMDB images.backdrops list."""
+        backdrops = images.get("backdrops", []) if images else []
+        return [
+            f"https://image.tmdb.org/t/p/w780{backdrop['file_path']}"
+            for backdrop in backdrops[:limit]
+            if backdrop.get("file_path")
+        ]
+
     def get_credit(self, tmdb_id, media_type):
-        # append_to_response bundles videos into the same request this view
-        # already makes for cast/crew, instead of adding a second TMDB call
-        # just to look up the trailer.
+        # append_to_response bundles videos/images into the same request this
+        # view already makes for cast/crew, instead of adding extra TMDB calls
+        # just to look up the trailer and gallery backdrops.
         def fetch():
-            data = self._request(f"{media_type}/{tmdb_id}", {"append_to_response": "credits,videos"})
+            data = self._request(
+                f"{media_type}/{tmdb_id}",
+                {"append_to_response": "credits,videos,images", "include_image_language": "en,null"},
+            )
             if not data:
-                raise TMDBFetchError({"cast": [], "crew": [], "trailer": None})
+                raise TMDBFetchError({"cast": [], "crew": [], "trailer": None, "backdrops": []})
 
             credits = data.get("credits", {})
             videos = data.get("videos", {}).get("results", [])
+            images = data.get("images", {})
 
             return {
                 "cast": credits.get("cast", []),
                 "crew": credits.get("crew", []),
                 "trailer": self._select_trailer(videos),
+                "backdrops": self._select_backdrops(images),
             }
 
         return cache_item_detail("credits", media_type, tmdb_id, fetch)

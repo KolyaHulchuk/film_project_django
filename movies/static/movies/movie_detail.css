@@ -253,53 +253,43 @@
     transform: translateY(0);
 }
 
-.detail-btn-trailer {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background: transparent;
-    color: var(--c-text);
-    border: 1px solid var(--c-border);
-    border-radius: 10px;
-    padding: 16px 32px;
-    font-size: 17px;
-    font-weight: 700;
-    font-family: var(--font-body);
-    text-decoration: none;
-    cursor: pointer;
-    transition: all 0.25s;
-    letter-spacing: 0.2px;
+/* == GALLERY == */
+.detail-gallery-section {
+    margin-bottom: 52px;
 }
 
-.detail-btn-trailer i {
-    font-size: 20px;
-    color: var(--c-accent);
+.detail-gallery-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.25) transparent;
 }
 
-.detail-btn-trailer:hover {
-    background: rgba(255,255,255,0.08);
-    border-color: rgba(255,255,255,0.2);
-    color: #fff;
-    transform: translateY(-2px);
+.detail-gallery-scroll::-webkit-scrollbar {
+    height: 6px;
 }
 
-.detail-btn-trailer:active {
-    transform: translateY(0);
+.detail-gallery-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.25);
+    border-radius: 4px;
+}
+
+.detail-gallery-img {
+    flex: 0 0 auto;
+    width: 280px;
+    height: 170px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: rgba(255,255,255,0.05);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
 }
 
 /* == TRAILER == */
 .detail-trailer-section {
     margin-bottom: 52px;
-}
-
-.detail-trailer-title {
-    font-family: var(--font-display);
-    font-size: 2rem;
-    color: #fff;
-    letter-spacing: 2px;
-    margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--c-border);
 }
 
 .detail-trailer-wrapper {
@@ -411,6 +401,14 @@
         width: 200px;
     }
 
+    /* `align-items: center` above sizes flex items to their own content
+       instead of stretching them, so without an explicit width .detail-content
+       (and everything inside it: title, trailer, gallery) grows to fit its
+       widest unwrapped line instead of wrapping to the column's width. */
+    .detail-content {
+        width: 100%;
+    }
+
     .detail-title {
         font-size: 3rem;
         text-align: center;
@@ -442,5 +440,10 @@
     .detail-cast-grid {
         grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
         gap: 12px;
+    }
+
+    .detail-gallery-img {
+        width: 200px;
+        height: 120px;
     }
 }

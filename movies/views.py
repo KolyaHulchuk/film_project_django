@@ -381,12 +381,14 @@ class MoviesDetailView(View):
 
         cast = credits.get("cast", [])[:12]
         trailer = credits.get("trailer")
+        gallery = credits.get("backdrops", [])
 
         context = {
             "data": data,
             "director": director,
             "cast": cast,
             "trailer": trailer,
+            "gallery": gallery,
         }
 
         return render(request, "movies/movies_detail.html", context)
