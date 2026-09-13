@@ -150,7 +150,30 @@
                     + Add to Watchlist
                 </a>
                 {% endif %}
+
+                {% if trailer %}
+                <a href="#trailer" class="detail-btn-trailer">
+                    <i class="bi bi-play-circle-fill"></i>
+                    Trailer
+                </a>
+                {% endif %}
             </div>
+
+            <!-- Trailer -->
+            {% if trailer %}
+            <div class="detail-trailer-section" id="trailer">
+                <h3 class="detail-trailer-title">Trailer</h3>
+                <div class="detail-trailer-wrapper">
+                    <iframe
+                        src="https://www.youtube.com/embed/{{ trailer.key }}"
+                        title="{{ trailer.name|default:'Trailer' }}"
+                        referrerpolicy="strict-origin-when-cross-origin"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen>
+                    </iframe>
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Cast -->
             {% if cast %}

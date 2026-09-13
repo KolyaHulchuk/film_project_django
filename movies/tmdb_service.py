@@ -52,12 +52,49 @@ class TMDBClient:
 
         return cache_genres(media_type, fetch)
 
+    # Priority order for _select_trailer(): (video "type", "official" flag).
+    # Checked top to bottom; the first (type, official) pair with a matching
+    # YouTube video wins. "Clip" has no official/unofficial distinction in
+    # the spec, so it's handled separately as the final fallback.
+    _TRAILER_PRIORITY = (("Trailer", True), ("Trailer", False), ("Teaser", True), ("Teaser", False))
+
+    @staticmethod
+    def _select_trailer(videos):
+        """Pick the single most relevant YouTube video from a TMDB videos.results list.
+
+        Priority: official Trailer > Trailer > official Teaser > Teaser > Clip.
+        Returns None if nothing matches.
+        """
+        youtube_videos = [v for v in videos if v.get("site") == "YouTube"]
+
+        for video_type, official in TMDBClient._TRAILER_PRIORITY:
+            for video in youtube_videos:
+                if video.get("type") == video_type and bool(video.get("official")) == official:
+                    return video
+
+        for video in youtube_videos:
+            if video.get("type") == "Clip":
+                return video
+
+        return None
+
     def get_credit(self, tmdb_id, media_type):
+        # append_to_response bundles videos into the same request this view
+        # already makes for cast/crew, instead of adding a second TMDB call
+        # just to look up the trailer.
         def fetch():
-            data = self._request(f"{media_type}/{tmdb_id}/credits")
+            data = self._request(f"{media_type}/{tmdb_id}", {"append_to_response": "credits,videos"})
             if not data:
-                raise TMDBFetchError({"cast": [], "crew": []})
-            return data
+                raise TMDBFetchError({"cast": [], "crew": [], "trailer": None})
+
+            credits = data.get("credits", {})
+            videos = data.get("videos", {}).get("results", [])
+
+            return {
+                "cast": credits.get("cast", []),
+                "crew": credits.get("crew", []),
+                "trailer": self._select_trailer(videos),
+            }
 
         return cache_item_detail("credits", media_type, tmdb_id, fetch)
 

@@ -380,11 +380,13 @@ class MoviesDetailView(View):
         director = next((p for p in credits.get("crew", []) if p["job"] == "Director"), None)
 
         cast = credits.get("cast", [])[:12]
+        trailer = credits.get("trailer")
 
         context = {
             "data": data,
             "director": director,
             "cast": cast,
+            "trailer": trailer,
         }
 
         return render(request, "movies/movies_detail.html", context)
