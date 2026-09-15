@@ -132,6 +132,19 @@ def cache_items_detail(kind, media_type, items):
     return results
 
 
+def cache_search_results(query, fetch_function):
+    # Same case/whitespace-only normalization icontains + TMDB search already
+    # apply, applied here only to the cache key - "Batman"/" batman " collapse
+    # to one entry without changing what's actually sent to the DB/TMDB.
+    normalized_query = " ".join(query.split()).lower()
+    cache_key = f"movies:search:v1:{normalized_query}"
+    # TTL much longer than the list/item caches: unlike category pages, a
+    # search's underlying data (which titles match, their tmdb_ids) rarely
+    # changes, and the expensive part - one TMDB detail call per result via
+    # get_or_create_media() - is skipped entirely on a hit.
+    return _cache_aside(cache_key, fetch_function, ttl=604800)
+
+
 def cache_genres(media_type, fetch_function):
     cache_key = f"movies:genres:v1:{media_type}"
     # TTL is much longer than even cache_item_detail's: TMDB's genre list is

@@ -16,6 +16,7 @@ from movies.tasks import get_ai_recommendation_task
 from users.models import Watchlist
 
 from .models import Genre, Movies
+from .redis_services import TMDBFetchError, cache_search_results
 from .throttling import AIRecommendationThrottle
 from .tmdb_service import (
     TMDBClient,
@@ -238,9 +239,8 @@ class HomeView(View):
 
 class SerachView(View):
     def get(self, request):
-        query = request.GET.get("q", "")
+        query = request.GET.get("q", "").strip()
         results = []
-        seen_ids = set()  # Fetch data from TMDB
 
         watched_map = {}
 
@@ -250,18 +250,57 @@ class SerachView(View):
             for w in watchlist:
                 watched_map[w.movie.tmdb_id] = w
 
-        if query:  # Search in the local database first
-            local_movies = Movies.objects.filter(
-                title__icontains=query
-            )  # icontains performs a case-insensitive substring search
-            for movie in local_movies:  # icontains is a built-in Django filter for case-insensitive substring search.
-                if movie.tmdb_id and movie.tmdb_id not in seen_ids:
-                    if movie.tmdb_id in watched_map:
-                        watchlist_obj = watched_map[movie.tmdb_id]  #  get the Watchlist object
-                        movie.is_watched = watchlist_obj.watched  # True if watched, False if not
-                        movie.watchlist_id = watchlist_obj.id  # attach watchlist data to movie object
+        if query:
+            # matched: ordered, deduped list of (tmdb_id, media_type) pairs -
+            # cached per normalized query for 7 days (see cache_search_results).
+            # It never carries per-user state (watched/watchlist_id), same rule
+            # AllMoviesView follows for its own caching.
+            matched = cache_search_results(query, self._search_fetcher(query))
 
-                    results.append(movie)
+            # genres is a ManyToManyField, so movie.genres.all() in the template
+            # is a separate DB query per movie (20 movies = 20 extra queries).
+            # prefetch_related("genres") loads all of them in one extra query
+            # up front instead, so Django reuses that instead of hitting the DB
+            # again per movie. Same results, fewer round trips - with TMDB
+            # calls now skipped on a cache hit, this was the next biggest cost.
+            movies_by_id = {
+                m.tmdb_id: m
+                for m in Movies.objects.filter(tmdb_id__in=[tmdb_id for tmdb_id, _ in matched]).prefetch_related(
+                    "genres"
+                )
+            }
+
+            for tmdb_id, media_type in matched:
+                # Normally a cache hit already has the row (fetch() below only
+                # ever caches ids it just created/found locally). Falls back to
+                # a fresh TMDB fetch only if the local row was since removed.
+                movie = movies_by_id.get(tmdb_id) or get_or_create_media(tmdb_id, media_type)
+                if movie is None:
+                    continue
+
+                if movie.tmdb_id in watched_map:
+                    watchlist_obj = watched_map[movie.tmdb_id]
+                    movie.is_watched = watchlist_obj.watched
+                    movie.watchlist_id = watchlist_obj.id
+
+                results.append(movie)
+
+        return render(request, "movies/search.html", {"query": query, "results": results})
+
+    @staticmethod
+    def _search_fetcher(query):
+        # Reproduces the original (pre-cache) search exactly: local title
+        # match first, then TMDB search/multi, deduped by tmdb_id. The only
+        # difference is it returns (tmdb_id, media_type) pairs instead of the
+        # Movies objects themselves, so the result is JSON-cacheable.
+        def fetch():
+            seen_ids = set()
+            matched = []
+
+            local_movies = Movies.objects.filter(title__icontains=query)
+            for movie in local_movies:
+                if movie.tmdb_id and movie.tmdb_id not in seen_ids:
+                    matched.append((movie.tmdb_id, movie.media_type))
                     seen_ids.add(movie.tmdb_id)
 
             tmdb_results = TMDBClient().search_movies(query)  # Returns a list of movies and TV shows from TMDB
@@ -272,20 +311,29 @@ class SerachView(View):
                     continue
 
                 tmdb_id = item["id"]
-                obj = get_or_create_media(tmdb_id, media_type)
+                if tmdb_id in seen_ids:
+                    continue
 
-                if obj.tmdb_id in watched_map:
-                    watchlist_obj = watched_map[obj.tmdb_id]
-                    obj.is_watched = (
-                        watchlist_obj.watched
-                    )  # is_watched is the column name we create in the dictionary that comes from the API
-                    obj.watchlist_id = watchlist_obj.id
+                obj = get_or_create_media(tmdb_id, media_type)  # still does the real TMDB detail fetch, once
+                # None if TMDB had no data for this id (added check - original
+                # code would crash here with AttributeError). continue = skip
+                # this item, go to the next one in tmdb_results.
+                if obj is None:
+                    continue
 
-                if obj.tmdb_id not in seen_ids:
-                    results.append(obj)
-                    seen_ids.add(obj.tmdb_id)
+                matched.append((tmdb_id, media_type))
+                seen_ids.add(tmdb_id)
 
-        return render(request, "movies/search.html", {"query": query, "results": results})
+            if not matched:
+                # Don't cache an empty result: it's indistinguishable here from
+                # a transient TMDB failure (search/multi silently returns no
+                # results on error rather than raising), so a real outage
+                # would otherwise get cached as "no results" for 7 days.
+                raise TMDBFetchError([])
+
+            return matched
+
+        return fetch
 
 
 def get_country(data, media_type):
