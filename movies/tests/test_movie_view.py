@@ -26,7 +26,7 @@ def tmdb(mocker):
         "page": 1,
     }
 
-    fake_client.enrich_items.return_value = [
+    fake_client.annotate_items.return_value = [
         {"id": 1, "tmdb_id": 1, "poster_path": "", "title": "Hobbit", "media_type": "movie"}
     ]
     fake_client.get_genres.return_value = [{"id": 1, "name": "Adventure"}, {"id": 2, "name": "Fantasy"}]

@@ -60,7 +60,7 @@ def item_value():
     ]
 
 
-@pytest.fixturejson
+@pytest.fixture
 def mock(mocker):
     return mocker.patch("movies.tmdb_service.requests.get")
 
@@ -150,3 +150,75 @@ def test_get_release_date_invalid(tmdb_client):
 
     with pytest.raises(ValueError):
         tmdb_client.get_release_date({"release_date": "invalid_date"}, "movie")
+
+
+def test_annotate_items_movie(tmdb_client):
+    items = [
+        {
+            "id": 4247,
+            "title": "Scary Movie",
+            "genre_ids": [35, 27],
+            "release_date": "2000-07-07",
+            "vote_average": 6.384,
+        }
+    ]
+    genres = [{"id": 35, "name": "Comedy"}, {"id": 27, "name": "Horror"}]
+
+    result = tmdb_client.annotate_items(items, "movie", genres)
+
+    assert result[0]["tmdb_id"] == 4247
+    assert result[0]["media_type"] == "movie"
+    assert result[0]["tmdb_rating"] == 6.384
+    assert result[0]["release_date"] == "07.07.2000"
+    assert result[0]["genres"] == ["Comedy", "Horror"]
+
+
+def test_annotate_items_tv(tmdb_client):
+    items = [
+        {
+            "id": 1396,
+            "name": "Breaking Bad",
+            "genre_ids": [18, 80],
+            "first_air_date": "2008-01-20",
+            "vote_average": 8.879,
+        }
+    ]
+    genres = [{"id": 18, "name": "Drama"}, {"id": 80, "name": "Crime"}]
+
+    result = tmdb_client.annotate_items(items, "tv", genres)
+
+    assert result[0]["tmdb_id"] == 1396
+    assert result[0]["media_type"] == "tv"
+    assert result[0]["tmdb_rating"] == 8.879
+    assert result[0]["release_date"] == "20.01.2008"
+    assert result[0]["genres"] == ["Drama", "Crime"]
+
+
+def test_annotate_items_drops_unknown_genre_ids(tmdb_client):
+    items = [{"id": 1, "genre_ids": [35, 999], "release_date": "2020-01-01", "vote_average": 5.0}]
+    genres = [{"id": 35, "name": "Comedy"}]
+
+    result = tmdb_client.annotate_items(items, "movie", genres)
+
+    assert result[0]["genres"] == ["Comedy"]
+
+
+def test_annotate_items_invalid_release_date_becomes_none(tmdb_client):
+    items = [{"id": 1, "genre_ids": [], "release_date": "invalid_date", "vote_average": 5.0}]
+
+    result = tmdb_client.annotate_items(items, "movie", [])
+
+    assert result[0]["release_date"] is None
+
+
+def test_annotate_items_makes_no_http_calls(mocker, tmdb_client):
+    # annotate_items() must derive everything from data already in the list
+    # response - unlike enrich_item(s)/get_credit()/get_list(), it should never
+    # call _request() (and therefore never requests.get()) at all.
+    mock_request = mocker.patch.object(tmdb_client, "_request")
+    items = [{"id": 1, "genre_ids": [35], "release_date": "2020-01-01", "vote_average": 5.0}]
+    genres = [{"id": 35, "name": "Comedy"}]
+
+    tmdb_client.annotate_items(items, "movie", genres)
+
+    mock_request.assert_not_called()

@@ -53,14 +53,14 @@ class AllMoviesView(View):
         page = max(1, min(page, total_pages))
 
         step_start = time.perf_counter()
-        items = client.enrich_items(
-            data["results"], self.media_type
-        )  #  Add extra data for each item (rating, genres, etc.)
-        print(f"[timing] enrich_items: {(time.perf_counter() - step_start) * 1000:.1f}ms")
-
-        step_start = time.perf_counter()
         genres = client.get_genres(self.media_type)
         print(f"[timing] get_genres: {(time.perf_counter() - step_start) * 1000:.1f}ms")
+
+        step_start = time.perf_counter()
+        items = client.annotate_items(
+            data["results"], self.media_type, genres
+        )  #  Add extra data for each item (rating, genres, etc.) from data already in the list response - no TMDB calls
+        print(f"[timing] annotate_items: {(time.perf_counter() - step_start) * 1000:.1f}ms")
 
         if request.user.is_authenticated:
             step_start = time.perf_counter()

@@ -255,9 +255,39 @@ class TMDBClient:
         # one pipelined write for whatever missed - see cache_items_detail()
         # for why this matters a lot more against a hosted Redis than a
         # local one.
+        #
+        # Superseded by annotate_items() for category/type pages (AllMoviesView):
+        # every field this produces (except `country`) is already present in
+        # the TMDB list response, so annotate_items() derives them locally
+        # instead of firing one detail request per item. Kept here, unused,
+        # only for a caller that genuinely needs `country` (none currently do).
         lookups = [(item["id"], self._enrichment_fetcher(item["id"], media_type)) for item in items]
         enrichment_by_id = cache_items_detail("item", media_type, lookups)
 
         for item in items:
             item.update(enrichment_by_id[item["id"]])
+        return items
+
+    def annotate_items(self, items, media_type, genres):
+        """Derive card-display fields for a list of items from data the list
+        response already carries, plus an already-fetched genre list. Makes
+        zero TMDB calls - unlike enrich_items(), which fetches full detail
+        per item for the same fields.
+
+        Does NOT set `country`: category/type-page cards never render it
+        (only the detail page does, from the local Movies row). A caller
+        that needs `country` should use enrich_item/enrich_items instead.
+        """
+        genre_by_id = {genre["id"]: genre["name"] for genre in genres}
+
+        for item in items:
+            item["tmdb_id"] = item["id"]
+            item["media_type"] = media_type
+            item["tmdb_rating"] = item.get("vote_average")
+            try:
+                item["release_date"] = self.get_release_date(item, media_type)
+            except ValueError:
+                item["release_date"] = None
+            item["genres"] = [genre_by_id[gid] for gid in item.get("genre_ids", []) if gid in genre_by_id]
+
         return items
