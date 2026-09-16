@@ -71,6 +71,15 @@ CACHES = {
     }
 }
 
+# Sessions live in Redis instead of the DB: removes one cross-region DB round
+# trip (the session lookup) from every authenticated request. The app already
+# treats this same Redis instance as required for core caching to function, so
+# depending on it for sessions too isn't a new failure mode - just note that,
+# unlike cached_db, a Redis restart/eviction under memory pressure invalidates
+# active sessions (no DB fallback).
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
+
 
 # Application definition
 
@@ -142,7 +151,20 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {"default": dj_database_url.parse(os.getenv("DATABASE_URL"))}
+# conn_max_age reuses a DB connection across requests in the same worker instead
+# of opening a fresh one every time - the DB here (Neon, us-east-1) is remote,
+# so a per-request connect is a full TCP+TLS+auth handshake over that distance
+# (measured ~1.2-1.7s), vs ~150ms for a query on an already-open connection.
+# conn_health_checks=True is required alongside a nonzero conn_max_age so a
+# pooled connection Neon or the network has silently dropped gets transparently
+# reconnected instead of surfacing as an OperationalError on the next query.
+DATABASES = {
+    "default": dj_database_url.parse(
+        os.getenv("DATABASE_URL"),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+}
 
 
 # Password validation
