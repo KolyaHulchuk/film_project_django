@@ -62,11 +62,11 @@ class AddToWatchlist(View):
         if movie:
             watchlist_item, created = Watchlist.objects.get_or_create(user=request.user, movie=movie)
             if created:  # if just create
-                messages.success(request, f"{movie.title or movie.name} додано у ваш список")
+                messages.success(request, f"{movie.title or movie.name} added to your watchlist")
             else:
-                messages.info(request, f"{movie.title or movie.name} вже є у вашом списку")
+                messages.info(request, f"{movie.title or movie.name} is already in your watchlist")
         else:
-            messages.error(request, "Не вдалося знайти дані про цей фільм")
+            messages.error(request, "Could not find data for this movie")
         next_url = request.POST.get("next") or request.META.get("HTTP-REFERER") or "movies-home"
         print("AddToWatchlist called")
 
