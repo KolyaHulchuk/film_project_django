@@ -30,6 +30,7 @@ urlpatterns = [
     path("movies/", include("movies.urls")),
     path("", RedirectView.as_view(url="/movies/", permanent=False)),
     path("users/", include("users.urls")),
+    path("accounts/", include("allauth.urls")),  # social login (Google) via django-allauth
     path("api/", include("api.urls")),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtian"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

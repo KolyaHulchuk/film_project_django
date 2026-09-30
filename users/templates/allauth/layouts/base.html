@@ -1,0 +1,55 @@
+{% load i18n static %}
+{% comment %}
+Overrides allauth's own bare-bones layout (a plain "Menu: Sign In / Sign Up"
+list, no CSS at all) so every allauth page - /accounts/login/, /accounts/signup/,
+/accounts/3rdparty/signup/, /accounts/logout/, password/email management, etc. -
+matches the site's dark login/register card look instead of default browser
+styling.
+
+Deliberately NOT extending movies/base.html: that template's own {% block
+content %} would collide by name with allauth's identically-named {% block
+content %} (used by every page this file is a base for, e.g. account/login.html),
+and whichever one is more specific wins outright - there is no way to keep both.
+Standing alone avoids the collision and also skips pulling in the full
+authenticated-user chrome (navbar search box, AI assistant panel) that doesn't
+apply before a user is signed in.
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{% static 'users/login.css' %}">
+    <link rel="stylesheet" href="{% static 'users/allauth_theme.css' %}">
+    {% block extra_head %}{% endblock extra_head %}
+
+    <title>Movies.hub{% block head_title %}{% endblock head_title %}</title>
+</head>
+<body class="search-page">
+    {% block body %}
+    <div class="login-page">
+      <div class="login-card">
+        <div class="login-header">
+          <a href="{% url 'movies-home' %}" class="login-logo auth-logo-link">Movies.hub</a>
+        </div>
+        <div class="login-body">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+          {% block content %}{% endblock content %}
+        </div>
+      </div>
+    </div>
+    {% endblock body %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" defer></script>
+    {% block extra_body %}{% endblock extra_body %}
+</body>
+</html>

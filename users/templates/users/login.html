@@ -1,5 +1,5 @@
 {% extends "movies/base.html" %}
-{% load static %}
+{% load static socialaccount %}
 {% block body_class %}search-page{% endblock %}
 
 {% block extra_css %}
@@ -35,6 +35,13 @@
 
         <button type="submit" class="btn-login">Sign in</button>
       </form>
+
+      <div class="auth-or"><span>or</span></div>
+
+      <a href="{% provider_login_url 'google' process='login' %}" class="btn-google">
+        <i class="bi bi-google"></i>
+        <span>Sign in with Google</span>
+      </a>
 
       <hr class="login-divider">
 

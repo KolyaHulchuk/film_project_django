@@ -94,9 +94,18 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",  # required by allauth (SITE_ID below)
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
     "rest_framework",
     "api",
 ]
+
+# django.contrib.sites: the Site row with this id is kept in sync with the
+# deployment domain by users/migrations/0003_set_default_site.py.
+SITE_ID = 1
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -107,6 +116,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -216,6 +226,42 @@ MEDIA_URL = "/media/"
 
 LOGIN_REDIRECT_URL = "movies-home"
 LOGIN_URL = "login"
+# allauth's own /accounts/logout/ honours this; the project's /users/logout/
+# keeps its explicit next_page="login" (see users/urls.py) and is unaffected.
+LOGOUT_REDIRECT_URL = "movies-home"
+
+
+# django-allauth: social login (Google) alongside the project's own
+# username/password login, which is left exactly as it was.
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        # Credentials come from the environment, so no SocialApp row is needed
+        # in the DB (and must not exist - allauth errors on finding both).
+        "APP": {
+            "client_id": os.getenv("GOOGLE_CLIENT_ID", ""),
+            "secret": os.getenv("GOOGLE_CLIENT_SECRET", ""),
+            "key": "",
+        },
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+    }
+}
+
+# Skip allauth's intermediate "continue with Google?" confirmation page so the
+# navbar/login-page button goes straight to Google's consent screen.
+SOCIALACCOUNT_LOGIN_ON_GET = True
+
+if not DEBUG:
+    # Render terminates TLS at its proxy and forwards plain HTTP, so Django has
+    # to read the original scheme from the header it sets - otherwise allauth
+    # builds an http:// OAuth callback URL that Google rejects.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"

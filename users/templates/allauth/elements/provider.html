@@ -1,0 +1,10 @@
+{% comment %}
+One button per configured social provider (only Google, here). attrs.provider_id
+is allauth's internal id ("google"), used only to pick a bootstrap-icons glyph;
+attrs.name ("Google") is what's actually shown.
+{% endcomment %}
+{% load allauth %}
+<a href="{{ attrs.href }}" title="{{ attrs.name }}" class="auth-provider-btn">
+    {% if attrs.provider_id == "google" %}<i class="bi bi-google"></i>{% endif %}
+    <span>{{ attrs.name }}</span>
+</a>

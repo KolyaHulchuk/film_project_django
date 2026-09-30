@@ -1,0 +1,6 @@
+{% comment %} Groups the passkey / "send me a sign-in code" buttons under the main form. {% endcomment %}
+{% load allauth %}
+<div class="auth-btn-group{% if attrs.vertical %} auth-btn-group-vertical{% endif %}">
+    {% slot %}
+    {% endslot %}
+</div>

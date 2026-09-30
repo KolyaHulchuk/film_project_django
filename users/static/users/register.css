@@ -113,3 +113,49 @@
 }
 
 .register-footer-text a:hover { color: #ccc; }
+
+/* "or" separator between the password form and the social button */
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 22px 0 18px;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.auth-or::before,
+.auth-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background-color: #252525;
+}
+
+/* Same geometry as the primary button, outlined instead of filled so the
+   white fill stays reserved for the form's own submit. */
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 13px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  text-decoration: none;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.btn-google:hover {
+  background-color: #222;
+  border-color: #555;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.btn-google .bi-google { font-size: 1.1rem; }

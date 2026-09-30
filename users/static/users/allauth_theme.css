@@ -1,0 +1,191 @@
+/*
+Styles for django-allauth's own pages (/accounts/login/, /accounts/signup/,
+/accounts/3rdparty/signup/, /accounts/logout/, password/email management...).
+
+These pages render through allauth's "elements" system (allauth/elements/*.html,
+overridden in this same users/templates/allauth/ tree) rather than the site's
+own hand-rolled users/login.html and users/register.html - but they share the
+exact .login-page/.login-card/.login-header/.login-body wrapper and palette
+from login.css so they don't look like a different, unstyled site.
+*/
+
+.auth-logo-link {
+  text-decoration: none;
+  display: block;
+}
+
+/* Page heading rendered via {% element h1 %} ("Sign In", "Sign Up", ...) */
+.login-body .auth-h1 {
+  color: #ffffff;
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 18px;
+}
+
+.login-body .auth-h2 {
+  color: #888;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+  margin: 18px 0;
+}
+
+.login-body .auth-text {
+  color: #aaa;
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.login-body .auth-text a {
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.login-body .auth-text a:hover {
+  color: #ccc;
+}
+
+.auth-alert {
+  background-color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 13px 16px;
+  color: #ccc;
+  font-size: 0.95rem;
+  margin-bottom: 20px;
+}
+
+/* Inputs rendered by allauth's own widgets (no .form-control class to hook
+   into), styled the same as the hand-rolled login/register forms. */
+.auth-field .form-label {
+  color: #aaa;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: inline-block;
+}
+
+.auth-field input:not([type="checkbox"]):not([type="radio"]),
+.auth-field select,
+.auth-field textarea {
+  width: 100%;
+  background-color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 13px 16px;
+  font-size: 1.05rem;
+  transition: border-color 0.2s;
+}
+
+.auth-field input:not([type="checkbox"]):not([type="radio"]):focus,
+.auth-field select:focus,
+.auth-field textarea:focus {
+  border-color: #555;
+  outline: none;
+  color: #fff;
+}
+
+.auth-field input::placeholder,
+.auth-field textarea::placeholder {
+  color: #666;
+}
+
+.auth-field .form-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-field .form-check-label {
+  color: #aaa;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.auth-field .field-hint {
+  color: #888;
+  font-size: 0.9rem;
+  margin: 7px 0 0;
+  line-height: 1.4;
+}
+
+.auth-field .errorlist {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+}
+
+.auth-field .errorlist li,
+.login-body > .errorlist li {
+  color: #e05555;
+  font-size: 0.88rem;
+}
+
+/* Primary CTA ({% element button tags="prominent,..." %}) - same geometry as
+   the hand-rolled .btn-login/.btn-register. */
+.auth-btn-primary {
+  display: block;
+  width: 100%;
+  background-color: #ffffff;
+  color: #000;
+  border: none;
+  border-radius: 10px;
+  padding: 13px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.15s;
+  margin-top: 8px;
+}
+
+.auth-btn-primary:hover {
+  background-color: #e0e0e0;
+  color: #000;
+  transform: translateY(-1px);
+}
+
+/* Secondary actions (passkey / sign-in-code / provider links) - outlined,
+   same shape as .btn-google. */
+.auth-btn-outline,
+.auth-provider-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 13px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  text-decoration: none;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.15s;
+  margin-top: 8px;
+}
+
+.auth-btn-outline:hover,
+.auth-provider-btn:hover {
+  background-color: #222;
+  border-color: #555;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.auth-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
