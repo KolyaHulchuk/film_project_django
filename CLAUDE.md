@@ -44,12 +44,20 @@ Ruff (`pyproject.toml`) is configured with `E`, `W`, `F`, `I`, `UP`, `B`, `C4`, 
 Config is loaded via `python-dotenv` from a `.env` file at the repo root (no `.env.example` currently checked in). Required variables, per `config/settings.py`:
 
 - `SECRET_KEY` — Django secret key
-- `DATABASE_URL` — parsed with `dj_database_url`; Docker Compose runs Postgres 16, but SQLite (`db.sqlite3`) is used for local/non-Docker dev
+- `DATABASE_URL` — parsed with `dj_database_url`; **must** be set (`dj_database_url.parse(None)` raises, so there's no automatic sqlite fallback despite `db.sqlite3` existing in the repo — that file is currently just a leftover, wired to nothing). The value in `.env` points at Render's production Neon Postgres and is what Render itself uses, and what any command run directly on the host outside Docker (`venv/bin/python manage.py ...`) hits too. **Docker Compose does not use this value** — see "Local Postgres" below.
 - `TMDB_API_KEY` — TMDB API access
 - `GROQ_API_KEY` — Groq API access for the AI recommendation feature
 - `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` — comma-separated
 - `EMAIL_USER`, `EMAIL_PASS` — Gmail SMTP for password reset emails
 - `REDIS_URL` — Redis connection for both Celery (`CELERY_BROKER_URL`/`CELERY_RESULT_BACKEND`) and the TMDB list cache (`movies/redis_services.py`); defaults to `redis://localhost:6379/0` if unset. Docker Compose overrides it to `redis://redis:6379/0` (its own `redis` service) in `web`'s `environment:` block.
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — Google OAuth client, read by `SOCIALACCOUNT_PROVIDERS["google"]` for django-allauth social login (see Authentication below)
+- `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` — local-only, **not** used by Render; these seed/authenticate Docker Compose's own `db` (Postgres 16) service (see "Local Postgres, isolated from prod" below)
+
+### Local Postgres, isolated from prod (2026-09-30)
+
+Docker Compose's `web`/`worker` services build their own `DATABASE_URL` (`postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}`, pointed at the compose file's `db` service) instead of reading `DATABASE_URL` from `.env`. Previously they didn't — `web`/`worker`'s `environment:` block explicitly set `DATABASE_URL=${DATABASE_URL}`, which resolved to the same Neon URL as `.env`'s top-level value, meaning **local `docker compose up` and the deployed Render site were reading/writing the same production database** (a stray local `migrate`, test run, or manual shell poke could touch real user data). The `db` service in `docker-compose.yml` had existed the whole time but was never actually wired up.
+
+`db`'s own Postgres cluster/volume (`pgdata`) already contained a fully-migrated `film_db` database with real local data from an earlier point when this *was* wired up correctly — nothing was lost in the fix, just reconnected. Local Postgres has its own superuser (`KolyaHV`, promoted via `is_staff`/`is_superuser`) separate from both Neon (0 superusers) and the unrelated, unused `db.sqlite3` file (its own separate superuser, also `KolyaHV`, different password).
 
 ## Architecture
 
@@ -71,6 +79,19 @@ Four Django apps:
 `movies/views.py`'s `AllMoviesView` is the shared base class for every category page (popular, top rated, now playing, upcoming, anime, doramas, cartoons, TV, movie-only); subclasses set `item_func`, `template_name`, `media_type`, etc. It cross-references the logged-in user's `Watchlist` to annotate each item with watched state.
 
 Local `Movies` DB records are separate from live TMDB data — TMDB is the source of truth for browsing/search, while local `Movies` rows exist to attach `Rating`, `Comment`, and `Watchlist` entries (linked via `tmdb_id`).
+
+### Authentication (`users/`, `config/settings.py`, django-allauth)
+
+The site's own username/password login/register/password-reset views (`users/views.py`, `users/forms.py`, `users/templates/users/{login,register}.html`) are unchanged and remain the primary flow — plain `django.contrib.auth`, no custom `AUTH_USER_MODEL`.
+
+**Google login added (2026-09-30)** via `django-allauth` (already pinned in `requirements.txt` before this; the `[socialaccount]` extra plus explicit `cryptography`/`PyJWT`/`oauthlib` pins were added since base `django-allauth` doesn't declare them and Google's id_token verification needs them at runtime, not install time):
+- `INSTALLED_APPS` gained `django.contrib.sites` + the four `allauth`/`allauth.socialaccount.providers.google` apps; `SITE_ID = 1`; `MIDDLEWARE` gained `allauth.account.middleware.AccountMiddleware`; `AUTHENTICATION_BACKENDS` now lists `ModelBackend` alongside allauth's own backend.
+- `SOCIALACCOUNT_PROVIDERS["google"]["APP"]` reads `client_id`/`secret` from `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (env only — no `SocialApp` DB row; allauth errors if both exist). `SOCIALACCOUNT_LOGIN_ON_GET = True` skips allauth's intermediate confirmation page.
+- `config/urls.py` mounts `path("accounts/", include("allauth.urls"))` — this adds allauth's *own* parallel login/signup/logout pages (`/accounts/login/`, `/accounts/signup/`, etc.) alongside the site's `/users/...` ones; a signed-in-via-Google user with no matching local account lands on `/accounts/3rdparty/signup/` to pick a username.
+- Under `if not DEBUG`: `SECURE_PROXY_SSL_HEADER`/`ACCOUNT_DEFAULT_HTTP_PROTOCOL` set to `https`, since Render terminates TLS at its proxy and forwards plain HTTP — without this allauth builds an `http://` OAuth callback and Google rejects it. The redirect URI itself is derived from the incoming request (host + this proxy header), never from the `Site` row.
+- "Sign in/up with Google" button added to `users/templates/users/{login,register}.html`, styled to match their existing dark theme (`.btn-google` in `users/static/users/{login,register}.css`).
+- `users/templates/allauth/` overrides allauth's own bare-bones pages (no CSS at all by default) via its "elements" system (`allauth/elements/*.html`: `h1`, `p`, `form`, `fields`, `field`, `button`, `provider`, ...) plus `allauth/layouts/base.html`, so `/accounts/login/`, `/accounts/signup/`, `/accounts/3rdparty/signup/`, `/accounts/logout/`, password/email management all get the same `.login-page`/`.login-card` look — styled via the new `users/static/users/allauth_theme.css`. This layout deliberately does **not** extend `movies/base.html`: both templates declare a block named `content`, and allauth's own leaf pages hardcode overriding that same block name, so nesting them collides — see the comment at the top of `allauth/layouts/base.html`.
+- `users/migrations/0003_set_default_site.py` seeds the `Site` row (id=1) — originally hardcoded to the production domain, because at the time local dev and prod shared one Neon database (see "Local Postgres, isolated from prod" above) and there was only one row to get right. `0004_site_domain_per_environment.py` (added once local dev got its own database) splits this back to per-`DEBUG`: `localhost:8001` locally, the Render domain in prod. `0003`'s hardcoded value stays correct on Neon since Django never re-runs an already-applied migration there.
 
 ### AI recommendations (`movies/services.py`)
 
