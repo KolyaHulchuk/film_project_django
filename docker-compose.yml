@@ -2,6 +2,11 @@ version: '3.9'
 
 services:
     
+    # web/worker's DATABASE_URL deliberately overrides the one in .env (Neon -
+    # used by Render and by anything run directly on the host outside Docker)
+    # to point at this compose file's own `db` service instead. Local dev and
+    # production must never share a database: a stray local `migrate` or a
+    # buggy test running against Neon would touch real user data.
     web:
         build: .
         image: project
@@ -10,7 +15,7 @@ services:
         volumes:
           - .:/app
         environment:
-          - DATABASE_URL=${DATABASE_URL}
+          - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
           - REDIS_URL=redis://redis:6379/0
         env_file:
           - .env
@@ -25,7 +30,7 @@ services:
         volumes:
           - .:/app
         environment:
-          - DATABASE_URL=${DATABASE_URL}
+          - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
           - REDIS_URL=redis://redis:6379/0
         env_file:
           - .env
@@ -36,6 +41,8 @@ services:
 
     db:
         image: postgres:16
+        # POSTGRES_DB/USER/PASSWORD come from .env via env_file - same values
+        # web/worker use above to build DATABASE_URL.
         env_file:
           - .env
         volumes:
