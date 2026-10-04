@@ -1,5 +1,7 @@
+import math
 import time
 from datetime import datetime
+from functools import wraps
 
 from celery.result import AsyncResult
 from django.contrib.auth.decorators import login_required
@@ -9,15 +11,19 @@ from django.contrib.auth.decorators import login_required
 # True if the object was created,
 # False if it already existed in the database
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
 from django.views import View
+from django.views.decorators.http import require_GET, require_POST
 
 from movies.tasks import get_ai_recommendation_task
 from users.models import Watchlist
 
-from .models import Genre, Movies
+from .comments import COMMENTS_PER_PAGE, get_annotated_comment, movie_comments, normalize_sort, toggle_vote
+from .forms import CommentForm
+from .models import COMMENT_MAX_LENGTH, Comment, CommentVote, Genre, Movies
 from .redis_services import TMDBFetchError, cache_search_results
-from .throttling import AIRecommendationThrottle
+from .throttling import AIRecommendationThrottle, CommentCreateThrottle, CommentVoteThrottle
 from .tmdb_service import (
     TMDBClient,
 )
@@ -438,6 +444,8 @@ class MoviesDetailView(View):
             "trailer": trailer,
             "gallery": gallery,
         }
+        if data:
+            context.update(_comments_context(request, data))
 
         return render(request, "movies/movies_detail.html", context)
 
@@ -567,3 +575,139 @@ def ai_recommendation_status(request, task_id):
     # normally catches its own errors and returns {"error": ...} instead,
     # which is covered by the "done" branch above.
     return JsonResponse({"status": "failed", "error": str(task.result)})
+
+
+# == Comments ==
+# Server-rendered HTMX fragments (templates under movies/partials/comments/).
+# Error responses are retargeted into the section's #cm-flash box, see _comment_error().
+
+
+def _comment_error(request, message, status):
+    response = render(request, "movies/partials/comments/flash.html", {"message": message}, status=status)
+    response["HX-Retarget"] = "#cm-flash"
+    response["HX-Reswap"] = "innerHTML"
+    return response
+
+
+def _throttled_error(request, throttle):
+    minutes = max(1, math.ceil((throttle.wait() or 60) / 60))
+    return _comment_error(request, f"Too many requests. Try again in {minutes} min.", 429)
+
+
+def comment_login_required(view):
+    # @login_required would answer with a 302 to the login page, which HTMX
+    # follows and then swaps the whole login page into the comment list.
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return _comment_error(request, "Log in to do that.", 401)
+        return view(request, *args, **kwargs)
+
+    return wrapper
+
+
+def _compose_context(request, movie, form=None):
+    # `form` is passed back in on a validation error so the textarea keeps what the user typed
+    return {
+        "movie": movie,
+        "movie_url": reverse("movie-detail", args=[movie.tmdb_id, movie.media_type]),
+        "form": form or CommentForm(),
+        "comment_max_length": COMMENT_MAX_LENGTH,
+    }
+
+
+def _feed_context(request, movie, sort=None, offset=0):
+    sort = normalize_sort(sort)
+    # Offset (the number of comments already on screen) instead of a page
+    # number: deleting your own comment shifts both sides by one, so
+    # "Show more" neither skips nor repeats a comment.
+    window = list(movie_comments(movie, request.user, sort)[offset : offset + COMMENTS_PER_PAGE + 1])
+    return {
+        "movie": movie,
+        "sort": sort,
+        "sort_options": [("new", "Newest"), ("old", "Oldest")],
+        "comments": window[:COMMENTS_PER_PAGE],
+        "has_more": len(window) > COMMENTS_PER_PAGE,
+        "total": Comment.objects.filter(movie=movie).count(),  # whole thread, not just the visible batch
+        "comment_max_length": COMMENT_MAX_LENGTH,
+    }
+
+
+def _comments_context(request, movie, form=None):
+    return {**_compose_context(request, movie, form), **_feed_context(request, movie)}
+
+
+@require_GET
+def comment_list(request, movie_id):
+    movie = get_object_or_404(Movies, pk=movie_id)
+    try:
+        offset = max(0, int(request.GET.get("offset", 0)))
+    except ValueError:
+        offset = 0
+    context = _feed_context(request, movie, request.GET.get("sort"), offset)
+    # append=1 -> only the next batch + a fresh "Show more" button; otherwise the whole feed (sort switch)
+    template = "page.html" if request.GET.get("append") else "feed.html"
+    return render(request, f"movies/partials/comments/{template}", context)
+
+
+@require_POST
+@comment_login_required
+def comment_create(request, movie_id):
+    movie = get_object_or_404(Movies, pk=movie_id)
+    # The throttle is checked before validation on purpose: rejected (blank/too long)
+    # submissions count towards the limit too, so they can't be used to hammer the endpoint.
+    throttle = CommentCreateThrottle()
+    if not throttle.allow_request(request, view=None):
+        return _throttled_error(request, throttle)
+
+    form = CommentForm(request.POST)
+    if not form.is_valid():
+        return render(
+            request, "movies/partials/comments/compose.html", _compose_context(request, movie, form), status=422
+        )
+
+    # movie and user come from the URL/session, never from POST data
+    form.instance.movie = movie
+    form.instance.user = request.user
+    form.save()
+
+    # The new comment is shown by re-rendering the feed from the top, sorted "Newest"
+    return render(request, "movies/partials/comments/created.html", _comments_context(request, movie))
+
+
+@require_POST
+@comment_login_required
+def comment_delete(request, pk):
+    comment = get_object_or_404(Comment.objects.select_related("movie"), pk=pk)
+    # Authors only; there is no edit flow, deleting is the one thing an author can do to their comment.
+    # Votes are removed with the comment (CASCADE).
+    if comment.user_id != request.user.id:
+        return _comment_error(request, "You can only delete your own comments.", 403)
+
+    movie = comment.movie
+    comment.delete()
+    context = {"total": Comment.objects.filter(movie=movie).count()}
+    return render(request, "movies/partials/comments/deleted.html", context)
+
+
+@require_POST
+@comment_login_required
+def comment_vote(request, pk):
+    comment = get_object_or_404(Comment, pk=pk)
+    # Cheap input checks come before the throttle so a malformed request doesn't burn the voter's quota.
+    # toggle_vote() re-checks the own-comment rule; the check here just gives a flash message instead of a 500.
+    try:
+        value = int(request.POST.get("value", ""))
+    except ValueError:
+        value = 0
+    if value not in (CommentVote.LIKE, CommentVote.DISLIKE):
+        return _comment_error(request, "Invalid vote.", 400)
+    if comment.user_id == request.user.id:
+        return _comment_error(request, "You can't vote on your own comment.", 403)
+
+    throttle = CommentVoteThrottle()
+    if not throttle.allow_request(request, view=None):
+        return _throttled_error(request, throttle)
+
+    toggle_vote(comment, request.user, value)
+    return render(request, "movies/partials/comments/votes.html", {"comment": get_annotated_comment(pk, request.user)})

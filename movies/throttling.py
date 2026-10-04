@@ -23,3 +23,23 @@ class AIRecommendationAnonThrottle(AnonRateThrottle):
 
     def get_rate(self):
         return self.rate
+
+
+class CommentCreateThrottle(UserRateThrottle):
+    """Shared by movies.views.comment_create and api.views.CommentListCreateView."""
+
+    scope = "comment_create"
+    rate = "10/hour"
+
+    def get_rate(self):
+        return self.rate
+
+
+class CommentVoteThrottle(UserRateThrottle):
+    """Shared by movies.views.comment_vote and api.views.CommentVoteView."""
+
+    scope = "comment_vote"
+    rate = "60/min"
+
+    def get_rate(self):
+        return self.rate

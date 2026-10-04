@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from movies.models import Genre, Movies, Rating
+from movies.models import COMMENT_MAX_LENGTH, Comment, CommentVote, Genre, Movies, Rating
 from users.models import Profile, Watchlist
 
 
@@ -96,3 +96,44 @@ class WatchlistSerializer(serializers.ModelSerializer):
         model = Watchlist
         fields = ["id", "user", "movie", "movie_id", "watched"]
         read_only_fields = ["id", "user", "movie"]
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source="user.username", read_only=True)
+    avatar_url = serializers.SerializerMethodField()
+    # CharField trims surrounding whitespace and rejects blank strings by default
+    text = serializers.CharField(max_length=COMMENT_MAX_LENGTH)
+    is_owner = serializers.SerializerMethodField()
+    # Annotated by movies.comments.annotate_comments(); the defaults cover a freshly created comment
+    likes = serializers.IntegerField(read_only=True, default=0)
+    dislikes = serializers.IntegerField(read_only=True, default=0)
+    user_vote = serializers.IntegerField(read_only=True, allow_null=True, default=None)
+
+    class Meta:
+        model = Comment
+        fields = [
+            "id",
+            "movie",
+            "username",
+            "avatar_url",
+            "text",
+            "created_at",
+            "is_owner",
+            "likes",
+            "dislikes",
+            "user_vote",
+        ]
+        read_only_fields = ["movie", "created_at"]
+
+    def get_avatar_url(self, obj):
+        url = obj.author_avatar_url
+        request = self.context.get("request")
+        return request.build_absolute_uri(url) if url and request else url
+
+    def get_is_owner(self, obj):
+        request = self.context.get("request")
+        return bool(request and request.user.is_authenticated and obj.user_id == request.user.id)
+
+
+class CommentVoteSerializer(serializers.Serializer):
+    value = serializers.ChoiceField(choices=[CommentVote.LIKE, CommentVote.DISLIKE])

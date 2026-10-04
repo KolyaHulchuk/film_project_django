@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Movies
+from .models import Comment, Movies
 
 
 class MoviesAdmin(admin.ModelAdmin):
@@ -9,3 +9,11 @@ class MoviesAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Movies, MoviesAdmin)
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ["id", "movie", "user", "created_at"]
+    list_select_related = ["movie", "user"]
+    search_fields = ["text", "user__username", "movie__title"]
+    raw_id_fields = ["movie", "user"]

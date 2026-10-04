@@ -1,0 +1,57 @@
+{% comment %}
+Comments block on the movie detail page. Every fragment inside is re-rendered by
+the comment_* views in movies/views.py and swapped in via HTMX; Alpine only
+handles purely local UI state (delete confirmation, char counter).
+{% endcomment %}
+<section id="comments" class="cm-section" aria-labelledby="cm-title">
+    <h3 id="cm-title" class="cm-title">Comments {% include "movies/partials/comments/count.html" %}</h3>
+
+    {% include "movies/partials/comments/compose.html" %}
+
+    <div id="cm-flash" class="cm-flash" role="alert" aria-live="assertive"></div>
+
+    {% include "movies/partials/comments/feed.html" %}
+</section>
+
+<script>
+(() => {
+    const inComments = (el) => el && el.closest && el.closest("#comments");
+    const flashBox = () => document.getElementById("cm-flash");
+    const flash = (message) => {
+        const box = flashBox();
+        if (!box) return;
+        const p = document.createElement("p");
+        p.className = "cm-flash-msg";
+        p.textContent = message;
+        box.replaceChildren(p);
+    };
+
+    // A new action clears the previous error
+    document.body.addEventListener("htmx:beforeRequest", (e) => {
+        if (inComments(e.detail.elt) && flashBox()) flashBox().replaceChildren();
+    });
+
+    // HTMX drops non-2xx responses by default. Ours come in two shapes that
+    // should be shown: 422 = the form re-rendered with validation errors, and
+    // anything carrying HX-Retarget = a message aimed at #cm-flash.
+    document.body.addEventListener("htmx:beforeSwap", (e) => {
+        if (!inComments(e.detail.elt)) return;
+        const xhr = e.detail.xhr;
+        if (xhr.status === 422 || (xhr.status >= 400 && xhr.getResponseHeader("HX-Retarget"))) {
+            e.detail.shouldSwap = true;
+            e.detail.isError = false;
+        }
+    });
+
+    document.body.addEventListener("htmx:responseError", (e) => {
+        if (!inComments(e.detail.elt)) return;
+        flash(e.detail.xhr.status === 404
+            ? "Comment not found. It may have been deleted; refresh the page."
+            : "Something went wrong on our end. Try again in a minute.");
+    });
+
+    document.body.addEventListener("htmx:sendError", (e) => {
+        if (inComments(e.detail.elt)) flash("Can't reach the server. Check your connection and try again.");
+    });
+})();
+</script>

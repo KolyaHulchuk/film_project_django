@@ -1,0 +1,20 @@
+<div id="cm-feed" class="cm-feed"{% if oob %} hx-swap-oob="true"{% endif %}>
+    <div class="cm-toolbar" role="group" aria-label="Sort comments">
+        {% for key, label in sort_options %}
+        <button type="button"
+                class="cm-sort{% if sort == key %} is-active{% endif %}"
+                aria-pressed="{% if sort == key %}true{% else %}false{% endif %}"
+                hx-get="{% url 'comment-list' movie.id %}?sort={{ key }}"
+                hx-target="#cm-feed"
+                hx-swap="outerHTML"
+                hx-indicator="#cm-feed">{{ label }}</button>
+        {% endfor %}
+    </div>
+
+    <div id="cm-list" class="cm-list">
+        {% include "movies/partials/comments/page.html" %}
+    </div>
+
+    {# Hidden by CSS as soon as #cm-list contains a comment, so deleting the last one brings it back without a request #}
+    <p class="cm-empty">No comments yet.{% if user.is_authenticated %} Be the first to share your thoughts.{% endif %}</p>
+</div>

@@ -1,0 +1,39 @@
+<div id="cm-compose" class="cm-compose"{% if oob %} hx-swap-oob="true"{% endif %}>
+    {% if not user.is_authenticated %}
+    <p class="cm-note">
+        <a href="{% url 'login' %}?next={{ movie_url|urlencode }}%23comments" class="cm-link">Log in</a> to leave a comment.
+    </p>
+    {% else %}
+    <form class="cm-form"
+          hx-post="{% url 'comment-create' movie.id %}"
+          hx-target="#cm-compose"
+          hx-swap="outerHTML"
+          x-data="{ len: 0, blank: true, sync(el) { this.len = el.value.length; this.blank = !el.value.trim(); } }"
+          x-init="sync($refs.text)">
+        <label for="cm-text" class="cm-label">Your comment</label>
+        <textarea id="cm-text"
+                  name="text"
+                  class="cm-textarea{% if form.text.errors %} is-invalid{% endif %}"
+                  rows="3"
+                  maxlength="{{ comment_max_length }}"
+                  placeholder="What did you think of this {% if movie.media_type == 'tv' %}series{% else %}movie{% endif %}?"
+                  {% if form.text.errors %}aria-invalid="true" aria-describedby="cm-text-error"{% endif %}
+                  x-ref="text"
+                  @input="sync($el)"
+                  @keydown.ctrl.enter.prevent="$el.form.requestSubmit()"
+                  @keydown.meta.enter.prevent="$el.form.requestSubmit()">{{ form.text.value|default:"" }}</textarea>
+        {% if form.text.errors %}
+        <p id="cm-text-error" class="cm-error">{{ form.text.errors.0 }}</p>
+        {% endif %}
+        <div class="cm-form-foot">
+            <span class="cm-counter" :class="{ 'is-near': len > {{ comment_max_length }} - 100 }">
+                <span x-text="len">0</span>/{{ comment_max_length }}
+            </span>
+            <button type="submit" class="cm-btn cm-btn-primary" :disabled="blank">
+                <span class="cm-idle">Post comment</span>
+                <span class="cm-busy">Posting…</span>
+            </button>
+        </div>
+    </form>
+    {% endif %}
+</div>

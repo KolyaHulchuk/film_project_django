@@ -1,0 +1,39 @@
+<article id="cm-{{ comment.id }}"
+         class="cm-item{% if comment.user_id == user.id %} is-own{% endif %}"
+         x-data="{ confirming: false }">
+    <div class="cm-avatar" style="--hue: {{ comment.author_hue }}" aria-hidden="true">
+        {% if comment.author_avatar_url %}
+        <img src="{{ comment.author_avatar_url }}" alt="" loading="lazy">
+        {% else %}
+        {{ comment.user.username|first|upper }}
+        {% endif %}
+    </div>
+
+    <div class="cm-main">
+        <header class="cm-meta">
+            <span class="cm-author">{{ comment.user.username }}</span>
+            {% if comment.user_id == user.id %}<span class="cm-you">you</span>{% endif %}
+            <time class="cm-date" datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:"d M Y, H:i" }}</time>
+        </header>
+
+        <p class="cm-text">{{ comment.text|linebreaksbr }}</p>
+
+        <footer class="cm-foot">
+            {% include "movies/partials/comments/votes.html" %}
+
+            {% if comment.user_id == user.id %}
+            <div class="cm-owner">
+                <button type="button" class="cm-link-btn" x-show="!confirming" @click="confirming = true; $nextTick(() => $refs.confirmNo.focus())">Delete</button>
+                <span class="cm-confirm" x-show="confirming" x-cloak>
+                    <span>Delete this comment permanently?</span>
+                    <button type="button" class="cm-link-btn cm-danger"
+                            hx-post="{% url 'comment-delete' comment.id %}"
+                            hx-target="#cm-{{ comment.id }}"
+                            hx-swap="outerHTML">Yes, delete</button>
+                    <button type="button" class="cm-link-btn" x-ref="confirmNo" @click="confirming = false">No</button>
+                </span>
+            </div>
+            {% endif %}
+        </footer>
+    </div>
+</article>

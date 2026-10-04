@@ -17,6 +17,10 @@ from .views import (
     UpcomingView,
     ai_recomendations,
     ai_recommendation_status,
+    comment_create,
+    comment_delete,
+    comment_list,
+    comment_vote,
 )
 
 urlpatterns = [
@@ -36,4 +40,8 @@ urlpatterns = [
     path("ai/", ai_recomendations, name="ai-recomendations"),
     path("ai/status/<str:task_id>/", ai_recommendation_status, name="ai-recommendation-status"),
     path("popular-actors/", PopularActorView.as_view(), name="popular-actors"),
+    path("comments/movie/<int:movie_id>/", comment_list, name="comment-list"),
+    path("comments/movie/<int:movie_id>/create/", comment_create, name="comment-create"),
+    path("comments/<int:pk>/delete/", comment_delete, name="comment-delete"),
+    path("comments/<int:pk>/vote/", comment_vote, name="comment-vote"),
 ]

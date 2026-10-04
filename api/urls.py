@@ -1,6 +1,9 @@
 from django.urls import path
 
 from .views import (
+    CommentDetailView,
+    CommentListCreateView,
+    CommentVoteView,
     GenreListView,
     MovieDetailView,
     MovieListView,
@@ -22,4 +25,7 @@ urlpatterns = [
     path("watchlist/<int:pk>/", WatchlistDetailView.as_view(), name="api-watchlist-detail"),
     path("recommendations/", RecommendationsAiView.as_view(), name="ai-recommendations"),
     path("popular-actor/", PopularActorsView.as_view(), name="popular-actor"),
+    path("movie/<int:movie_id>/comments/", CommentListCreateView.as_view(), name="api-comment-list"),
+    path("comments/<int:pk>/", CommentDetailView.as_view(), name="api-comment-detail"),
+    path("comments/<int:pk>/vote/", CommentVoteView.as_view(), name="api-comment-vote"),
 ]
