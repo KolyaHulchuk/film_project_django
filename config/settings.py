@@ -256,6 +256,11 @@ SOCIALACCOUNT_PROVIDERS = {
 # navbar/login-page button goes straight to Google's consent screen.
 SOCIALACCOUNT_LOGIN_ON_GET = True
 
+# One account per email: normalize/check in the adapters (see users/adapters.py).
+ACCOUNT_ADAPTER = "users.adapters.AccountAdapter"
+SOCIALACCOUNT_ADAPTER = "users.adapters.SocialAccountAdapter"
+ACCOUNT_UNIQUE_EMAIL = True
+
 if not DEBUG:
     # Render terminates TLS at its proxy and forwards plain HTTP, so Django has
     # to read the original scheme from the header it sets - otherwise allauth

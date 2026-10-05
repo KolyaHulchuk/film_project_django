@@ -2,6 +2,7 @@ import math
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.utils.decorators import method_decorator
@@ -10,6 +11,7 @@ from django.views.generic import DeleteView, ListView
 
 from movies.views import get_or_create_media
 
+from .emails import DUPLICATE_EMAIL_MESSAGE
 from .forms import ProfileUpdateForm, UserRegisterForm, UserUpdateForm
 from .models import Watchlist
 
@@ -24,10 +26,16 @@ def register(request):
     if request.method == "POST":
         form = UserRegisterForm(request.POST)
         if form.is_valid():
-            form.save()
-            username = form.cleaned_data.get("username")
-            messages.success(request, f"Your account has been created! You are now able to log in {username}")
-            return redirect("movies-home")
+            try:
+                with transaction.atomic():
+                    form.save()
+            except IntegrityError:
+                # Concurrent request won the race for this email (DB unique index)
+                form.add_error("email", DUPLICATE_EMAIL_MESSAGE)
+            else:
+                username = form.cleaned_data.get("username")
+                messages.success(request, f"Your account has been created! You are now able to log in {username}")
+                return redirect("movies-home")
     else:
         form = UserRegisterForm()
 
@@ -42,9 +50,14 @@ def profile(request):
         p_form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user.profile)
 
         if u_form.is_valid() and p_form.is_valid():
-            u_form.save()
-            p_form.save()
-            messages.success(request, "Your account has been update")
+            try:
+                with transaction.atomic():
+                    u_form.save()
+            except IntegrityError:
+                u_form.add_error("email", DUPLICATE_EMAIL_MESSAGE)
+            else:
+                p_form.save()
+                messages.success(request, "Your account has been update")
 
     else:
         u_form = UserUpdateForm(instance=request.user)
