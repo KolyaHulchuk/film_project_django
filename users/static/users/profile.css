@@ -185,6 +185,54 @@
 
 .btn-save:hover { background-color: #e0e0e0; transform: translateY(-1px); }
 
+/* Account section: email verification + Google connection */
+.account-status {
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 1px solid #252525;
+}
+
+.account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.account-label { color: #888; font-size: 0.85rem; margin: 0; }
+
+.badge-status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.badge-ok { background-color: #16301f; color: #5fd38a; }
+.badge-warn { background-color: #33270f; color: #e8b04a; }
+
+.btn-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #1e1e1e;
+  color: #ccc;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 8px 18px;
+  font-size: 0.83rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.btn-account:hover { background-color: #252525; color: #fff; border-color: #3a3a3a; }
+
 @media (max-width: 680px) {
   .profile-card { flex-direction: column; }
   .profile-left { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid #252525; }

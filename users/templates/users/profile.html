@@ -1,6 +1,6 @@
 {% extends "movies/base.html" %}
 {% load crispy_forms_tags %}
-{% load static %}
+{% load static socialaccount %}
 
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'users/profile.css' %}">
@@ -65,6 +65,43 @@
             <button type="submit" class="btn-save">Save changes</button>
           </div>
         </form>
+
+        {# Email verification + Google connection. Separate forms/links, not part of the profile form above. #}
+        <div class="account-status">
+          <div class="account-row">
+            <p class="account-label">
+              Email
+              {% if email_verified %}
+                <span class="badge-status badge-ok">Verified</span>
+              {% else %}
+                <span class="badge-status badge-warn">Not verified</span>
+              {% endif %}
+            </p>
+            {% if not email_verified and user.email %}
+              <form method="POST" action="{% url 'resend_verification' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-account">Resend verification email</button>
+              </form>
+            {% endif %}
+          </div>
+
+          <div class="account-row">
+            <p class="account-label">
+              Google
+              {% if google_connected %}
+                <span class="badge-status badge-ok">Connected</span>
+              {% else %}
+                <span class="badge-status badge-warn">Not connected</span>
+              {% endif %}
+            </p>
+            {% if not google_connected %}
+              {# process='connect' links Google to the logged-in user, skipping the email-match checks used for login #}
+              <a href="{% provider_login_url 'google' process='connect' next=request.path %}" class="btn-account">
+                <i class="bi bi-google"></i> Connect Google
+              </a>
+            {% endif %}
+          </div>
+        </div>
       </div>
 
     </div>

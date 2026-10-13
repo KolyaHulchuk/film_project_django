@@ -1,17 +1,25 @@
 import math
 
 from django.contrib import messages
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.utils.decorators import method_decorator
 from django.views import View
+from django.views.decorators.http import require_POST
 from django.views.generic import DeleteView, ListView
 
 from movies.views import get_or_create_media
 
-from .emails import DUPLICATE_EMAIL_MESSAGE
+from .emails import (
+    DUPLICATE_EMAIL_MESSAGE,
+    is_email_verified,
+    mark_email_verified,
+    replace_email_address,
+    send_verification,
+)
 from .forms import ProfileUpdateForm, UserRegisterForm, UserUpdateForm
 from .models import Watchlist
 
@@ -28,11 +36,13 @@ def register(request):
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    form.save()
+                    user = form.save()
             except IntegrityError:
                 # Concurrent request won the race for this email (DB unique index)
                 form.add_error("email", DUPLICATE_EMAIL_MESSAGE)
             else:
+                # The email starts unverified; logging in with the password does not verify it.
+                send_verification(request, user)
                 username = form.cleaned_data.get("username")
                 messages.success(request, f"Your account has been created! You are now able to log in {username}")
                 return redirect("movies-home")
@@ -50,6 +60,7 @@ def profile(request):
         p_form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user.profile)
 
         if u_form.is_valid() and p_form.is_valid():
+            email_changed = "email" in u_form.changed_data
             try:
                 with transaction.atomic():
                     u_form.save()
@@ -57,15 +68,44 @@ def profile(request):
                 u_form.add_error("email", DUPLICATE_EMAIL_MESSAGE)
             else:
                 p_form.save()
+                if email_changed:
+                    # A new address has to be verified again.
+                    replace_email_address(request, request.user)
                 messages.success(request, "Your account has been update")
 
     else:
         u_form = UserUpdateForm(instance=request.user)
         p_form = ProfileUpdateForm(instance=request.user.profile)
 
-    context = {"u_form": u_form, "p_form": p_form, "title": "Profile"}
+    context = {
+        "u_form": u_form,
+        "p_form": p_form,
+        "title": "Profile",
+        "email_verified": is_email_verified(request.user),
+        "google_connected": request.user.socialaccount_set.filter(provider="google").exists(),
+    }
 
     return render(request, "users/profile.html", context)
+
+
+@login_required
+@require_POST
+def resend_verification(request):
+    """Profile button: re-send the confirmation link for the current email (allauth rate-limits repeats)."""
+    if is_email_verified(request.user):
+        messages.info(request, "Your email is already verified.")
+    elif not send_verification(request, request.user):
+        # allauth's rate limit (or no email set)
+        messages.error(request, "Could not send the verification email right now. Please try again later.")
+    return redirect("profile")
+
+
+class SitePasswordResetConfirmView(auth_views.PasswordResetConfirmView):
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        # Following the emailed link proves the user owns this address.
+        mark_email_verified(form.user)
+        return response
 
 
 @method_decorator(login_required, name="dispatch")

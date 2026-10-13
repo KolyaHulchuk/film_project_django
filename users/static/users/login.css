@@ -156,3 +156,30 @@
 }
 
 .btn-google .bi-google { font-size: 1.1rem; }
+
+.login-body .errorlist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+
+.login-body .errorlist li {
+  color: #e05555;
+  font-size: 0.88rem;
+}
+
+/* Password reset pages: explanatory text and a link styled like the primary button */
+.login-note {
+  color: #aaa;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+a.btn-login {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+
+a.btn-login:hover { color: #000; }

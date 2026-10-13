@@ -231,9 +231,10 @@ LOGIN_URL = "login"
 LOGOUT_REDIRECT_URL = "movies-home"
 
 
-# django-allauth: social login (Google) alongside the project's own
-# username/password login, which is left exactly as it was.
+# Site login is email + password (users/backends.py); ModelBackend keeps
+# username login for /admin/. allauth's backend handles social login.
 AUTHENTICATION_BACKENDS = [
+    "users.backends.EmailBackend",
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
@@ -260,6 +261,12 @@ SOCIALACCOUNT_LOGIN_ON_GET = True
 ACCOUNT_ADAPTER = "users.adapters.AccountAdapter"
 SOCIALACCOUNT_ADAPTER = "users.adapters.SocialAccountAdapter"
 ACCOUNT_UNIQUE_EMAIL = True
+# Same rules on allauth's own /accounts/... pages as on the site's /users/... ones.
+ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
+# Login works before the email is confirmed; a verified email is only required
+# to auto-link a Google account to an existing user (see users/adapters.py).
+ACCOUNT_EMAIL_VERIFICATION = "optional"
 
 if not DEBUG:
     # Render terminates TLS at its proxy and forwards plain HTTP, so Django has
@@ -277,3 +284,8 @@ EMAIL_USE_TLS = True
 
 EMAIL_HOST_USER = os.environ.get("EMAIL_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_PASS")
+# Gmail SMTP always sends from the authenticated account (it rewrites any other
+# From address), so only the display name is ours. Use a dedicated mailbox for
+# EMAIL_USER so a personal address isn't what recipients see.
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL") or f"Movies.hub <{EMAIL_HOST_USER or 'noreply@localhost'}>"
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
