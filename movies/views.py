@@ -446,6 +446,11 @@ class MoviesDetailView(View):
         }
         if data:
             context.update(_comments_context(request, data))
+            if request.user.is_authenticated:
+                # initial state of the watchlist toggle, rendered server-side (no flicker)
+                context["watchlist_id"] = (
+                    Watchlist.objects.filter(user=request.user, movie=data).values_list("id", flat=True).first()
+                )
 
         return render(request, "movies/movies_detail.html", context)
 

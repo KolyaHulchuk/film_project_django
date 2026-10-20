@@ -16,12 +16,14 @@ python manage.py migrate
 python manage.py runserver
 
 # Tests (pytest.ini sets DJANGO_SETTINGS_MODULE=config.settings)
-pytest                                  # full suite
-pytest movies/tests/test_movie_view.py  # single file
-pytest movies/tests/test_movie_view.py::test_name -v   # single test
+# ALWAYS run tests inside the `web` container (local Postgres), NEVER bare `pytest` on the host:
+# the host reads DATABASE_URL from .env = production Neon, and pytest would CREATE DATABASE test_neondb there.
+docker compose exec web pytest                                  # full suite
+docker compose exec web pytest movies/tests/test_movie_view.py  # single file
+docker compose exec web pytest movies/tests/test_movie_view.py::test_name -v   # single test
 
-# Django's own test runner also works against the same test modules
-python manage.py test
+# Django's own test runner also works against the same test modules (same rule: only inside the container)
+docker compose exec web python manage.py test
 
 # Lint/format (ruff; config in pyproject.toml — not pinned in requirements.txt, install manually if missing)
 pip install ruff pre-commit

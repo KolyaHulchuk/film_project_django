@@ -104,3 +104,26 @@ def test_watchlist_view(client, login, user, movie, watchlist):
     assert "years" in response.context
     assert "genres" in response.context
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_add_watchlist_fetch_returns_json_without_messages(client, mocker, user, movie, login):
+    mocker.patch("users.views.get_or_create_media", return_value=movie)
+
+    response = client.post("/users/watchlist/add/1829/movie", HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] and data["in_watchlist"] and data["created"]
+    item = Watchlist.objects.get(user=user, movie=movie)
+    assert data["remove_url"] == f"/users/watchlist/delete/{item.id}"
+    assert list(response.wsgi_request._messages) == []
+
+
+@pytest.mark.django_db
+def test_delete_watchlist_fetch_returns_json(client, user, movie, login, watchlist):
+    response = client.delete(f"/users/watchlist/delete/{watchlist.id}", HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "in_watchlist": False}
+    assert not Watchlist.objects.filter(id=watchlist.id).exists()

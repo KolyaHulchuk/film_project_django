@@ -253,6 +253,48 @@
     transform: translateY(0);
 }
 
+/* Watchlist toggle (JS: watchlist_toggle.js). Three labels, CSS shows the one for the current state. */
+.detail-btn-watchlist.watchlist-btn {
+    background: transparent;
+    color: #fff;
+    border: 2px solid rgba(255,255,255,0.3);
+    box-shadow: none;
+}
+
+.detail-btn-watchlist.watchlist-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    border-color: #fff;
+    box-shadow: none;
+}
+
+.detail-btn-watchlist.watchlist-btn.in-watchlist {
+    background: var(--c-accent);
+    color: #000;
+    border-color: var(--c-accent);
+    box-shadow: 0 8px 32px rgba(245,197,24,0.25);
+}
+
+.detail-btn-watchlist.watchlist-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.watchlist-btn .wl-label { display: none; }
+.watchlist-btn:not(.in-watchlist) .wl-add,
+.watchlist-btn.in-watchlist .wl-in { display: inline; }
+
+@media (hover: hover) {
+    .watchlist-btn.in-watchlist:hover .wl-in { display: none; }
+    .watchlist-btn.in-watchlist:hover .wl-remove { display: inline; }
+    .detail-btn-watchlist.watchlist-btn.in-watchlist:hover {
+        background: transparent;
+        color: #ff6b6b;
+        border-color: #ff6b6b;
+        box-shadow: none;
+    }
+}
+
 /* == GALLERY == */
 .detail-gallery-section {
     margin-bottom: 52px;

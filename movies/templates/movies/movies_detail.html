@@ -139,16 +139,23 @@
 
             <div class="detail-actions">
                 {% if user.is_authenticated %}
-                <form method="post" action="{% url 'add_watchlist' data.tmdb_id data.media_type %}">
+                {# Toggled by watchlist_toggle.js; CSS shows exactly one of the three labels below #}
+                <form method="post"
+                    action="{% url 'add_watchlist' data.tmdb_id data.media_type %}"
+                    data-watchlist-form
+                    data-remove-url="{% if watchlist_id %}{% url 'delete_watchlist' watchlist_id %}{% endif %}">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                    <button type="submit" class="detail-btn-watchlist">
-                        + Add to Watchlist
+                    <button type="submit" class="detail-btn-watchlist watchlist-btn{% if watchlist_id %} in-watchlist{% endif %}"
+                        aria-pressed="{% if watchlist_id %}true{% else %}false{% endif %}">
+                        <span class="wl-label wl-add"><i class="bi bi-plus-lg"></i> Add to Watchlist</span>
+                        <span class="wl-label wl-in"><i class="bi bi-check-lg"></i> In Watchlist</span>
+                        <span class="wl-label wl-remove"><i class="bi bi-x-lg"></i> Remove from Watchlist</span>
                     </button>
                 </form>
                 {% else %}
                 <a href="{% url 'login' %}" class="detail-btn-watchlist">
-                    + Add to Watchlist
+                    <i class="bi bi-plus-lg"></i> Add to Watchlist
                 </a>
                 {% endif %}
             </div>

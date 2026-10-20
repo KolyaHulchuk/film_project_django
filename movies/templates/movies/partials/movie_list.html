@@ -4,12 +4,17 @@
     <div class="movie-previe" id="items-{{ item.id }}">
         {% if user.is_authenticated %}
             {% if item.tmdb_id %}
+            {# data-watchlist-form: toggled via fetch by watchlist_toggle.js (plain POST + redirect without JS) #}
             <form method="post"
                 action="{% url 'add_watchlist' item.tmdb_id item.media_type %}"
-                class="watchlist-form">
+                class="watchlist-form"
+                data-watchlist-form
+                data-remove-url="{% if item.watchlist_id %}{% url 'delete_watchlist' item.watchlist_id %}{% endif %}">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                <button type="submit" class="btn btn-link p-0 text-secondary">
+                <button type="submit" class="btn btn-link p-0 watchlist-btn{% if item.watchlist_id %} in-watchlist{% endif %}"
+                    aria-pressed="{% if item.watchlist_id %}true{% else %}false{% endif %}"
+                    aria-label="Toggle watchlist" title="Toggle watchlist">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-plus-fill" viewBox="0 0 16 16">
                         <path fill-rule="evenodd" d="M2 15.5V2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.74.439L8 13.069l-5.26 2.87A.5.5 0 0 1 2 15.5m6.5-11a.5.5 0 0 0-1 0V6H6a.5.5 0 0 0 0 1h1.5v1.5a.5.5 0 0 0 1 0V7H10a.5.5 0 0 0 0-1H8.5z"/>
                     </svg>

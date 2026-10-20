@@ -4,8 +4,9 @@ from django.contrib import messages
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.http import require_POST
@@ -108,10 +109,28 @@ class SitePasswordResetConfirmView(auth_views.PasswordResetConfirmView):
         return response
 
 
+def wants_json(request):
+    """True for fetch() calls from static/movies/watchlist_toggle.js (plain form posts keep redirect + messages)."""
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+
 @method_decorator(login_required, name="dispatch")
 class AddToWatchlist(View):
     def post(self, request, tmdb_id, media_type):
         movie = get_or_create_media(tmdb_id, media_type)
+        if wants_json(request):
+            if not movie:
+                return JsonResponse({"ok": False, "error": "Could not find data for this movie"}, status=404)
+            item, created = Watchlist.objects.get_or_create(user=request.user, movie=movie)
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "in_watchlist": True,
+                    "created": created,
+                    "watchlist_id": item.id,
+                    "remove_url": reverse("delete_watchlist", args=[item.id]),
+                }
+            )
         if movie:
             watchlist_item, created = Watchlist.objects.get_or_create(user=request.user, movie=movie)
             if created:  # if just create
@@ -137,6 +156,8 @@ class DeleteWatchlist(DeleteView):
         self.object = self.get_object()
         self.object.delete()
 
+        if wants_json(request):
+            return JsonResponse({"ok": True, "in_watchlist": False})
         if request.headers.get("HX-Request"):
             return HttpResponse("")  # return empty response for HTMX requests
         return redirect("watchlist")  # regular request — redirect to watchlist page
