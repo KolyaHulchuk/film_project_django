@@ -140,10 +140,6 @@ class AllMoviesView(View):
         if country:
             extra_filters["with_origin_country"] = country
 
-        name = request.GET.get("name_search")
-        if name:
-            extra_filters["name"] = name
-
         return extra_filters
 
 

@@ -86,23 +86,5 @@
                         >
                 </ul>
             </div>
-            <div class="filter-language">
-                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    Title
-                </a>
-                <ul class="dropdown-menu">
-                    <li>
-                        <input class="search-watcshlis-info"
-                        type="search" 
-                        placeholder="Title"
-                        name="name_search"
-                        value="{{ request.GET.name_search }}"
-                        hx-get="."
-                        hx-trigger="keyup changed delay:500ms"
-                        hx-target="#movie-list-filter"
-                        hx-include="#filter-form">
-                    </li>
-                </ul>
-            </div>
         </form>
 </nav>
