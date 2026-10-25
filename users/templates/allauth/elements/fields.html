@@ -1,28 +1,20 @@
 {% load allauth %}
-{% comment %}
-Stock allauth just does {{ attrs.form.as_p }} here - Django's bare default
-rendering (unstyled <p><label>...</label><input></p>, no CSS hooks at all,
-which is what produced the plain white "Email (optional):" / "Username:"
-page). Rebuilt by hand, reusing the same field-wrapper markup/classes as the
-site's own users/register.html, so every allauth form (login, signup,
-3rd-party signup, password/email management...) gets styled inputs too.
-{% endcomment %}
-{{ attrs.form.non_field_errors }}
+{% comment %} Whole-form loop for every allauth form (login, signup, 3rd-party signup, ...), rendered as design form-card fields. {% endcomment %}
+{% if attrs.form.non_field_errors %}
+  <div class="banner" role="alert"><svg class="ic"><use href="#i-warn"/></svg><span>{% for error in attrs.form.non_field_errors %}{{ error }} {% endfor %}</span></div>
+{% endif %}
 {% for hidden in attrs.form.hidden_fields %}{{ hidden }}{% endfor %}
 {% for field in attrs.form.visible_fields %}
     {% with widget=field.field.widget %}
-    <div class="mb-3 auth-field">
+    <div class="f{% if field.errors %} err{% endif %}">
         {% if widget.input_type == "checkbox" %}
-            <div class="form-check">
-                {{ field }}
-                <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-            </div>
+            <label class="agree" for="{{ field.id_for_label }}" style="display:flex;margin-top:0">{{ field }}<span>{{ field.label }}</span></label>
         {% else %}
-            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-            {{ field }}
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            <div class="in plain">{{ field }}</div>
         {% endif %}
-        {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
-        {{ field.errors }}
+        {% if field.help_text %}<p class="f-hint">{{ field.help_text }}</p>{% endif %}
+        {% for error in field.errors %}<p class="f-err"><svg class="ic"><use href="#i-info"/></svg>{{ error }}</p>{% endfor %}
     </div>
     {% endwith %}
 {% endfor %}

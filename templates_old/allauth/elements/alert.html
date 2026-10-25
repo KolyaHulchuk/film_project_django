@@ -1,0 +1,6 @@
+{% comment %} E.g. the "You are already logged in as ..." notice shown on login/signup pages. {% endcomment %}
+{% load allauth %}
+<div class="auth-alert">
+    {% slot message %}
+    {% endslot %}
+</div>

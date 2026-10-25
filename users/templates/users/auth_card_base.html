@@ -1,25 +1,36 @@
 {% extends "movies/base.html" %}
 {% load static %}
-{% block body_class %}search-page{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/auth.css' %}?v=1">{% endblock %}
+{% block body_class %}mh-body auth-page{% endblock %}
+{% block main_class %}mh-main{% endblock %}
+{% block page_js %}<script src="{% static 'movies/auth.js' %}?v=1" defer></script>{% endblock %}
 
-{% block extra_css %}
-  <link rel="stylesheet" href="{% static 'users/login.css' %}">
-{% endblock %}
-
-{# Same card as login.html / register.html; the password reset pages fill in the title and the body. #}
+{# Split-screen auth layout (design: .auth). Children fill auth_title / auth_sub / auth_content (and optionally auth_state for the centred "state" screens). #}
 {% block content %}
-<div class="login-page">
-  <div class="login-card">
-
-    <div class="login-header">
-      <p class="login-logo">Movies.hub</p>
-      <p class="login-sub mb-0">{% block card_title %}{% endblock %}</p>
+<div class="auth">
+  <aside class="cine">
+    <span class="cine-pt" aria-hidden="true"></span><span class="cine-pt" aria-hidden="true"></span><span class="cine-pt" aria-hidden="true"></span><span class="cine-pt" aria-hidden="true"></span>
+    <div class="cine-in">
+      <h2>Your movie night starts here</h2>
+      <ul>
+        <li><span class="bi"><svg class="ic"><use href="#i-bm"/></svg></span>Save to watchlist</li>
+        <li><span class="bi"><svg class="ic"><use href="#i-star"/></svg></span>Rate what you’ve watched</li>
+        <li><span class="bi"><svg class="ic"><use href="#i-spark"/></svg></span>Get recommendations</li>
+      </ul>
     </div>
+  </aside>
 
-    <div class="login-body">
-      {% block card_body %}{% endblock %}
+  <section class="auth-r" aria-label="Account">
+    <div class="acard">
+      <div class="sw-a">
+        <a href="{% url 'movies-home' %}" class="a-logo" aria-label="Movies.hub — home">Movies<span class="dot"></span><b>hub</b></a>
+        {% block auth_card %}
+          <h1 id="a-title">{% block auth_title %}{% endblock %}</h1>
+          <p class="sub">{% block auth_sub %}{% endblock %}</p>
+          {% block auth_content %}{% endblock %}
+        {% endblock %}
+      </div>
     </div>
-
-  </div>
+  </section>
 </div>
 {% endblock %}

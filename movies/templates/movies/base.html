@@ -5,25 +5,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://getbootstrap.com/docs/5.3/assets/css/docs.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-
-
-    <link rel="stylesheet" href="{% static 'movies/test.css' %}">
-    <link rel="stylesheet" href="{% static 'movies/search.css' %}">
-    <link rel="stylesheet" href="{% static 'movies/movie_list.css' %}">
-    
-    <link rel="stylesheet" href="{% static 'users/profile.css' %}">
-    <link rel="stylesheet" href="{% static 'users/login.css' %}">
-    <link rel="stylesheet" href="{% static 'users/register.css' %}">
-
-    <link rel="stylesheet" href="{% static 'movies/actor_section.css' %}">
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'movies/main.css' %}">
+    <link rel="stylesheet" href="{% static 'movies/main.css' %}?v=4">
 
     
     
@@ -36,7 +21,7 @@
       <title>Movies</title>
     {% endif %}
   </head>
-  <body class="{% block body_class %}default-body{% endblock %}">
+  <body class="{% block body_class %}mh-body{% endblock %}">
     {% include "movies/partials/chrome/icons.html" %}
     {% include "movies/partials/chrome/header.html" %}
 
@@ -48,7 +33,7 @@
       </div>
     {% endif %}
 
-    <main role="main" class="container-fluid {% block main_class %}main-default{% endblock %}">
+    <main role="main" id="main" class="{% block main_class %}mh-main{% endblock %}">
             <div class="main-content">
                 {% block content %}{% endblock %}
             </div>
@@ -58,9 +43,6 @@
 
           <!-- Alpine.js -->
         <script src="https://unpkg.com/alpinejs@3.12.0/dist/cdn.min.js"></script>
-
-
-        <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
 
 
          <!-- HTMX -->

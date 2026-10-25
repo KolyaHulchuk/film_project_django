@@ -1,68 +1,21 @@
-{% extends "movies/base.html" %}
-{% load static socialaccount %}
-{% block body_class %}search-page{% endblock %}
+{% extends "users/auth_card_base.html" %}
+{% load socialaccount %}
+{% block auth_title %}Welcome back{% endblock %}
+{% block auth_sub %}Sign in to your account{% endblock %}
 
-{% block extra_css %}
-  <link rel="stylesheet" href="{% static 'users/login.css' %}">
-{% endblock %}
-
-{% block content %}
-<div class="login-page">
-  <div class="login-card">
-
-    <div class="login-header">
-      <p class="login-logo">Movies.hub</p>
-      <p class="login-sub  mb-0">Sign in to your account</p>
-    </div>
-
-    <div class="login-body">
-      <form method="POST">
-        {% csrf_token %}
-
-        {% if form.non_field_errors %}
-          <ul class="errorlist">
-            {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
-          </ul>
-        {% endif %}
-
-        {# Login is by email (EmailLoginForm / EmailBackend), not username #}
-        <div class="mb-3">
-          <input type="email" name="email" class="form-control"
-                 placeholder="Email" maxlength="254" autocomplete="email"
-                 value="{{ form.email.value|default:'' }}" autofocus>
-          {% if form.email.errors %}
-            <ul class="errorlist">
-              {% for error in form.email.errors %}<li>{{ error }}</li>{% endfor %}
-            </ul>
-          {% endif %}
-        </div>
-
-        <div class="mb-2">
-          <input type="password" name="password" class="form-control"
-                 placeholder="Password">
-        </div>
-
-        <div class="text-end mb-3 mt-3">
-          <a href="{% url 'password_reset' %}" class="link-reset">Forgot your password?</a>
-        </div>
-
-        <button type="submit" class="btn-login">Sign in</button>
-      </form>
-
-      <div class="auth-or"><span>or</span></div>
-
-      <a href="{% provider_login_url 'google' process='login' %}" class="btn-google">
-        <i class="bi bi-google"></i>
-        <span>Sign in with Google</span>
-      </a>
-
-      <hr class="login-divider">
-
-      <p class="login-footer-text">
-        Don't have an account? <a href="{% url 'register' %}">Sign up</a>
-      </p>
-    </div>
-
-  </div>
-</div>
+{% block auth_content %}
+{% if form.non_field_errors %}
+  <div class="banner" role="alert"><svg class="ic"><use href="#i-warn"/></svg><span>{% for error in form.non_field_errors %}{{ error }} {% endfor %}</span></div>
+{% endif %}
+<form method="POST" novalidate aria-labelledby="a-title" data-auth-form>
+  {% csrf_token %}
+  {# Login is by email (EmailLoginForm / EmailBackend), not username #}
+  {% include "users/partials/auth_field.html" with field=form.email label="Email" icon="i-mail" type="email" placeholder="you@example.com" autocomplete="email" autofocus=True %}
+  {% include "users/partials/auth_field.html" with field=form.password label="Password" icon="i-lock" type="password" placeholder="Your password" autocomplete="current-password" eye=True %}
+  <div class="f-row"><a href="{% url 'password_reset' %}" class="lnk-a">Forgot your password?</a></div>
+  <button type="submit" class="btn btn-red full"><span class="spin" aria-hidden="true" hidden></span><span class="lbl">Sign in</span></button>
+</form>
+<div class="or" aria-hidden="true">or</div>
+<a href="{% provider_login_url 'google' process='login' %}" class="btn-g">{% include "users/partials/google_g.html" %}Continue with Google</a>
+<p class="a-foot">Don’t have an account? <a href="{% url 'register' %}">Sign up</a></p>
 {% endblock %}

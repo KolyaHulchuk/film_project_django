@@ -1,86 +1,22 @@
-{% extends "movies/base.html" %}
-{% load static socialaccount %}
-{% block body_class %}search-page{% endblock %}
+{% extends "users/auth_card_base.html" %}
+{% load socialaccount %}
+{% block auth_title %}Create your account{% endblock %}
+{% block auth_sub %}Rate, save and track what you watch{% endblock %}
 
-{% block extra_css %}
-  <link rel="stylesheet" href="{% static 'users/register.css' %}">
-{% endblock %}
-
-{% block content %}
-<div class="register-page">
-  <div class="register-card">
-
-    <div class="register-header">
-      <p class="register-logo">Movies.hub</p>
-      <p class="register-sub mb-0">Create an account</p>
-    </div>
-
-    <div class="register-body">
-      <form method="POST">
-        {% csrf_token %}
-
-        <div class="mb-4">
-          <input type="text" name="username" class="form-control"
-                 placeholder="Name" maxlength="150"
-                 value="{{ form.username.value|default:'' }}" autofocus>
-          <p class="field-hint">Only letters, numbers, and the symbols @/./+/-/_</p>
-          {% if form.username.errors %}
-            <ul class="errorlist">
-              {% for error in form.username.errors %}<li>{{ error }}</li>{% endfor %}
-            </ul>
-          {% endif %}
-        </div>
-
-        <div class="mb-4">
-          <input type="email" name="email" class="form-control"
-                 placeholder="Email"
-                 value="{{ form.email.value|default:'' }}">
-          {% if form.email.errors %}
-            <ul class="errorlist">
-              {% for error in form.email.errors %}<li>{{ error }}</li>{% endfor %}
-            </ul>
-          {% endif %}
-        </div>
-
-        <div class="mb-4">
-          <input type="password" name="password1" class="form-control"
-                 placeholder="Password">
-          <p class="field-hint">At least 8 characters. Cannot consist solely of numbers.</p>
-          {% if form.password1.errors %}
-            <ul class="errorlist">
-              {% for error in form.password1.errors %}<li>{{ error }}</li>{% endfor %}
-            </ul>
-          {% endif %}
-        </div>
-
-        <div class="mb-4">
-          <input type="password" name="password2" class="form-control"
-                 placeholder="Confirm your password">
-          <p class="field-hint">Please re-enter your password to confirm.</p>
-          {% if form.password2.errors %}
-            <ul class="errorlist">
-              {% for error in form.password2.errors %}<li>{{ error }}</li>{% endfor %}
-            </ul>
-          {% endif %}
-        </div>
-
-        <button type="submit" class="btn-register">Sign up</button>
-      </form>
-
-      <div class="auth-or"><span>or</span></div>
-
-      <a href="{% provider_login_url 'google' process='login' %}" class="btn-google">
-        <i class="bi bi-google"></i>
-        <span>Sign up with Google</span>
-      </a>
-
-      <hr class="register-divider">
-
-      <p class="register-footer-text">
-        Already have an account? <a href="{% url 'login' %}">Log in</a>
-      </p>
-    </div>
-
-  </div>
-</div>
+{% block auth_content %}
+{% if form.non_field_errors %}
+  <div class="banner" role="alert"><svg class="ic"><use href="#i-warn"/></svg><span>{% for error in form.non_field_errors %}{{ error }} {% endfor %}</span></div>
+{% endif %}
+<form method="POST" novalidate aria-labelledby="a-title" data-auth-form>
+  {% csrf_token %}
+  {% include "users/partials/auth_field.html" with field=form.username label="Name" icon="i-user" type="text" placeholder="Choose a username" autocomplete="username" hint="Only letters, numbers, and the symbols @/./+/-/_" autofocus=True %}
+  {% include "users/partials/auth_field.html" with field=form.email label="Email" icon="i-mail" type="email" placeholder="you@example.com" autocomplete="email" %}
+  {% include "users/partials/auth_field.html" with field=form.password1 label="Password" icon="i-lock" type="password" placeholder="Create a password" autocomplete="new-password" eye=True checklist="req-r" %}
+  {% include "users/partials/password_checklist.html" with id="req-r" %}
+  {% include "users/partials/auth_field.html" with field=form.password2 label="Confirm password" icon="i-lock" type="password" placeholder="Repeat your password" autocomplete="new-password" eye=True %}
+  <button type="submit" class="btn btn-red full"><span class="spin" aria-hidden="true" hidden></span><span class="lbl">Sign up</span></button>
+</form>
+<div class="or" aria-hidden="true">or</div>
+<a href="{% provider_login_url 'google' process='login' %}" class="btn-g">{% include "users/partials/google_g.html" %}Sign up with Google</a>
+<p class="a-foot">Already have an account? <a href="{% url 'login' %}">Log in</a></p>
 {% endblock %}

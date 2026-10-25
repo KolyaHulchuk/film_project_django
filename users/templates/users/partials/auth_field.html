@@ -1,0 +1,18 @@
+{# Form-card field (design: .f > label + .in). Params: field (bound field), label, icon (e.g. i-mail), type, placeholder, autocomplete, hint (optional), eye (optional), checklist (optional id), autofocus (optional). #}
+<div class="f{% if field.errors %} err{% endif %}">
+  <label for="{{ field.id_for_label }}">{{ label }}</label>
+  <div class="in{% if eye %} eyed{% endif %}">
+    <svg class="ic lead" aria-hidden="true"><use href="#{{ icon }}"/></svg>
+    <input id="{{ field.id_for_label }}" name="{{ field.html_name }}" type="{{ type|default:'text' }}"
+           {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+           {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
+           {% if type != 'password' %}value="{{ field.value|default_if_none:'' }}"{% endif %}
+           {% if type == 'email' or field.html_name == 'username' %}autocapitalize="none" spellcheck="false"{% endif %}
+           {% if autofocus %}autofocus{% endif %}
+           {% if field.errors %}aria-invalid="true" aria-describedby="e-{{ field.html_name }}"{% elif checklist %}aria-describedby="{{ checklist }}"{% endif %}
+           {% if checklist %}data-checklist="{{ checklist }}"{% endif %}>
+    {% if eye %}<button type="button" class="eye" data-eye="{{ field.id_for_label }}" aria-label="Show password" aria-pressed="false"><svg class="ic on"><use href="#i-eye"/></svg><svg class="ic off"><use href="#i-eyeoff"/></svg></button>{% endif %}
+  </div>
+  {% if hint %}<p class="f-hint">{{ hint }}</p>{% endif %}
+  <div aria-live="polite">{% for error in field.errors %}<p class="f-err" id="e-{{ field.html_name }}"><svg class="ic"><use href="#i-info"/></svg>{{ error }}</p>{% endfor %}</div>
+</div>

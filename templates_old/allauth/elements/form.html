@@ -1,0 +1,10 @@
+{% comment %} Plain wrapper - all the actual styling is on the fields/buttons rendered inside the body/actions slots. {% endcomment %}
+{% load allauth %}
+<form class="auth-form"
+      method="{{ attrs.method }}"
+      {% if attrs.action %}action="{{ attrs.action }}"{% endif %}>
+    {% slot body %}
+    {% endslot %}
+    {% slot actions %}
+    {% endslot %}
+</form>

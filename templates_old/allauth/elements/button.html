@@ -1,0 +1,20 @@
+{% comment %}
+Main submit buttons (Sign In/Sign Up/Sign Out) don't pass a "tags" kwarg at
+all, so they default to the primary white CTA. Only the secondary actions
+that explicitly tag themselves "outline" (passkey login, "send me a sign-in
+code") get the dimmer outlined look - see allauth/elements/provider.html for
+the separate Google-button styling.
+{% endcomment %}
+{% load allauth %}
+{% comment %} djlint:off {% endcomment %}
+<{% if attrs.href %}a href="{{ attrs.href }}"{% else %}button{% endif %}
+{% if attrs.form %}form="{{ attrs.form }}"{% endif %}
+{% if attrs.id %}id="{{ attrs.id }}"{% endif %}
+{% if attrs.name %}name="{{ attrs.name }}"{% endif %}
+{% if attrs.value %}value="{{ attrs.value }}"{% endif %}
+{% if attrs.type %}type="{{ attrs.type }}"{% endif %}
+class="{% if 'outline' in attrs.tags %}auth-btn-outline{% else %}auth-btn-primary{% endif %}"
+>
+{% slot %}
+{% endslot %}
+</{% if attrs.href %}a{% else %}button{% endif %}>

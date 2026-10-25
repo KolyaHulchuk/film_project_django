@@ -1,55 +1,61 @@
 {% load i18n static %}
 {% comment %}
-Overrides allauth's own bare-bones layout (a plain "Menu: Sign In / Sign Up"
-list, no CSS at all) so every allauth page - /accounts/login/, /accounts/signup/,
-/accounts/3rdparty/signup/, /accounts/logout/, password/email management, etc. -
-matches the site's dark login/register card look instead of default browser
-styling.
+Overrides allauth's own bare-bones layout so every allauth page (/accounts/login/, /accounts/signup/,
+/accounts/3rdparty/signup/, /accounts/logout/, password/email management, ...) matches the site's auth card.
 
-Deliberately NOT extending movies/base.html: that template's own {% block
-content %} would collide by name with allauth's identically-named {% block
-content %} (used by every page this file is a base for, e.g. account/login.html),
-and whichever one is more specific wins outright - there is no way to keep both.
-Standing alone avoids the collision and also skips pulling in the full
-authenticated-user chrome (navbar search box, AI assistant panel) that doesn't
-apply before a user is signed in.
+Deliberately NOT extending movies/base.html: that template's {% block content %} would collide by name with
+allauth's identically-named {% block content %} (used by every page this file is a base for, e.g.
+account/login.html), and whichever one is more specific wins outright. So this stands alone and pulls in the
+shared chrome (icons sprite, header, footer, main.css, chrome.js) directly instead.
 {% endcomment %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{% static 'users/login.css' %}">
-    <link rel="stylesheet" href="{% static 'users/allauth_theme.css' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'movies/main.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'movies/auth.css' %}?v=1">
     {% block extra_head %}{% endblock extra_head %}
-
     <title>Movies.hub{% block head_title %}{% endblock head_title %}</title>
 </head>
-<body class="search-page">
+<body class="mh-body auth-page">
+    {% include "movies/partials/chrome/icons.html" %}
+    {% include "movies/partials/chrome/header.html" %}
     {% block body %}
-    <div class="login-page">
-      <div class="login-card">
-        <div class="login-header">
-          <a href="{% url 'movies-home' %}" class="login-logo auth-logo-link">Movies.hub</a>
+    <main class="mh-main">
+    <div class="auth">
+      <aside class="cine">
+        <span class="cine-pt" aria-hidden="true"></span><span class="cine-pt" aria-hidden="true"></span><span class="cine-pt" aria-hidden="true"></span><span class="cine-pt" aria-hidden="true"></span>
+        <div class="cine-in">
+          <h2>Your movie night starts here</h2>
+          <ul>
+            <li><span class="bi"><svg class="ic"><use href="#i-bm"/></svg></span>Save to watchlist</li>
+            <li><span class="bi"><svg class="ic"><use href="#i-star"/></svg></span>Rate what you’ve watched</li>
+            <li><span class="bi"><svg class="ic"><use href="#i-spark"/></svg></span>Get recommendations</li>
+          </ul>
         </div>
-        <div class="login-body">
-          {% if messages %}
-            {% for message in messages %}
-              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-              </div>
-            {% endfor %}
-          {% endif %}
-          {% block content %}{% endblock content %}
+      </aside>
+      <section class="auth-r" aria-label="Account">
+        <div class="acard">
+          <div class="sw-a">
+            <a href="{% url 'movies-home' %}" class="a-logo" aria-label="Movies.hub — home">Movies<span class="dot"></span><b>hub</b></a>
+            {% if messages %}
+              {% for message in messages %}
+                <div class="banner" role="alert"><svg class="ic"><use href="#i-info"/></svg><span>{{ message }}</span></div>
+              {% endfor %}
+            {% endif %}
+            {% block content %}{% endblock content %}
+          </div>
         </div>
-      </div>
+      </section>
     </div>
+    </main>
     {% endblock body %}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" defer></script>
+    {% include "movies/partials/chrome/footer.html" %}
+    <script src="{% static 'movies/chrome.js' %}" defer></script>
     {% block extra_body %}{% endblock extra_body %}
 </body>
 </html>

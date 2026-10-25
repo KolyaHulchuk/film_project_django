@@ -1,0 +1,28 @@
+{% load allauth %}
+{% comment %}
+Stock allauth just does {{ attrs.form.as_p }} here - Django's bare default
+rendering (unstyled <p><label>...</label><input></p>, no CSS hooks at all,
+which is what produced the plain white "Email (optional):" / "Username:"
+page). Rebuilt by hand, reusing the same field-wrapper markup/classes as the
+site's own users/register.html, so every allauth form (login, signup,
+3rd-party signup, password/email management...) gets styled inputs too.
+{% endcomment %}
+{{ attrs.form.non_field_errors }}
+{% for hidden in attrs.form.hidden_fields %}{{ hidden }}{% endfor %}
+{% for field in attrs.form.visible_fields %}
+    {% with widget=field.field.widget %}
+    <div class="mb-3 auth-field">
+        {% if widget.input_type == "checkbox" %}
+            <div class="form-check">
+                {{ field }}
+                <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            </div>
+        {% else %}
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {{ field }}
+        {% endif %}
+        {% if field.help_text %}<div class="field-hint">{{ field.help_text }}</div>{% endif %}
+        {{ field.errors }}
+    </div>
+    {% endwith %}
+{% endfor %}
