@@ -1,122 +1,80 @@
 {% extends "movies/base.html" %}
-{% load crispy_forms_tags %}
 {% load static socialaccount %}
-
-{% block extra_css %}
-  <link rel="stylesheet" href="{% static 'users/profile.css' %}">
-{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/profile.css' %}?v=1">{% endblock %}
+{% block body_class %}mh-body pf-page{% endblock %}
+{% block main_class %}mh-main{% endblock %}
+{% block page_js %}<script src="{% static 'movies/profile.js' %}?v=1" defer></script>{% endblock %}
 
 {% block content %}
-<div class="profile-page">
-  <div class="container" style="max-width: 980px;">
-    <div class="profile-card">
+{% include 'users/partials/profile_header.html' with active='settings' %}
 
-      <div class="profile-left">
-        <div class="avatar-circle">
-          <img src="{{ user.profile.image.url }}" alt="{{ user.username }}" id="avatarPreview">
+<div class="wrap set-wrap">
+  <div class="set-grid">
+    <form class="card" method="POST" enctype="multipart/form-data" aria-label="Profile details">
+      {% csrf_token %}
+      <h2>Profile details</h2>
+
+      <div class="fld"><span class="lb">Profile photo</span>
+        <div class="photo-row">
+          <div class="avatar sm" data-avatar-preview aria-hidden="true">
+            <span>{{ user.username|slice:":2"|upper }}</span>
+            {% if user.profile.image %}<img src="{{ user.profile.image.url }}" alt="" onerror="this.remove()">{% endif %}
+          </div>
+          <div>
+            <label for="id_image" class="btn btn-ghost sm"><svg class="ic sm"><use href="#i-image"/></svg>Select a photo</label>
+            <input type="file" id="id_image" name="image" accept="image/*" aria-describedby="fileName">
+            <p id="fileName">JPG or PNG; a square photo works best.</p>
+          </div>
         </div>
-        <p class="profile-username">{{ user.username }}</p>
-        <p class="profile-since">З {{ user.date_joined|date:"d.m.Y" }}</p>
+        {% for error in p_form.image.errors %}<p class="field-err">{{ error }}</p>{% endfor %}
       </div>
 
-      <div class="profile-right">
-        <p class="profile-right-title">Edit Profile</p>
+      <div class="fld">
+        <label for="id_username">Name</label>
+        <input id="id_username" class="inp{% if u_form.username.errors %} is-invalid{% endif %}" type="text" name="username" value="{{ u_form.username.value|default:user.username }}" maxlength="150" autocomplete="username">
+        {% for error in u_form.username.errors %}<p class="field-err">{{ error }}</p>{% endfor %}
+      </div>
 
-        <form method="POST" enctype="multipart/form-data">
+      <div class="fld">
+        <label for="id_email">Email</label>
+        <input id="id_email" class="inp{% if u_form.email.errors %} is-invalid{% endif %}" type="email" name="email" value="{{ u_form.email.value|default:user.email }}" autocomplete="email">
+        {% for error in u_form.email.errors %}<p class="field-err">{{ error }}</p>{% endfor %}
+      </div>
+
+      <div class="form-act"><button type="submit" class="btn btn-red">Save changes</button></div>
+    </form>
+
+    {# Email verification + Google connection. Separate forms/links, not part of the profile form. #}
+    <aside class="card" aria-label="Connected accounts">
+      <h2>Connected accounts</h2>
+      <div class="acc-row">
+        <span class="acc-ic"><svg class="ic"><use href="#i-mail"/></svg></span>
+        <div class="acc-t"><b>Email</b><small>{{ user.email|default:"No email set" }}</small></div>
+        {% if email_verified %}<span class="sbadge"><svg class="ic"><use href="#i-check"/></svg>Verified</span>{% else %}<span class="sbadge">Not verified</span>{% endif %}
+      </div>
+      {% if not email_verified and user.email %}
+        <form method="POST" action="{% url 'resend_verification' %}" style="margin:0 0 6px">
           {% csrf_token %}
-
-          <div class="row g-4">
-
-            <div class="col-md-6">
-              <div class="field-wrap">
-                <div class="field-tooltip">Public name on the website</div>
-                <label class="form-label">Name</label>
-                <input type="text" name="username" value="{{ user.username }}"
-                       class="form-control" maxlength="150">
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="field-wrap">
-                <div class="field-tooltip">Used for login</div>
-                <label class="form-label">Email</label>
-                <input type="email" name="email" value="{{ user.email }}" class="form-control">
-              </div>
-            </div>
-
-            <div class="col-12">
-              <div class="field-wrap">
-                <div class="field-tooltip">JPG or PNG; a square photo is recommended</div>
-                <label class="form-label d-block mb-2">Profile photo</label>
-                <label for="id_image" class="btn-upload">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
-                    <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/>
-                  </svg>
-                  Select a photo
-                </label>
-                <input type="file" id="id_image" name="image" accept="image/*">
-              </div>
-            </div>
-
-          </div>
-
-          <div class="mt-5">
-            <button type="submit" class="btn-save">Save changes</button>
-          </div>
+          <button type="submit" class="btn btn-ghost sm">Resend verification email</button>
         </form>
-
-        {# Email verification + Google connection. Separate forms/links, not part of the profile form above. #}
-        <div class="account-status">
-          <div class="account-row">
-            <p class="account-label">
-              Email
-              {% if email_verified %}
-                <span class="badge-status badge-ok">Verified</span>
-              {% else %}
-                <span class="badge-status badge-warn">Not verified</span>
-              {% endif %}
-            </p>
-            {% if not email_verified and user.email %}
-              <form method="POST" action="{% url 'resend_verification' %}">
-                {% csrf_token %}
-                <button type="submit" class="btn-account">Resend verification email</button>
-              </form>
-            {% endif %}
-          </div>
-
-          <div class="account-row">
-            <p class="account-label">
-              Google
-              {% if google_connected %}
-                <span class="badge-status badge-ok">Connected</span>
-              {% else %}
-                <span class="badge-status badge-warn">Not connected</span>
-              {% endif %}
-            </p>
-            {% if not google_connected %}
-              {# process='connect' links Google to the logged-in user, skipping the email-match checks used for login #}
-              <a href="{% provider_login_url 'google' process='connect' next=request.path %}" class="btn-account">
-                <i class="bi bi-google"></i> Connect Google
-              </a>
-            {% endif %}
-          </div>
-        </div>
+      {% endif %}
+      <div class="acc-row">
+        <span class="acc-ic">G</span>
+        <div class="acc-t"><b>Google</b><small>Sign in with Google</small></div>
+        {% if google_connected %}<span class="sbadge"><svg class="ic"><use href="#i-check"/></svg>Connected</span>{% else %}<span class="sbadge">Not connected</span>{% endif %}
       </div>
+      {% if not google_connected %}
+        {# process='connect' links Google to the logged-in user, skipping the email-match checks used for login #}
+        <a href="{% provider_login_url 'google' process='connect' next=request.path %}" class="btn btn-ghost sm">Connect Google</a>
+      {% endif %}
+    </aside>
+  </div>
 
-    </div>
+  <div class="set-foot">
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-ghost"><svg class="ic sm"><use href="#i-out"/></svg>Log out</button>
+    </form>
   </div>
 </div>
-
-<script>
-  document.getElementById('id_image').addEventListener('change', function () {
-    const name = this.files[0] ? this.files[0].name : 'Файл не вибрано';
-    document.getElementById('fileName').textContent = name;
-    if (this.files[0]) {
-      const reader = new FileReader();
-      reader.onload = e => document.getElementById('avatarPreview').src = e.target.result;
-      reader.readAsDataURL(this.files[0]);
-    }
-  });
-</script>
 {% endblock %}

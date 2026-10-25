@@ -54,8 +54,34 @@
   document.addEventListener("keydown", (e) => e.key === "Escape" && close());
 
   const live = () => !layer.classList.contains("sheet"); // desktop popovers apply immediately, the sheet waits for "Show results"
-  const apply = () => live() && form.requestSubmit();
+  const apply = () => (live() ? form.requestSubmit() : refresh());
 
+  // Keep the chips (".on" state + count bubble) in sync with the fields; the catalog renders the initial state server-side.
+  const htmx = form.hasAttribute("data-htmx");
+  function refresh() {
+    triggers.forEach((t) => {
+      const panel = layer.querySelector('[data-panel="' + t.dataset.pop + '"]');
+      if (!panel) return;
+      const active = Array.from(panel.querySelectorAll("input[name]")).filter((el) =>
+        el.type === "radio" ? el.checked : el.type === "range" ? Number(el.value) > 0 : el.value.trim() !== ""
+      ).length;
+      t.classList.toggle("on", active > 0);
+      let n = t.querySelector(".n");
+      if (active && !n) {
+        n = document.createElement("span");
+        n.className = "n";
+        t.insertBefore(n, t.querySelector(".chev"));
+      }
+      if (n) active ? (n.textContent = active) : n.remove();
+    });
+    form.querySelectorAll("label.gchip, label.cs-row").forEach((l) => {
+      const r = l.querySelector('input[type="radio"]');
+      if (r) l.classList.toggle("on", r.checked);
+    });
+  }
+  if (htmx) refresh();
+  form.addEventListener("reset", () => setTimeout(() => { refresh(); form.requestSubmit(); if (htmx) close(); }, 0));
+  form.addEventListener("submit", () => htmx && refresh());
   form.addEventListener("change", (e) => {
     const input = e.target;
     if (input.type === "radio") {
@@ -95,10 +121,22 @@
 
   // Only send what is actually set: keeps the URL (and the TMDB cache key) free of empty / zero filters.
   form.addEventListener("submit", () => {
+    if (htmx) return; // HTMX reads the form itself and the server ignores empty values
     form.querySelectorAll('input[type="number"], input[type="range"]').forEach((el) => {
       if (el.value === "" || (el.type === "range" && Number(el.value) === 0)) el.disabled = true;
     });
   });
+
+  if (htmx) {
+    let timer;
+    form.addEventListener("input", (e) => {
+      if (e.target.matches('input[type="search"][name], input[type="number"]')) {
+        clearTimeout(timer);
+        timer = setTimeout(apply, 450);
+      }
+    });
+    form.addEventListener("htmx:afterRequest", () => !live() && close());
+  }
 
   const q = form.querySelector("[data-country-q]");
   const none = form.querySelector("[data-country-none]");
