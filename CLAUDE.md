@@ -140,3 +140,17 @@ Shared behavior for all three:
 ## Testing conventions
 
 Tests live under `movies/tests/` and `users/tests/` (one file per view/service/model, e.g. `test_movie_view.py`, `test_tmdb_service.py`). Pattern used throughout: `pytest.mark.django_db` for DB-touching tests, `pytest-mock`'s `mocker.patch` to stub `TMDBClient` (and its methods) rather than hitting the real TMDB API, `RequestFactory` for view-level tests.
+
+## Redesign port (Movies.hub)
+
+Task: port the static design in `design/design-source/` into Django templates. Read `design/HANDOFF.md` first.
+
+Rules:
+- No React and no build step. Django templates, plain CSS and plain JavaScript (Alpine.js or HTMX only if really needed).
+- `movies/templates/movies/base.html` holds the fixed header, slim footer and floating Cinema Assistant button; every page extends it.
+- One shared stylesheet in `movies/static/movies/` (apps have their own static dirs; there is no top-level `static/`) using the CSS variables from the design.
+- Reuse components via {% include %}: poster card, section header, filter toolbar, pagination, actor card, form card.
+- Keep existing views, URLs, models and tmdb_service.py behavior. Change templates/static first (`<app>/templates/`, `<app>/static/`); extend services only when a page needs a new TMDB endpoint.
+- Files in `design/design-source/` that are only single-state frames with no content (e.g. AuthLoginError) can be ignored; the real pages are the large files (Home, Catalog, Detail, Profile, Search, Auth).
+- If data is missing (e.g. community rating), hide that block instead of inventing data.
+- Work one page at a time, run the dev server, and show what changed before continuing.

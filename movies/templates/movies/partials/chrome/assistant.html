@@ -1,0 +1,78 @@
+{# Floating Cinema Assistant: FAB + chat popup. Same Celery flow as before (enqueue, then poll status). #}
+<div x-data="{
+    open: false,
+    messages: [],
+    input: '',
+    mediaType: 'all',
+    loading: false,
+    scroll() { this.$nextTick(() => { const b = this.$refs.body; if (b) b.scrollTop = b.scrollHeight; }); },
+    async sendMessage() {
+        if (!this.input.trim() || this.loading) return;
+        const msg = this.input;
+        this.messages.push({ text: msg, type: 'user' });
+        this.input = '';
+        this.loading = true;
+        this.scroll();
+        try {
+            const response = await fetch('{% url 'ai-recomendations' %}?message=' + encodeURIComponent(msg) + '&type=' + this.mediaType);
+            const data = await response.json();
+            if (response.status === 429 || !data.task_id) {
+                this.messages.push({ text: data.error || 'Request limit reached, try again later.', type: 'ai' });
+            } else {
+                const result = await this.pollAiTask(data.task_id);
+                this.messages.push({ text: result.answer || result.error || 'Error', type: 'ai' });
+            }
+        } catch (e) {
+            this.messages.push({ text: 'Connection error', type: 'ai' });
+        }
+        this.loading = false;
+        this.scroll();
+    },
+    async pollAiTask(taskId) {
+        const statusUrl = '{% url 'ai-recommendation-status' 'TASK_ID' %}'.replace('TASK_ID', taskId);
+        for (let attempt = 0; attempt < 30; attempt++) { // ~45s
+            const res = await fetch(statusUrl);
+            const data = await res.json();
+            if (data.status === 'done') return data.result;
+            if (data.status === 'failed') return { error: data.error || 'Error' };
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+        return { error: 'Timed out waiting for a response' };
+    }
+}" @keydown.escape.window="open = false">
+
+  <div class="chat" role="dialog" aria-label="Cinema Assistant" x-show="open" x-cloak x-transition.opacity>
+    <div class="chat-h">
+      <span class="chat-av"><svg class="ic" style="width:20px;height:20px"><use href="#i-film"/></svg></span>
+      <div class="chat-t"><strong>Cinema Assistant</strong><span>Ask for a pick</span></div>
+      <button type="button" class="btn-icon min" aria-label="Close assistant" style="border-color:transparent" @click="open = false"><svg class="ic"><use href="#i-close"/></svg></button>
+    </div>
+
+    <div class="chat-b" x-ref="body" aria-live="polite">
+      <div class="bub">Hi! I’m your Cinema Assistant. Ask about a movie, anime or TV series{% if user.is_authenticated %} — I can also recommend something based on your watchlist{% endif %}.</div>
+      <template x-for="(msg, index) in messages" :key="index">
+        <div class="bub" :class="msg.type === 'user' ? 'me' : ''" x-text="msg.text"></div>
+      </template>
+      <div class="bub wait" x-show="loading" x-cloak>Thinking…</div>
+    </div>
+
+    {% if user.is_authenticated %}
+    <div class="chat-seg" role="group" aria-label="Search in">
+      <template x-for="opt in [{value: 'all', label: 'All'}, {value: 'movie', label: 'Movies'}, {value: 'tv', label: 'TV'}]" :key="opt.value">
+        <button type="button" :class="mediaType === opt.value ? 'on' : ''" :aria-pressed="mediaType === opt.value" @click="mediaType = opt.value" x-text="opt.label"></button>
+      </template>
+    </div>
+    <form class="chat-f" @submit.prevent="sendMessage()">
+      <input type="text" x-model="input" placeholder="Ask about movies and shows…" aria-label="Message the assistant" autocomplete="off">
+      <button type="submit" class="btn-icon min" aria-label="Send" :disabled="loading || !input.trim()" style="background:var(--red);border-color:var(--red)"><svg class="ic"><use href="#i-send"/></svg></button>
+    </form>
+    {% else %}
+    <div class="chat-gate">
+      <a href="{% url 'login' %}" class="btn btn-red sm">Login to chat</a>
+      <a href="{% url 'register' %}" class="btn btn-ghost sm">Register</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <button type="button" class="fab" aria-label="Open Cinema Assistant" :aria-expanded="open" aria-haspopup="dialog" @click="open = !open"><svg class="ic"><use href="#i-chat"/></svg></button>
+</div>

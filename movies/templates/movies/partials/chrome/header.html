@@ -1,0 +1,58 @@
+{# Fixed glass header + mobile drawer. Same on every page; active link comes from the current URL name. #}
+{% with current=request.resolver_match.url_name %}
+<header class="hdr" data-site-header>
+  <div class="wrap hdr-in">
+    <a href="{% url 'movies-home' %}" class="logo" aria-label="Movies.hub — home">Movies<span class="dot"></span><b>hub</b></a>
+    <nav class="nav" aria-label="Primary">
+      <a href="{% url 'movies-home' %}" {% if current == 'movies-home' %}class="active" aria-current="page"{% endif %}>Home</a>
+      <a href="{% url 'movie' %}" {% if current == 'movie' %}class="active" aria-current="page"{% endif %}>Movies</a>
+      <a href="{% url 'tv' %}" {% if current == 'tv' %}class="active" aria-current="page"{% endif %}>TV</a>
+      <a href="{% url 'anime-tv' %}" {% if current == 'anime-tv' %}class="active" aria-current="page"{% endif %}>Anime</a>
+      <a href="{% url 'dorams-tv' %}" {% if current == 'dorams-tv' %}class="active" aria-current="page"{% endif %}>Doramas</a>
+      <a href="{% url 'cartoon-tv' %}" {% if current == 'cartoon-tv' %}class="active" aria-current="page"{% endif %}>Cartoons</a>
+      <a href="{% if user.is_authenticated %}{% url 'watchlist' %}{% else %}{% url 'register' %}{% endif %}" {% if current == 'watchlist' %}class="active" aria-current="page"{% endif %}>Watchlist</a>
+      <span class="nav-line" aria-hidden="true"></span>
+    </nav>
+    <div class="hdr-r">
+      <button type="button" class="btn-icon min" aria-label="Open search" data-search-open><svg class="ic"><use href="#i-search"/></svg></button>
+      {% if user.is_authenticated %}
+      <a href="{% url 'profile' %}" class="btn btn-ghost sm hide-m">Profile</a>
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit" class="btn btn-red sm hide-m">Logout</button></form>
+      {% else %}
+      <a href="{% url 'login' %}" class="btn btn-ghost sm hide-m">Login</a>
+      <a href="{% url 'register' %}" class="btn btn-red sm hide-m">Register</a>
+      {% endif %}
+      <button type="button" class="btn-icon min burger" aria-label="Open menu" data-drawer-open><svg class="ic"><use href="#i-menu"/></svg></button>
+    </div>
+
+    <form class="s-bar" role="search" action="{% url 'movies-search' %}" method="get" hidden data-search-bar>
+      <svg class="ic" style="color:var(--text2)"><use href="#i-search"/></svg>
+      <input type="search" name="q" placeholder="Search movies, TV shows, people…" aria-label="Search" autocomplete="off">
+      <button type="button" class="btn-icon min" aria-label="Close search" style="border-color:transparent;background:rgba(255,255,255,.06)" data-search-close><svg class="ic"><use href="#i-close"/></svg></button>
+    </form>
+  </div>
+</header>
+
+<div class="drawer" role="dialog" aria-modal="true" aria-label="Menu" hidden data-drawer>
+  <div class="drawer-top">
+    <a href="{% url 'movies-home' %}" class="logo">Movies<span class="dot"></span><b>hub</b></a>
+    <button type="button" class="btn-icon min" aria-label="Close menu" data-drawer-close><svg class="ic"><use href="#i-close"/></svg></button>
+  </div>
+  <a href="{% url 'movies-home' %}" class="big {% if current == 'movies-home' %}active{% endif %}">Home</a>
+  <a href="{% url 'movie' %}" class="big {% if current == 'movie' %}active{% endif %}">Movies</a>
+  <a href="{% url 'tv' %}" class="big {% if current == 'tv' %}active{% endif %}">TV</a>
+  <a href="{% url 'anime-tv' %}" class="big {% if current == 'anime-tv' %}active{% endif %}">Anime</a>
+  <a href="{% url 'dorams-tv' %}" class="big {% if current == 'dorams-tv' %}active{% endif %}">Doramas</a>
+  <a href="{% url 'cartoon-tv' %}" class="big {% if current == 'cartoon-tv' %}active{% endif %}">Cartoons</a>
+  <a href="{% if user.is_authenticated %}{% url 'watchlist' %}{% else %}{% url 'register' %}{% endif %}" class="big {% if current == 'watchlist' %}active{% endif %}">Watchlist</a>
+  <div class="drawer-cta">
+    {% if user.is_authenticated %}
+    <a href="{% url 'profile' %}" class="btn btn-ghost">Profile</a>
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit" class="btn btn-red">Logout</button></form>
+    {% else %}
+    <a href="{% url 'register' %}" class="btn btn-red">Register</a>
+    <a href="{% url 'login' %}" class="btn btn-ghost">Login</a>
+    {% endif %}
+  </div>
+</div>
+{% endwith %}

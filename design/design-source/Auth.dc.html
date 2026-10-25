@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Movies.hub — Authentication</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ===== DESIGN TOKENS + BASE (same as every page) ===== */
+:root{
+  --bg:#0A0A0B; --panel:#141416; --elev:#1C1C1F; --line:#2A2A2E;
+  --text:#F5F5F6; --text2:#A1A1A8; --muted:#6B6B73; --meta:#8E8E96;
+  --red:#E11D2E; --red-hover:#FF2E40; --red-press:#9E1220; --red-light:#FF4D5E; --glow:rgba(225,29,46,.35);
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+body{margin:0;background:#0A0A0B}
+html{scroll-padding-top:76px}
+.mh{--hdr-h:72px;background:var(--bg);color:var(--text);font-family:'Manrope',system-ui,-apple-system,Segoe UI,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip;position:relative;min-height:100vh}
+.mh *,.mh *::before,.mh *::after{box-sizing:border-box}
+:where(.mh) :where(a){color:inherit;text-decoration:none}
+:where(.mh) :where(button){font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+.mh h1,.mh h2,.mh h3,.mh p{margin:0}
+.mh .ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.mh .ic.sm{width:14px;height:14px}
+.mh .ic.fill{fill:currentColor;stroke:none}
+.mh a:focus-visible,.mh button:focus-visible,.mh input:focus-visible,.mh [tabindex]:focus-visible{outline:2px solid var(--red-light);outline-offset:3px;border-radius:10px}
+.wrap{max-width:1344px;margin:0 auto;padding:0 32px}
+
+/* ===== BUTTONS / BADGES / CHIPS (shared) ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:46px;padding:0 22px;border-radius:999px;font-weight:700;font-size:15px;white-space:nowrap;transition:transform .25s var(--ease);position:relative}
+.btn:active{transform:scale(.97)}
+.btn.sm{height:40px;padding:0 16px;font-size:14px}
+.btn-red{background:var(--red);color:#fff}
+.btn-red::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 26px var(--glow),0 6px 18px rgba(225,29,46,.25);opacity:.75;transition:opacity .3s;pointer-events:none}
+.btn-red:hover{background:var(--red-hover)}
+.btn-red:hover::after{opacity:1}
+.btn-red:active{background:var(--red-press)}
+.btn-ghost{border:1px solid rgba(245,245,246,.28);background:rgba(20,20,22,.35);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.btn-ghost:hover{border-color:var(--red);background:rgba(28,28,31,.6)}
+.btn-icon{width:46px;height:46px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(245,245,246,.22);background:rgba(20,20,22,.45);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:transform .25s var(--ease),border-color .25s}
+.btn-icon:hover{border-color:var(--red);transform:translateY(-1px)}
+.btn-icon.min{width:44px;height:44px}
+.badge{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:8px;font-size:12px;font-weight:700;background:rgba(10,10,11,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.10);color:var(--text)}
+.badge .ic{width:12px;height:12px}
+.chip{display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(28,28,31,.8);border:1px solid var(--line);color:var(--text2)}
+.chip.type{height:22px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;padding:0 8px;color:var(--text);background:rgba(10,10,11,.72)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+@keyframes pop{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* ===== SITE HEADER (identical on every page) ===== */
+.hdr{position:fixed;top:0;left:0;right:0;z-index:50;height:72px;transition:height .3s var(--ease)}
+.hdr.scrolled{height:60px}
+.hdr::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(10,10,11,.66);backdrop-filter:blur(20px) saturate(140%);-webkit-backdrop-filter:blur(20px) saturate(140%);border-bottom:1px solid rgba(255,255,255,.08);opacity:0;transition:opacity .3s;pointer-events:none}
+.hdr.scrolled::before{opacity:1}
+.hdr-in{height:100%;display:flex;align-items:center;gap:36px;position:relative}
+.logo{display:inline-flex;align-items:center;font-weight:800;font-size:23px;letter-spacing:-.03em;min-height:44px}
+.logo b{color:var(--red);font-weight:800;margin-left:1px}
+.logo .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin:6px 1px 0 2px;box-shadow:0 0 12px var(--glow)}
+.nav{position:relative;display:flex;align-items:center;gap:6px;height:100%}
+.nav a{height:100%;display:inline-flex;align-items:center;padding:0 14px;font-size:14.5px;font-weight:600;color:var(--text2);transition:color .2s}
+.nav a:hover,.nav a.active{color:var(--text)}
+.nav-line{position:absolute;left:0;bottom:0;width:1px;height:2px;border-radius:2px;background:var(--red);transform-origin:left center;opacity:0;transition:transform .4s var(--ease),opacity .3s;pointer-events:none}
+.nav-line.ready{opacity:1}
+.hdr-r{margin-left:auto;display:flex;align-items:center;gap:10px}
+.burger{display:none}
+.drawer{position:fixed;inset:0;z-index:90;background:rgba(10,10,11,.88);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);display:flex;flex-direction:column;padding:0 20px 28px;animation:fade .3s var(--ease);overflow:auto}
+.drawer-top{height:72px;display:flex;align-items:center;justify-content:space-between;flex:none}
+.drawer a.big{display:flex;align-items:center;min-height:54px;font-size:24px;color:var(--text2);font-weight:800;letter-spacing:-.02em;border-bottom:1px solid var(--line)}
+.drawer a.big.active{color:var(--text)}
+.drawer a.big.active::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--red);margin-right:12px;box-shadow:0 0 12px var(--glow)}
+
+.hdr-r .btn.cur{box-shadow:0 0 0 3px rgba(225,29,46,.28)}
+.hdr-r .btn-ghost.cur{border-color:var(--red);background:rgba(225,29,46,.14)}
+
+/* ===== AUTH LAYOUT — split screen under the fixed header. LEFT: cinematic panel · RIGHT: ONE reusable form card ===== */
+.auth{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:max(820px,100vh)}
+.cine{position:relative;overflow:hidden;isolation:isolate;background:#0b0b0d;border-right:1px solid var(--line)}
+.cine::before{content:"";position:absolute;inset:0;z-index:2;background:linear-gradient(0deg,#0A0A0B 4%,rgba(10,10,11,.74) 46%,rgba(10,10,11,.10) 100%),radial-gradient(60% 50% at 24% 16%,rgba(225,29,46,.30),transparent 70%)}
+.cine::after{content:"";position:absolute;inset:0;z-index:3;opacity:.2;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.cine-pt{position:absolute;z-index:1;width:250px;height:375px;border-radius:20px;filter:blur(5px);opacity:.95;box-shadow:inset 0 1px 0 rgba(255,255,255,.12);transform:rotate(var(--r));border:1px solid rgba(255,255,255,.08)}
+.cine-pt:nth-child(1){left:6%;top:11%;--r:-7deg;background:radial-gradient(110% 58% at 30% 0%,rgba(158,18,32,.5),transparent 62%),linear-gradient(172deg,#2a2a30,#121214)}
+.cine-pt:nth-child(2){left:34%;top:4%;--r:5deg;background:radial-gradient(110% 58% at 60% 0%,rgba(158,18,32,.34),transparent 62%),linear-gradient(172deg,#3a3a41,#141416)}
+.cine-pt:nth-child(3){left:60%;top:15%;--r:-4deg;background:radial-gradient(110% 58% at 40% 0%,rgba(158,18,32,.46),transparent 62%),linear-gradient(172deg,#26262b,#101012)}
+.cine-pt:nth-child(4){left:22%;top:44%;--r:8deg;background:radial-gradient(110% 58% at 70% 0%,rgba(158,18,32,.28),transparent 62%),linear-gradient(172deg,#34343a,#121214)}
+.cine-in{position:absolute;z-index:4;left:max(48px,6vw);right:48px;bottom:84px;max-width:540px}
+.cine h2{margin:0;font-size:clamp(40px,4.3vw,62px);font-weight:800;letter-spacing:-.045em;line-height:1.02}
+.cine ul{list-style:none;margin:30px 0 0;padding:0;display:grid;gap:16px}
+.cine li{display:flex;align-items:center;gap:14px;font-size:16px;font-weight:600;color:#D4D4D8}
+.cine li .bi{width:40px;height:40px;flex:none;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(20,20,22,.7);border:1px solid rgba(255,255,255,.12);color:var(--text);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.cine li .bi .ic{width:19px;height:19px}
+.auth-r{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;padding:112px 40px 56px}
+
+/* ===== FORM CARD (reusable component: .acard > .a-logo, h1, .sub, .banner, form > .f fields, .btn-red.full, .or, .btn-g, .a-foot) ===== */
+.acard{width:100%;max-width:420px;padding:34px 32px 30px;border-radius:20px;background:var(--panel);border:1px solid var(--line);box-shadow:0 30px 70px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.3);animation:cardIn .55s var(--ease) both}
+@keyframes cardIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes riseA{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes riseB{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.sw-a{animation:riseA .42s var(--ease) both}
+.sw-b{animation:riseB .42s var(--ease) both}
+.a-logo{display:inline-flex;align-items:center;font-weight:800;font-size:19px;letter-spacing:-.03em;margin-bottom:22px}
+.a-logo .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--red);margin:5px 1px 0 2px;box-shadow:0 0 10px var(--glow)}
+.a-logo b{color:var(--red);font-weight:800}
+.acard h1{font-size:29px;font-weight:800;letter-spacing:-.035em;line-height:1.12}
+.acard .sub{margin-top:8px;font-size:15px;line-height:1.5;color:var(--text2)}
+.banner{display:flex;gap:10px;align-items:flex-start;margin-top:20px;padding:12px 14px;border-radius:12px;background:rgba(225,29,46,.1);border:1px solid rgba(225,29,46,.45);font-size:14px;font-weight:600;line-height:1.45;color:var(--text);animation:riseA .35s var(--ease) both}
+.banner .ic{width:18px;height:18px;margin-top:1px;color:var(--red-light)}
+.f{margin-top:18px}
+.f label{display:block;margin-bottom:8px;font-size:13.5px;font-weight:700;color:var(--text)}
+.f label .opt{color:var(--meta);font-weight:500}
+.acard .f-hint{margin-top:7px;font-size:12.5px;line-height:1.45;color:var(--meta)}
+.in{position:relative;display:flex;align-items:center;height:48px;border-radius:12px;background:var(--bg);border:1px solid var(--line);transition:border-color .2s,background-color .2s}
+.in:hover{border-color:#46464c}
+.in:focus-within{border-color:var(--red);box-shadow:0 0 0 4px rgba(225,29,46,.16),0 0 24px var(--glow)}
+.in .lead{position:absolute;left:14px;width:18px;height:18px;color:var(--meta);pointer-events:none;transition:color .2s}
+.in:focus-within .lead{color:var(--text)}
+.in input{width:100%;height:100%;min-width:0;padding:0 14px 0 44px;background:none;border:0;border-radius:12px;color:var(--text);font:inherit;font-size:15px;font-weight:500;outline:none}
+.in input::placeholder{color:#6f6f78}
+.mh .in input:focus-visible{outline:none}
+.in.eyed input{padding-right:50px}
+.eye{position:absolute;right:5px;width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:color .2s,background-color .2s}
+.eye:hover{color:#fff;background:rgba(255,255,255,.08)}
+.eye .ic{width:19px;height:19px}
+.f.err .in{border-color:var(--red);background:rgba(225,29,46,.06)}
+.f.err .in:focus-within{box-shadow:0 0 0 4px rgba(225,29,46,.22),0 0 24px var(--glow)}
+.f.err .in .lead{color:var(--red-light)}
+.acard .f-err{display:flex;align-items:flex-start;gap:7px;margin:8px 0 0;font-size:13px;font-weight:600;line-height:1.4;color:var(--red-light);animation:riseA .3s var(--ease) both}
+.f-err .ic{width:15px;height:15px;margin-top:1px}
+.f-row{display:flex;justify-content:flex-end;margin-top:10px}
+.lnk-a{display:inline-flex;align-items:center;gap:6px;min-height:32px;font-size:13.5px;font-weight:600;color:var(--text2);transition:color .2s}
+.lnk-a:hover{color:var(--red-light)}
+.lnk-a.strong{color:var(--text);font-weight:700}
+.lnk-a .ic{width:15px;height:15px;transition:transform .25s var(--ease)}
+.lnk-a:hover .ic.back{transform:translateX(-3px)}
+.btn.full{width:100%;height:50px;margin-top:22px;font-size:15.5px}
+.btn.full.dis{opacity:.5;pointer-events:none}
+.btn.full.dis::after,.btn.full.ld::after{opacity:.2}
+.btn.ld{pointer-events:none;background:var(--red-press)}
+.spin{width:18px;height:18px;flex:none;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.or{display:flex;align-items:center;gap:14px;margin:20px 0;font-size:13px;font-weight:600;color:var(--meta)}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.btn-g{width:100%;height:50px;display:inline-flex;align-items:center;justify-content:center;gap:12px;border-radius:999px;background:var(--elev);border:1px solid #3a3a40;color:var(--text);font-weight:700;font-size:15.5px;transition:transform .25s var(--ease),border-color .2s,background-color .2s}
+.btn-g:hover{border-color:#5d5d66;background:#232327}
+.btn-g:active{transform:scale(.98)}
+.btn-g svg{width:20px;height:20px;flex:none}
+.acard .a-foot{margin:22px 0 0;text-align:center;font-size:14.5px;color:var(--text2)}
+.a-foot a{color:var(--text);font-weight:700;transition:color .2s}
+.a-foot a:hover{color:var(--red-light)}
+.a-foot .back{display:inline-flex;align-items:center;gap:8px}
+.a-foot .back .ic{width:15px;height:15px}
+
+/* ===== PASSWORD CHECKLIST + strength bar ===== */
+.str{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:12px}
+.str span{height:4px;border-radius:3px;background:var(--line);overflow:hidden}
+.str i{display:block;height:100%;transform-origin:left center;transition:transform .35s var(--ease)}
+.str-l{display:flex;justify-content:space-between;margin-top:8px;font-size:12.5px;font-weight:600;color:var(--meta)}
+.str-l b{color:var(--text);font-weight:700}
+.req{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
+.req li{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;color:var(--meta);transition:color .25s}
+.ck-i{position:relative;width:18px;height:18px;flex:none;border-radius:50%;border:1.5px solid #55555c;display:flex;align-items:center;justify-content:center;transition:background-color .25s,border-color .25s}
+.ck-i .ic{width:11px;height:11px;stroke-width:3.4;color:#0A0A0B;opacity:0;transform:scale(.4);transition:opacity .25s,transform .35s var(--ease)}
+.req li.ok{color:var(--text)}
+.req li.ok .ck-i{background:#fff;border-color:#fff}
+.req li.ok .ck-i .ic{opacity:1;transform:none}
+.req li.bad{color:var(--red-light)}
+.req li.bad .ck-i{border-color:var(--red)}
+.agree{display:flex;align-items:flex-start;gap:12px;margin-top:20px;font-size:14px;line-height:1.5;color:var(--text2)}
+.agree a{color:var(--text);font-weight:700;text-decoration:underline;text-decoration-color:rgba(255,255,255,.3);text-underline-offset:3px}
+.agree a:hover{color:var(--red-light)}
+.cbx{width:22px;height:22px;flex:none;margin-top:1px;border-radius:7px;border:1.5px solid #55555c;background:var(--bg);display:flex;align-items:center;justify-content:center;color:#fff;transition:background-color .2s,border-color .2s}
+.cbx .ic{width:13px;height:13px;stroke-width:3.4;opacity:0;transform:scale(.4);transition:opacity .2s,transform .3s var(--ease)}
+.cbx:hover{border-color:#8a8a93}
+.cbx.on{background:var(--red);border-color:var(--red)}
+.cbx.on .ic{opacity:1;transform:none}
+.f.err .cbx,.agree.err .cbx{border-color:var(--red)}
+
+/* ===== STATE SCREENS (sent / invalid / done) ===== */
+.state{display:flex;flex-direction:column;align-items:center;text-align:center}
+.state .big{position:relative;width:76px;height:76px;margin:6px 0 22px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--elev);border:1px solid #3a3a40;color:var(--text)}
+.state .big .ic{width:32px;height:32px}
+.state .big.red{box-shadow:0 0 0 8px rgba(225,29,46,.08),0 0 46px var(--glow)}
+.state .big.white{box-shadow:0 0 0 8px rgba(255,255,255,.04),0 0 46px rgba(255,255,255,.16)}
+.state h1{font-size:27px}
+.state .sub{max-width:330px}
+.state .acts{display:grid;gap:10px;width:100%;margin-top:26px}
+.state .acts .btn.full{margin-top:0}
+.state .btn-ghost.full{width:100%;height:50px}
+.acard .resend{margin-top:16px;font-size:13.5px;color:var(--meta);font-weight:500}
+.resend button{font:inherit;font-weight:700;color:var(--text);text-decoration:underline;text-decoration-color:rgba(255,255,255,.3);text-underline-offset:3px;min-height:32px;transition:color .2s}
+.resend button:hover{color:var(--red-light)}
+.resend .tm{font-weight:700;color:var(--text2);font-variant-numeric:tabular-nums}
+
+/* ===== FOOTER (slim) / ASSISTANT ===== */
+.foot{margin-top:44px;border-top:1px solid var(--line);background:var(--bg);padding:0 0 20px}
+.foot-row{display:flex;align-items:center;justify-content:space-between;gap:14px 32px;min-height:0;padding-top:16px;padding-bottom:0}
+.foot-l{display:flex;align-items:center;gap:14px;flex:none}
+.foot .logo{font-size:18px;min-height:32px}
+.foot .logo .dot{width:6px;height:6px;margin-top:5px}
+.foot-c{font-size:12.5px;color:var(--meta);font-weight:500;white-space:nowrap}
+.foot-links{display:flex;align-items:center;gap:2px;flex:none}
+.foot-links a{display:inline-flex;align-items:center;min-height:36px;padding:0 8px;font-size:13px;font-weight:500;color:var(--text2);transition:color .2s}
+.foot-links a:hover{color:var(--red-light)}
+.foot-links .sep{color:var(--muted);font-size:13px}
+.tmdb{display:flex;align-items:center;gap:10px;max-width:560px;padding-right:88px;margin:0;font-size:12px;line-height:1.5;color:var(--meta);font-weight:400}
+.tmdb em{flex:none;font-style:normal;font-weight:800;font-size:11px;letter-spacing:.06em;padding:3px 8px;border-radius:6px;background:var(--elev);border:1px solid var(--line);color:var(--text)}
+@media (max-width:1099px){
+  .foot-row{flex-wrap:wrap}
+  .tmdb{flex-basis:100%;max-width:none;padding-top:4px;padding-right:88px}
+}
+@media (max-width:767px){
+  .foot{margin-top:40px;padding-bottom:20px}
+  .foot-row{flex-direction:column;justify-content:center;text-align:center;gap:6px;padding-top:16px;padding-bottom:0}
+  .foot-l{flex-direction:column;gap:4px}
+  .foot-links{justify-content:center}
+  .foot-links a{min-height:44px;padding:0 12px}
+  .tmdb{flex-direction:column;align-items:center;gap:8px;max-width:none;padding:2px 64px 0}
+}
+.fab{position:fixed;right:24px;bottom:24px;z-index:70;width:60px;height:60px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 6px rgba(225,29,46,.16),0 0 38px var(--glow),0 12px 30px rgba(0,0,0,.5);transition:transform .3s var(--ease)}
+.fab:hover{transform:scale(1.07);background:var(--red-hover)}
+.fab .ic{width:26px;height:26px}
+.fab::before{content:"";position:absolute;inset:-6px;border-radius:50%;border:1px solid var(--red);opacity:0;animation:ping 2.8s ease-out infinite}
+@keyframes ping{0%{opacity:.7;transform:scale(.9)}100%{opacity:0;transform:scale(1.5)}}
+.chat{position:fixed;right:24px;bottom:100px;z-index:70;width:360px;max-width:calc(100vw - 32px);border-radius:24px;background:rgba(20,20,22,.92);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--line);box-shadow:0 30px 70px rgba(0,0,0,.7);overflow:hidden;transform-origin:bottom right;animation:pop .35s var(--ease)}
+.chat-h{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.chat-av{width:38px;height:38px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;box-shadow:0 0 18px var(--glow)}
+.chat-b{padding:18px;display:flex;flex-direction:column;gap:12px;min-height:200px}
+.bub{max-width:86%;padding:12px 14px;border-radius:16px 16px 16px 4px;background:var(--elev);font-size:14.5px;line-height:1.5}
+.bub.me{align-self:flex-end;border-radius:16px 16px 4px 16px;background:rgba(225,29,46,.18);border:1px solid rgba(225,29,46,.4)}
+.chat-f{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+.chat-f input{flex:1;min-width:0;height:46px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:0 16px;font:inherit;font-size:14.5px}
+.chat-f input::placeholder{color:var(--meta)}
+
+
+/* ===== RESPONSIVE ===== */
+.foot{margin-top:0}
+@media (max-width:1199px){ .wrap{padding:0 28px} }
+@media (max-width:1099px){ .nav a{padding:0 8px} .nav{gap:2px} .hdr-in{gap:16px} }
+@media (max-width:1023px){
+  .nav,.hdr-r .btn.sm.hide-m{display:none}
+  .burger{display:inline-flex}
+  .hdr-in{gap:12px}
+  .auth{display:block;min-height:0}
+  .cine{position:absolute;inset:0 0 auto 0;height:380px;border-right:0}
+  .cine-in{display:none}
+  .cine-pt{width:180px;height:270px}
+  .cine::before{background:linear-gradient(0deg,#0A0A0B 4%,rgba(10,10,11,.55) 70%,rgba(10,10,11,.3)),radial-gradient(60% 60% at 30% 10%,rgba(225,29,46,.28),transparent 70%)}
+  .auth-r{padding:128px 28px 56px}
+}
+@media (max-width:767px){
+  .wrap{padding:0 16px}
+  .hdr-r .btn{display:none}
+  .cine{height:300px}
+  .cine-pt{width:140px;height:210px}
+  .auth-r{padding:104px 0 0;align-items:flex-start}
+  .acard{max-width:none;min-height:calc(100vh - 104px);padding:30px 20px 36px;border-radius:24px 24px 0 0;border-left:0;border-right:0;border-bottom:0}
+  .acard h1{font-size:27px}
+  .in{height:48px}
+  .btn.full,.btn-g,.state .btn-ghost.full{height:52px}
+  .fab{right:16px;bottom:16px;width:56px;height:56px}
+  .chat{right:16px;bottom:84px}
+}
+@media (prefers-reduced-motion:reduce){
+  .acard,.sw-a,.sw-b,.banner,.f-err,.spin,.fab::before{animation:none !important;opacity:1;transform:none}
+  .mh *{transition-duration:.01ms !important}
+  .spin{animation:spin 1.6s linear infinite !important}
+}
+</style>
+</helmet>
+
+<div class="mh">
+
+<!-- SVG ICON SPRITE (line icons; Google "G" is the official multicolor mark, inlined in the button) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.6l2.9 6.1 6.7.8-4.9 4.6 1.3 6.6L12 17.4 6 20.7l1.3-6.6L2.4 9.5l6.7-.8z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-bm" viewBox="0 0 24 24"><path d="M7 4.5h10v15l-5-3.6-5 3.6z"/></symbol>
+<symbol id="i-chl" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+<symbol id="i-chr" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5.5h16v11H10l-4.5 3.5v-3.5H4z"/><path d="M8.5 10h7M8.5 13h4"/></symbol>
+<symbol id="i-film" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M8 4.5v15M16 4.5v15M3.5 9h4.5M3.5 15h4.5M16 9h4.5M16 15h4.5"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12l16-7-6 15-2.5-6.5z"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.4"/><circle cx="8" cy="17" r="2.4"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c.8-4 3.6-6 7.5-6s6.7 2 7.5 6"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="M4.5 7.5l7.5 5.5 7.5-5.5"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+<symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M4 4l16 16M9.9 5.8A9.6 9.6 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 01-3 3.7M6.3 7.6A15.8 15.8 0 002.5 12S6 18.5 12 18.5a9.7 9.7 0 003.6-.7M9.9 9.9a3 3 0 004.2 4.2"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4.2L21 19.5H3z"/><path d="M12 10v4.4M12 17.2v.1"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.8v5M12 16v.1"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9zM18.5 16.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></symbol>
+</defs></svg>
+
+<!-- ============ SITE HEADER (fixed glass — identical on every page); current auth link highlighted ============ -->
+<header class="hdr {{hdrCls}}" data-site-header>
+  <div class="wrap hdr-in">
+    <a href="#" class="logo" aria-label="Movies.hub — home">Movies<span class="dot"></span><b>hub</b></a>
+    <nav class="nav" aria-label="Primary">
+      <sc-for list="{{navItems}}" as="n" hint-placeholder-count="7">
+        <a href="#" class="{{n.cls}}" aria-current="{{n.cur}}" onClick="{{n.go}}">{{n.label}}</a>
+      </sc-for>
+    </nav>
+    <div class="hdr-r">
+      <button class="btn-icon min" aria-label="Open search"><svg class="ic"><use href="#i-search"/></svg></button>
+      <a href="#" class="btn btn-ghost sm hide-m {{loginCur}}" aria-current="{{loginAria}}" onClick="{{goLogin}}">Login</a>
+      <a href="#" class="btn btn-red sm hide-m {{regCur}}" aria-current="{{regAria}}" onClick="{{goRegister}}">Register</a>
+      <button class="btn-icon min burger" aria-label="Open menu" onClick="{{openDrawer}}"><svg class="ic"><use href="#i-menu"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<sc-if value="{{drawer}}" hint-placeholder-val="{{ false }}">
+<div class="drawer" role="dialog" aria-modal="true" aria-label="Menu">
+  <div class="drawer-top"><a href="#" class="logo">Movies<span class="dot"></span><b>hub</b></a><button class="btn-icon min" aria-label="Close menu" onClick="{{closeDrawer}}"><svg class="ic"><use href="#i-close"/></svg></button></div>
+  <sc-for list="{{navItems}}" as="n" hint-placeholder-count="7"><a href="#" class="big {{n.cls}}" aria-current="{{n.cur}}" onClick="{{n.go}}">{{n.label}}</a></sc-for>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:28px;padding-top:4px"><a href="#" class="btn btn-red" style="height:52px">Register</a><a href="#" class="btn btn-ghost" style="height:52px">Login</a></div>
+</div>
+</sc-if>
+
+<main>
+<!-- ============ [AUTH LAYOUT] — LEFT cinematic panel (blurred poster collage + grain + red glow) · RIGHT the form card ============ -->
+<div class="auth">
+  <aside class="cine" aria-hidden="false">
+    <span class="cine-pt" aria-hidden="true"></span><span class="cine-pt" aria-hidden="true"></span><span class="cine-pt" aria-hidden="true"></span><span class="cine-pt" aria-hidden="true"></span>
+    <div class="cine-in">
+      <h2>Your movie night starts here</h2>
+      <ul>
+        <li><span class="bi"><svg class="ic"><use href="#i-bm"/></svg></span>Save to watchlist</li>
+        <li><span class="bi"><svg class="ic"><use href="#i-star"/></svg></span>Rate what you’ve watched</li>
+        <li><span class="bi"><svg class="ic"><use href="#i-spark"/></svg></span>Get recommendations</li>
+      </ul>
+    </div>
+  </aside>
+
+  <section class="auth-r" aria-label="Account">
+    <div class="acard">
+      <div class="{{swCls}}">
+      <a href="#" class="a-logo" aria-label="Movies.hub — home">Movies<span class="dot"></span><b>hub</b></a>
+
+      <!-- ============ [LOGIN FORM] ============ -->
+      <sc-if value="{{isLogin}}" hint-placeholder-val="{{ true }}">
+        <h1 id="a-title-l">Welcome back</h1>
+        <p class="sub">Sign in to your account</p>
+        <sc-if value="{{banner}}" hint-placeholder-val="{{ false }}"><div class="banner" role="alert"><svg class="ic"><use href="#i-warn"/></svg><span>{{banner}}</span></div></sc-if>
+        <form novalidate aria-labelledby="a-title-l" onSubmit="{{submit}}">
+          <div class="f {{fLU.cls}}">
+            <label for="f-user">Username or email</label>
+            <div class="in"><svg class="ic lead" aria-hidden="true"><use href="#i-user"/></svg><input id="f-user" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Username or email" value="{{u}}" onInput="{{onU}}" aria-invalid="{{fLU.inv}}" aria-describedby="{{fLU.desc}}"></div>
+            <div aria-live="polite"><sc-if value="{{fLU.err}}" hint-placeholder-val="{{ false }}"><p class="f-err" id="e-lu"><svg class="ic"><use href="#i-info"/></svg>{{fLU.msg}}</p></sc-if></div>
+          </div>
+          <div class="f {{fLP.cls}}">
+            <label for="f-pass">Password</label>
+            <div class="in eyed"><svg class="ic lead" aria-hidden="true"><use href="#i-lock"/></svg><input id="f-pass" name="password" type="{{typeA}}" autocomplete="current-password" placeholder="Your password" value="{{p}}" onInput="{{onP}}" aria-invalid="{{fLP.inv}}" aria-describedby="{{fLP.desc}}"><button type="button" class="eye" aria-label="{{eyeAAria}}" aria-pressed="{{showA}}" onClick="{{toggleA}}"><svg class="ic"><use href="{{eyeAIcon}}"/></svg></button></div>
+            <div aria-live="polite"><sc-if value="{{fLP.err}}" hint-placeholder-val="{{ false }}"><p class="f-err" id="e-lp"><svg class="ic"><use href="#i-info"/></svg>{{fLP.msg}}</p></sc-if></div>
+            <div class="f-row"><a href="#" class="lnk-a" onClick="{{goReset}}">Forgot your password?</a></div>
+          </div>
+          <button type="submit" class="btn btn-red full {{btnCls}}" aria-busy="{{loading}}"><sc-if value="{{loading}}" hint-placeholder-val="{{ false }}"><span class="spin" aria-hidden="true"></span></sc-if>{{btnText}}</button>
+        </form>
+        <div class="or" aria-hidden="true">or</div>
+        <button type="button" class="btn-g"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Continue with Google</button>
+        <p class="a-foot">Don’t have an account? <a href="#" onClick="{{goRegister}}">Sign up</a></p>
+      </sc-if>
+
+      <!-- ============ [REGISTER FORM] ============ -->
+      <sc-if value="{{isRegister}}" hint-placeholder-val="{{ false }}">
+        <h1 id="a-title-r">Create your account</h1>
+        <p class="sub">Rate, save and track what you watch</p>
+        <sc-if value="{{banner}}" hint-placeholder-val="{{ false }}"><div class="banner" role="alert"><svg class="ic"><use href="#i-warn"/></svg><span>{{banner}}</span></div></sc-if>
+        <form novalidate aria-labelledby="a-title-r" onSubmit="{{submit}}">
+          <div class="f {{fRU.cls}}">
+            <label for="f-ruser">Username</label>
+            <div class="in"><svg class="ic lead" aria-hidden="true"><use href="#i-user"/></svg><input id="f-ruser" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Choose a username" value="{{u}}" onInput="{{onU}}" aria-invalid="{{fRU.inv}}" aria-describedby="{{fRU.desc}}"></div>
+            <p class="f-hint" id="h-ru">Letters, numbers and @/./+/-/_</p>
+            <div aria-live="polite"><sc-if value="{{fRU.err}}" hint-placeholder-val="{{ false }}"><p class="f-err" id="e-ru"><svg class="ic"><use href="#i-info"/></svg>{{fRU.msg}}</p></sc-if></div>
+          </div>
+          <sc-if value="{{withEmail}}" hint-placeholder-val="{{ true }}">
+          <div class="f {{fRE.cls}}">
+            <label for="f-remail">Email <span class="opt">(optional)</span></label>
+            <div class="in"><svg class="ic lead" aria-hidden="true"><use href="#i-mail"/></svg><input id="f-remail" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com" value="{{em}}" onInput="{{onEm}}" aria-invalid="{{fRE.inv}}" aria-describedby="{{fRE.desc}}"></div>
+            <div aria-live="polite"><sc-if value="{{fRE.err}}" hint-placeholder-val="{{ false }}"><p class="f-err" id="e-re"><svg class="ic"><use href="#i-info"/></svg>{{fRE.msg}}</p></sc-if></div>
+          </div>
+          </sc-if>
+          <div class="f {{fRP.cls}}">
+            <label for="f-rpass">Password</label>
+            <div class="in eyed"><svg class="ic lead" aria-hidden="true"><use href="#i-lock"/></svg><input id="f-rpass" name="password1" type="{{typeA}}" autocomplete="new-password" placeholder="Create a password" value="{{p}}" onInput="{{onP}}" aria-invalid="{{fRP.inv}}" aria-describedby="req-r"><button type="button" class="eye" aria-label="{{eyeAAria}}" aria-pressed="{{showA}}" onClick="{{toggleA}}"><svg class="ic"><use href="{{eyeAIcon}}"/></svg></button></div>
+            <!-- ============ [PASSWORD CHECKLIST] — items switch grey circle → white check; strength bar grey → white ============ -->
+            <div id="req-r" aria-live="polite">
+              <div class="str" aria-hidden="true"><sc-for list="{{strSegs}}" as="s" hint-placeholder-count="4"><span><i style="transform:scaleX({{s.x}});background:{{s.c}}"></i></span></sc-for></div>
+              <div class="str-l"><span>Password strength</span><b>{{strLabel}}</b></div>
+              <ul class="req" aria-label="Password requirements"><sc-for list="{{reqR}}" as="q" hint-placeholder-count="3"><li class="{{q.cls}}"><span class="ck-i"><svg class="ic"><use href="#i-check"/></svg></span>{{q.label}}<span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">{{q.sr}}</span></li></sc-for></ul>
+            </div>
+          </div>
+          <div class="f {{fRP2.cls}}">
+            <label for="f-rpass2">Confirm password</label>
+            <div class="in eyed"><svg class="ic lead" aria-hidden="true"><use href="#i-lock"/></svg><input id="f-rpass2" name="password2" type="{{typeB}}" autocomplete="new-password" placeholder="Repeat your password" value="{{p2}}" onInput="{{onP2}}" aria-invalid="{{fRP2.inv}}" aria-describedby="{{fRP2.desc}}"><button type="button" class="eye" aria-label="{{eyeBAria}}" aria-pressed="{{showB}}" onClick="{{toggleB}}"><svg class="ic"><use href="{{eyeBIcon}}"/></svg></button></div>
+            <div aria-live="polite"><sc-if value="{{fRP2.err}}" hint-placeholder-val="{{ false }}"><p class="f-err" id="e-rp2"><svg class="ic"><use href="#i-info"/></svg>{{fRP2.msg}}</p></sc-if></div>
+          </div>
+          <div class="agree {{agreeCls}}"><button type="button" role="checkbox" class="cbx {{agreeOn}}" aria-checked="{{agree}}" aria-labelledby="agree-l" onClick="{{toggleAgree}}"><svg class="ic"><use href="#i-check"/></svg></button><span id="agree-l">I agree to the <a href="#">Terms</a> and <a href="#">Privacy Policy</a></span></div>
+          <div aria-live="polite"><sc-if value="{{agreeErr}}" hint-placeholder-val="{{ false }}"><p class="f-err" id="e-agree"><svg class="ic"><use href="#i-info"/></svg>Please accept the Terms and Privacy Policy to continue</p></sc-if></div>
+          <button type="submit" class="btn btn-red full {{btnCls}}" aria-busy="{{loading}}" aria-disabled="{{regDisabled}}"><sc-if value="{{loading}}" hint-placeholder-val="{{ false }}"><span class="spin" aria-hidden="true"></span></sc-if>{{btnText}}</button>
+        </form>
+        <div class="or" aria-hidden="true">or</div>
+        <button type="button" class="btn-g"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Continue with Google</button>
+        <p class="a-foot">Already have an account? <a href="#" onClick="{{goLogin}}">Log in</a></p>
+      </sc-if>
+
+      <!-- ============ [RESET REQUEST] ============ -->
+      <sc-if value="{{isReset}}" hint-placeholder-val="{{ false }}">
+        <h1 id="a-title-q">Reset your password</h1>
+        <p class="sub">Enter the email you signed up with and we’ll send you a link to set a new password.</p>
+        <form novalidate aria-labelledby="a-title-q" onSubmit="{{submit}}">
+          <div class="f {{fSE.cls}}">
+            <label for="f-semail">Email</label>
+            <div class="in"><svg class="ic lead" aria-hidden="true"><use href="#i-mail"/></svg><input id="f-semail" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com" value="{{em}}" onInput="{{onEm}}" aria-invalid="{{fSE.inv}}" aria-describedby="{{fSE.desc}}"></div>
+            <div aria-live="polite"><sc-if value="{{fSE.err}}" hint-placeholder-val="{{ false }}"><p class="f-err" id="e-se"><svg class="ic"><use href="#i-info"/></svg>{{fSE.msg}}</p></sc-if></div>
+          </div>
+          <button type="submit" class="btn btn-red full {{btnCls}}" aria-busy="{{loading}}"><sc-if value="{{loading}}" hint-placeholder-val="{{ false }}"><span class="spin" aria-hidden="true"></span></sc-if>{{btnText}}</button>
+        </form>
+        <p class="a-foot"><a href="#" class="back" onClick="{{goLogin}}"><svg class="ic"><use href="#i-chl"/></svg><span style="color:var(--text2);font-weight:500">Remembered it?</span> Log in</a></p>
+      </sc-if>
+
+      <!-- ============ [RESET SENT] ============ -->
+      <sc-if value="{{isSent}}" hint-placeholder-val="{{ false }}">
+        <div class="state" role="status">
+          <span class="big red"><svg class="ic"><use href="#i-mail"/></svg></span>
+          <h1>Check your email</h1>
+          <p class="sub">If an account exists for that email, we’ve sent a link to reset your password.</p>
+          <div class="acts"><a href="#" class="btn btn-ghost full" onClick="{{goLogin}}">Back to login</a></div>
+          <p class="resend">Didn’t get it? <sc-if value="{{canResend}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{resend}}">Resend</button></sc-if><sc-if value="{{cooling}}" hint-placeholder-val="{{ true }}"><span class="tm" aria-live="off">Resend in {{coolTxt}}</span></sc-if></p>
+        </div>
+      </sc-if>
+
+      <!-- ============ [RESET CONFIRM] — set a new password ============ -->
+      <sc-if value="{{isNewpw}}" hint-placeholder-val="{{ false }}">
+        <h1 id="a-title-n">Set a new password</h1>
+        <p class="sub">Choose a strong password you haven’t used before.</p>
+        <form novalidate aria-labelledby="a-title-n" onSubmit="{{submit}}">
+          <div class="f {{fNP.cls}}">
+            <label for="f-np">New password</label>
+            <div class="in eyed"><svg class="ic lead" aria-hidden="true"><use href="#i-lock"/></svg><input id="f-np" name="new_password1" type="{{typeA}}" autocomplete="new-password" placeholder="New password" value="{{p}}" onInput="{{onP}}" aria-invalid="{{fNP.inv}}" aria-describedby="req-n"><button type="button" class="eye" aria-label="{{eyeAAria}}" aria-pressed="{{showA}}" onClick="{{toggleA}}"><svg class="ic"><use href="{{eyeAIcon}}"/></svg></button></div>
+            <div id="req-n" aria-live="polite">
+              <div class="str" aria-hidden="true"><sc-for list="{{strSegs}}" as="s" hint-placeholder-count="4"><span><i style="transform:scaleX({{s.x}});background:{{s.c}}"></i></span></sc-for></div>
+              <div class="str-l"><span>Password strength</span><b>{{strLabel}}</b></div>
+              <ul class="req" aria-label="Password requirements"><sc-for list="{{reqR}}" as="q" hint-placeholder-count="3"><li class="{{q.cls}}"><span class="ck-i"><svg class="ic"><use href="#i-check"/></svg></span>{{q.label}}</li></sc-for></ul>
+            </div>
+          </div>
+          <div class="f {{fNP2.cls}}">
+            <label for="f-np2">Confirm new password</label>
+            <div class="in eyed"><svg class="ic lead" aria-hidden="true"><use href="#i-lock"/></svg><input id="f-np2" name="new_password2" type="{{typeB}}" autocomplete="new-password" placeholder="Repeat the new password" value="{{p2}}" onInput="{{onP2}}" aria-invalid="{{fNP2.inv}}" aria-describedby="{{fNP2.desc}}"><button type="button" class="eye" aria-label="{{eyeBAria}}" aria-pressed="{{showB}}" onClick="{{toggleB}}"><svg class="ic"><use href="{{eyeBIcon}}"/></svg></button></div>
+            <div aria-live="polite"><sc-if value="{{fNP2.err}}" hint-placeholder-val="{{ false }}"><p class="f-err" id="e-np2"><svg class="ic"><use href="#i-info"/></svg>{{fNP2.msg}}</p></sc-if></div>
+          </div>
+          <button type="submit" class="btn btn-red full {{btnCls}}" aria-busy="{{loading}}"><sc-if value="{{loading}}" hint-placeholder-val="{{ false }}"><span class="spin" aria-hidden="true"></span></sc-if>{{btnText}}</button>
+        </form>
+      </sc-if>
+
+      <!-- ============ [RESET CONFIRM — invalid / expired link] ============ -->
+      <sc-if value="{{isInvalid}}" hint-placeholder-val="{{ false }}">
+        <div class="state" role="alert">
+          <span class="big"><svg class="ic"><use href="#i-warn"/></svg></span>
+          <h1>This reset link is no longer valid</h1>
+          <p class="sub">It may have expired or already been used. Reset links work for one hour.</p>
+          <div class="acts"><a href="#" class="btn btn-red full" onClick="{{goReset}}">Request a new link</a></div>
+          <p class="a-foot" style="margin-top:18px"><a href="#" class="back" onClick="{{goLogin}}"><svg class="ic"><use href="#i-chl"/></svg>Back to login</a></p>
+        </div>
+      </sc-if>
+
+      <!-- ============ [RESET COMPLETE] ============ -->
+      <sc-if value="{{isDone}}" hint-placeholder-val="{{ false }}">
+        <div class="state" role="status">
+          <span class="big white"><svg class="ic"><use href="#i-check"/></svg></span>
+          <h1>Your password has been changed</h1>
+          <p class="sub">You can now sign in with your new password.</p>
+          <div class="acts"><a href="#" class="btn btn-red full" onClick="{{goLogin}}">Log in</a></div>
+        </div>
+      </sc-if>
+      </div>
+    </div>
+  </section>
+</div>
+</main>
+
+<!-- ============ GLOBAL FOOTER (slim, same as every page) ============ -->
+<footer class="foot" aria-label="Site footer">
+  <div class="wrap foot-row">
+    <div class="foot-l"><a href="#" class="logo" aria-label="Movies.hub — home">Movies<span class="dot"></span><b>hub</b></a><span class="foot-c">© 2026 Movies.hub</span></div>
+    <nav class="foot-links" aria-label="Legal"><a href="#">Privacy</a><span class="sep" aria-hidden="true">·</span><a href="#">Terms</a><span class="sep" aria-hidden="true">·</span><a href="#">Contact</a></nav>
+    <p class="tmdb"><em>TMDB</em><span>Data provided by TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.</span></p>
+  </div>
+</footer>
+
+<!-- CINEMA ASSISTANT -->
+<sc-if value="{{assistant}}" hint-placeholder-val="{{ false }}">
+<div class="chat" role="dialog" aria-label="Cinema Assistant">
+  <div class="chat-h"><span class="chat-av"><svg class="ic" style="width:20px;height:20px;color:#fff"><use href="#i-film"/></svg></span><div style="flex:1"><div style="font-weight:800">Cinema Assistant</div><div style="font-size:12.5px;color:var(--meta);font-weight:600">Ask for a pick · placeholder</div></div><button class="btn-icon min" aria-label="Close assistant" style="border-color:transparent" onClick="{{toggleAssistant}}"><svg class="ic"><use href="#i-close"/></svg></button></div>
+  <div class="chat-b"><div class="bub">Hi! Tell me what you’re in the mood for and I’ll find something to watch tonight.</div></div>
+  <form class="chat-f" onSubmit="{{noop}}"><input type="text" placeholder="Ask about movies and shows…" aria-label="Message the assistant"><button type="button" class="btn-icon min" aria-label="Send" style="background:var(--red);border-color:var(--red)"><svg class="ic"><use href="#i-send"/></svg></button></form>
+</div>
+</sc-if>
+<button class="fab" aria-label="Open Cinema Assistant" aria-expanded="{{assistant}}" onClick="{{toggleAssistant}}"><svg class="ic"><use href="#i-chat"/></svg></button>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"demoState":{"editor":"enum","default":"login","options":["login","login-filled","login-error","login-loading","register","register-filled","register-ready","register-error","register-loading","register-no-email","reset","reset-error","reset-loading","sent","newpw","newpw-filled","invalid","done"],"section":"Preview states"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  state = { screen: 'login', u: '', p: '', p2: '', em: '', agree: false, showA: false, showB: false, loading: false, tried: false,
+    fail: false, taken: false, noEmail: false, cool: 42, flip: 0, scrolled: false, drawer: false, assistant: false };
+
+  componentDidMount() {
+    this.onPageScroll = () => { const y = window.scrollY || (document.scrollingElement && document.scrollingElement.scrollTop) || 0; const s = y > 40; if (s !== this.state.scrolled) this.setState({ scrolled: s }); };
+    document.addEventListener('scroll', this.onPageScroll, { passive: true, capture: true });
+    // resend cool-down (reset email sent screen)
+    this.timer = setInterval(() => { if (this.state.screen === 'sent' && this.state.cool > 0 && !this.hold) this.setState((s) => ({ cool: s.cool - 1 })); }, 1000);
+    // demo presets for the state artboards
+    const d = String(this.props.demoState || 'login'); this.hold = false;
+    const P = {
+      'login': {}, 'login-filled': { u: 'maria.k@mail.com', p: 'moviefan2026' },
+      'login-error': { u: 'maria.k', p: 'wrongpass1', tried: true, fail: true }, 'login-loading': { u: 'maria.k@mail.com', p: 'moviefan2026', loading: true },
+      'register': { screen: 'register' },
+      'register-filled': { screen: 'register', u: 'cinephile_77', em: 'maria@mail.com', p: 'movie2026', p2: 'movie202' },
+      'register-ready': { screen: 'register', u: 'cinephile_77', em: 'maria@mail.com', p: 'movie2026night', p2: 'movie2026night', agree: true },
+      'register-error': { screen: 'register', u: 'maria', em: 'maria@', p: '12345678', p2: '1234567', agree: true, tried: true, taken: true },
+      'register-loading': { screen: 'register', u: 'cinephile_77', em: 'maria@mail.com', p: 'movie2026night', p2: 'movie2026night', agree: true, loading: true },
+      'register-no-email': { screen: 'register', u: 'cinephile_77', p: 'movie2026', p2: '', noEmail: true },
+      'reset': { screen: 'reset' }, 'reset-error': { screen: 'reset', em: 'maria@mail', tried: true }, 'reset-loading': { screen: 'reset', em: 'maria@mail.com', loading: true },
+      'sent': { screen: 'sent', cool: 42 }, 'newpw': { screen: 'newpw' }, 'newpw-filled': { screen: 'newpw', p: 'cinema2026', p2: 'cinema' },
+      'invalid': { screen: 'invalid' }, 'done': { screen: 'done' }
+    };
+    if (P[d]) this.setState(P[d]);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.tl); document.removeEventListener('scroll', this.onPageScroll, true); }
+  go(screen, e) { if (e && e.preventDefault) e.preventDefault(); this.hold = false; this.setState((s) => ({ screen, tried: false, fail: false, taken: false, loading: false, showA: false, showB: false, p: '', p2: '', cool: 45, flip: s.flip + 1 })); }
+  finish(next) { clearTimeout(this.tl); this.setState({ loading: true }); this.tl = setTimeout(() => { if (next === 'fail') this.setState({ loading: false, fail: true }); else if (next === 'taken') this.setState({ loading: false, taken: true }); else if (next) this.go(next); else this.setState({ loading: false }); }, 1100); }
+
+  renderVals() {
+    const st = this.state; const sc = st.screen;
+    const empty = (v) => !String(v || '').trim();
+    // ---------- password rules (register + reset confirm) ----------
+    const p = st.p, p2 = st.p2;
+    const rules = [{ k: 'len', label: 'At least 8 characters', ok: p.length >= 8 }, { k: 'num', label: 'Not only numbers', ok: p.length > 0 && !/^\d+$/.test(p) }, { k: 'match', label: 'Passwords match', ok: p.length > 0 && p === p2 }];
+    const reqR = rules.map((r) => ({ label: r.label, cls: r.ok ? 'ok' : (st.tried && !r.ok ? 'bad' : ''), sr: r.ok ? ' — met' : ' — not met' }));
+    let score = 0; if (p.length >= 8) score++; if (p.length >= 12) score++; if (/[a-z]/.test(p) && /[A-Z]/.test(p)) score++; if (/\d/.test(p) && /[^\d]/.test(p)) score++; if (/^\d+$/.test(p)) score = Math.min(score, 1); if (!p) score = 0;
+    const SCOL = ['#6B6B73', '#A1A1A8', '#D4D4D8', '#FFFFFF']; const SLAB = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+    const strSegs = [0, 1, 2, 3].map((i) => ({ x: i < score ? 1 : 0, c: SCOL[Math.max(0, score - 1)] }));
+    const strLabel = score ? SLAB[score] : '—';
+    // ---------- field helper ----------
+    const fld = (id, msg, extraErr) => { const err = !!msg; return { err, msg: msg || '', cls: err || extraErr ? 'err' : '', inv: err || !!extraErr, desc: err ? id : '' }; };
+
+    // ---------- LOGIN ----------
+    const lu = st.tried && empty(st.u) ? 'Enter your username or email' : '';
+    const lp = st.tried && empty(st.p) ? 'Enter your password' : (st.fail ? 'Incorrect username or password' : '');
+    const fLU = fld('e-lu', lu, st.fail), fLP = fld('e-lp', lp);
+    // ---------- REGISTER ----------
+    const uBad = !empty(st.u) && !/^[\w.@+-]+$/.test(st.u);
+    const ru = st.tried ? (empty(st.u) ? 'Choose a username' : (uBad ? 'Use only letters, numbers and @/./+/-/_' : (st.taken || st.u.toLowerCase() === 'maria' ? 'A user with that name already exists' : ''))) : '';
+    const emBad = !empty(st.em) && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(st.em);
+    const re = st.tried && emBad ? 'Enter a valid email address' : '';
+    const rp = st.tried && !(rules[0].ok && rules[1].ok) ? 'Choose a password that meets the requirements' : '';
+    const rp2 = st.tried && (empty(st.p2) ? 'Confirm your password' : (st.p !== st.p2 ? 'Passwords don’t match' : ''));
+    const fRU = fld('e-ru', ru), fRE = fld('e-re', re), fRP = fld('req-r', '', !!rp), fRP2 = fld('e-rp2', rp2 || '');
+    const agreeErr = st.tried && !st.agree;
+    const regDisabled = !st.agree && !st.tried;
+    // ---------- RESET ----------
+    const se = st.tried ? (empty(st.em) ? 'Enter your email address' : (emBad || !/@/.test(st.em) || !/\.[^@\s]+$/.test(st.em) ? 'Enter a valid email address' : '')) : '';
+    const fSE = fld('e-se', se);
+    // ---------- NEW PASSWORD ----------
+    const np2e = st.tried && (empty(st.p2) ? 'Confirm your new password' : (st.p !== st.p2 ? 'Passwords don’t match' : ''));
+    const fNP = fld('req-n', '', st.tried && !(rules[0].ok && rules[1].ok)), fNP2 = fld('e-np2', np2e || '');
+
+    // ---------- submit ----------
+    const submit = (e) => {
+      if (e && e.preventDefault) e.preventDefault(); const s = this.state; if (s.loading) return;
+      this.setState({ tried: true, fail: false, taken: false });
+      if (s.screen === 'login') { if (empty(s.u) || empty(s.p)) return; this.finish('fail'); }
+      else if (s.screen === 'register') { const okU = !empty(s.u) && /^[\w.@+-]+$/.test(s.u) && s.u.toLowerCase() !== 'maria'; const okE = empty(s.em) || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.em); const okP = s.p.length >= 8 && !/^\d+$/.test(s.p) && s.p === s.p2; if (okU && okE && okP && s.agree) this.finish(null); }
+      else if (s.screen === 'reset') { if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.em || '')) this.finish('sent'); }
+      else if (s.screen === 'newpw') { if (s.p.length >= 8 && !/^\d+$/.test(s.p) && s.p === s.p2) this.finish('done'); }
+    };
+    const btnText = { login: st.loading ? 'Signing in…' : 'Sign in', register: st.loading ? 'Creating account…' : 'Create account', reset: st.loading ? 'Sending…' : 'Send reset link', newpw: st.loading ? 'Saving…' : 'Save new password' }[sc] || '';
+    const banner = sc === 'login' && st.fail ? 'We couldn’t sign you in. Check your username and password and try again.' : (sc === 'register' && st.tried && st.taken ? 'We couldn’t create your account. Fix the highlighted fields and try again.' : '');
+    const mm = String(Math.floor(st.cool / 60)) + ':' + String(st.cool % 60).padStart(2, '0');
+    const on = (k) => (e) => this.setState({ [k]: e.target.value, fail: false });
+    const authCur = (sc === 'login' || sc === 'reset' || sc === 'sent' || sc === 'newpw' || sc === 'invalid' || sc === 'done');
+
+    return {
+      hdrCls: st.scrolled ? 'scrolled' : '',
+      navItems: ['Home', 'Movies', 'TV', 'Anime', 'Doramas', 'Cartoons', 'Watchlist'].map((label) => ({ label, cls: '', cur: 'false', go: (e) => { if (e && e.preventDefault) e.preventDefault(); } })),
+      drawer: st.drawer, openDrawer: () => this.setState({ drawer: true }), closeDrawer: () => this.setState({ drawer: false }),
+      assistant: st.assistant, toggleAssistant: () => this.setState((s) => ({ assistant: !s.assistant })), noop: (e) => { if (e && e.preventDefault) e.preventDefault(); },
+      loginCur: authCur ? 'cur' : '', loginAria: authCur ? 'page' : 'false', regCur: sc === 'register' ? 'cur' : '', regAria: sc === 'register' ? 'page' : 'false',
+      goLogin: (e) => this.go('login', e), goRegister: (e) => this.go('register', e), goReset: (e) => this.go('reset', e),
+      swCls: st.flip % 2 ? 'sw-b' : 'sw-a',
+      isLogin: sc === 'login', isRegister: sc === 'register', isReset: sc === 'reset', isSent: sc === 'sent', isNewpw: sc === 'newpw', isInvalid: sc === 'invalid', isDone: sc === 'done',
+      u: st.u, p: st.p, p2: st.p2, em: st.em, onU: on('u'), onP: on('p'), onP2: on('p2'), onEm: on('em'),
+      typeA: st.showA ? 'text' : 'password', typeB: st.showB ? 'text' : 'password', showA: st.showA, showB: st.showB,
+      eyeAIcon: st.showA ? '#i-eyeoff' : '#i-eye', eyeBIcon: st.showB ? '#i-eyeoff' : '#i-eye', eyeAAria: st.showA ? 'Hide password' : 'Show password', eyeBAria: st.showB ? 'Hide password' : 'Show password',
+      toggleA: () => this.setState((s) => ({ showA: !s.showA })), toggleB: () => this.setState((s) => ({ showB: !s.showB })),
+      fLU, fLP, fRU, fRE, fRP, fRP2, fSE, fNP, fNP2, withEmail: !st.noEmail,
+      reqR, strSegs, strLabel,
+      agree: st.agree, agreeOn: st.agree ? 'on' : '', agreeCls: agreeErr ? 'err' : '', agreeErr, toggleAgree: () => this.setState((s) => ({ agree: !s.agree })), regDisabled,
+      loading: st.loading, btnCls: st.loading ? 'ld' : (sc === 'register' && regDisabled ? 'dis' : ''), btnText, submit, banner,
+      cooling: st.cool > 0, canResend: st.cool <= 0, coolTxt: mm, resend: () => this.setState({ cool: 45 })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

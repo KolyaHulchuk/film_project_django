@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Movies.hub — Catalog</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ===== DESIGN TOKENS (same as Home) ===== */
+:root{
+  --bg:#0A0A0B; --panel:#141416; --elev:#1C1C1F; --line:#2A2A2E;
+  --text:#F5F5F6; --text2:#A1A1A8; --muted:#6B6B73; --meta:#8E8E96;
+  --red:#E11D2E; --red-hover:#FF2E40; --red-press:#9E1220; --red-light:#FF4D5E; --glow:rgba(225,29,46,.35);
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+body{margin:0;background:#0A0A0B}
+html{scroll-padding-top:76px}
+.mh{--hdr-h:72px;background:var(--bg);color:var(--text);font-family:'Manrope',system-ui,-apple-system,Segoe UI,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip;position:relative;min-height:100vh}
+.mh *,.mh *::before,.mh *::after{box-sizing:border-box}
+:where(.mh) :where(a){color:inherit;text-decoration:none}
+:where(.mh) :where(button){font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+.mh h1,.mh h2,.mh h3,.mh p{margin:0}
+.mh .ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.mh .ic.sm{width:14px;height:14px}
+.mh .ic.fill{fill:currentColor;stroke:none}
+.mh a:focus-visible,.mh button:focus-visible,.mh input:focus-visible,.mh [tabindex]:focus-visible{outline:2px solid var(--red-light);outline-offset:3px;border-radius:10px}
+.wrap{max-width:1344px;margin:0 auto;padding:0 32px}
+
+/* ===== BUTTONS / BADGES / CHIPS ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:46px;padding:0 22px;border-radius:999px;font-weight:700;font-size:15px;white-space:nowrap;transition:transform .25s var(--ease);position:relative}
+.btn:active{transform:scale(.97)}
+.btn.sm{height:40px;padding:0 16px;font-size:14px}
+.btn-red{background:var(--red);color:#fff}
+.btn-red::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 26px var(--glow),0 6px 18px rgba(225,29,46,.25);opacity:.75;transition:opacity .3s;pointer-events:none}
+.btn-red:hover{background:var(--red-hover)}
+.btn-red:hover::after{opacity:1}
+.btn-red:active{background:var(--red-press)}
+.btn-ghost{border:1px solid rgba(245,245,246,.28);background:rgba(20,20,22,.35);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.btn-ghost:hover{border-color:var(--red);background:rgba(28,28,31,.6)}
+.btn-icon{width:46px;height:46px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(245,245,246,.22);background:rgba(20,20,22,.45);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:transform .25s var(--ease),border-color .25s}
+.btn-icon:hover{border-color:var(--red);transform:translateY(-1px)}
+.btn-icon.min{width:44px;height:44px}
+.badge{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:8px;font-size:12px;font-weight:700;background:rgba(10,10,11,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.10);color:var(--text)}
+.badge .ic{width:12px;height:12px}
+.chip{display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(28,28,31,.8);border:1px solid var(--line);color:var(--text2)}
+.chip.type{height:22px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;padding:0 8px;color:var(--text);background:rgba(10,10,11,.72)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+@keyframes pop{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* ===== SITE HEADER (identical to Home — shared base layout) ===== */
+.hdr{position:fixed;top:0;left:0;right:0;z-index:50;height:72px;transition:height .3s var(--ease)}
+.hdr.scrolled{height:60px}
+.hdr::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(10,10,11,.66);backdrop-filter:blur(20px) saturate(140%);-webkit-backdrop-filter:blur(20px) saturate(140%);border-bottom:1px solid rgba(255,255,255,.08);opacity:0;transition:opacity .3s;pointer-events:none}
+.hdr.scrolled::before{opacity:1}
+.hdr-in{height:100%;display:flex;align-items:center;gap:36px;position:relative}
+.logo{display:inline-flex;align-items:center;font-weight:800;font-size:23px;letter-spacing:-.03em;min-height:44px}
+.logo b{color:var(--red);font-weight:800;margin-left:1px}
+.logo .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin:6px 1px 0 2px;box-shadow:0 0 12px var(--glow)}
+.nav{position:relative;display:flex;align-items:center;gap:6px;height:100%}
+.nav a{height:100%;display:inline-flex;align-items:center;padding:0 14px;font-size:14.5px;font-weight:600;color:var(--text2);transition:color .2s}
+.nav a:hover,.nav a.active{color:var(--text)}
+.nav-line{position:absolute;left:0;bottom:0;width:1px;height:2px;border-radius:2px;background:var(--red);transform-origin:left center;opacity:0;transition:transform .4s var(--ease),opacity .3s;pointer-events:none}
+.nav-line.ready{opacity:1}
+.hdr-r{margin-left:auto;display:flex;align-items:center;gap:10px}
+.burger{display:none}
+.s-bar{position:absolute;left:150px;right:0;top:50%;transform:translateY(-50%);height:48px;z-index:3;display:flex;align-items:center;gap:10px;padding:0 8px 0 18px;border-radius:999px;background:rgba(28,28,31,.96);border:1px solid var(--red);box-shadow:0 0 0 4px rgba(225,29,46,.14),0 0 30px var(--glow);transform-origin:right center;animation:expand .35s var(--ease)}
+.s-bar input{flex:1;min-width:0;height:44px;background:none;border:0;color:var(--text);font:inherit;font-size:15.5px;outline:none}
+.s-bar input::placeholder{color:var(--meta)}
+.s-bar input:focus-visible{outline:none}
+.s-res{position:absolute;left:150px;right:0;top:calc(50% + 34px);z-index:3;max-height:calc(100vh - 110px);overflow:auto;padding:10px;border-radius:20px;background:rgba(20,20,22,.94);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--line);box-shadow:0 30px 60px rgba(0,0,0,.65);animation:pop .25s var(--ease)}
+.s-grp{padding:10px 12px 4px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--meta)}
+.s-row{display:flex;align-items:center;gap:14px;min-height:56px;padding:6px 12px;border-radius:12px}
+.s-row:hover{background:rgba(255,255,255,.06)}
+.s-th{width:34px;height:50px;border-radius:7px;flex:none;border:1px solid rgba(255,255,255,.08)}
+.s-th.round{width:44px;height:44px;border-radius:50%}
+.s-t{font-weight:700;font-size:14.5px}
+.s-m{font-size:12.5px;color:var(--meta);margin-top:1px}
+.s-empty{padding:18px 14px;color:var(--text2);font-size:14px}
+@keyframes expand{from{opacity:0;transform:translateY(-50%) scaleX(.4)}to{opacity:1;transform:translateY(-50%) scaleX(1)}}
+.drawer{position:fixed;inset:0;z-index:90;background:rgba(10,10,11,.88);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);display:flex;flex-direction:column;padding:0 20px 28px;animation:fade .3s var(--ease);overflow:auto}
+.drawer-top{height:72px;display:flex;align-items:center;justify-content:space-between;flex:none}
+.drawer a.big{display:flex;align-items:center;min-height:54px;font-size:24px;color:var(--text2);font-weight:800;letter-spacing:-.02em;border-bottom:1px solid var(--line)}
+.drawer a.big.active{color:var(--text)}
+.drawer a.big.active::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--red);margin-right:12px;box-shadow:0 0 12px var(--glow)}
+
+/* ===== PAGE TITLE BAR ===== */
+.tb{position:relative;padding-top:72px;overflow:hidden;border-bottom:1px solid var(--line);background:#0c0c0e;isolation:isolate}
+.tb-bg{position:absolute;inset:0;z-index:-1;background:radial-gradient(46% 150% at 80% 40%,rgba(158,18,32,.36),transparent 70%),radial-gradient(40% 90% at 14% 0%,rgba(255,255,255,.05),transparent 70%)}
+.tb-tile{position:absolute;z-index:-1;width:128px;height:192px;border-radius:16px;filter:blur(7px);opacity:.55;background:linear-gradient(165deg,#34343a,#18181b 70%);transform:rotate(var(--r))}
+.tb-tile:nth-of-type(1){right:30%;top:20px;--r:-8deg}
+.tb-tile:nth-of-type(2){right:21%;top:-24px;--r:6deg;background:linear-gradient(165deg,#4a1a21,#18181b 70%)}
+.tb-tile:nth-of-type(3){right:12%;top:30px;--r:-4deg}
+.tb-tile:nth-of-type(4){right:3%;top:-12px;--r:9deg;background:linear-gradient(165deg,#3b3b41,#141416 70%)}
+.tb-in{padding:30px 0 28px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--red-light);margin-bottom:8px}
+.tb h1{font-size:clamp(40px,5vw,60px);font-weight:800;letter-spacing:-.045em;line-height:1;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+.tb .count{font-size:16px;font-weight:600;letter-spacing:0;color:var(--text2)}
+
+/* ===== FILTER TOOLBAR (sticky under the fixed header) ===== */
+.tbar{position:sticky;top:60px;z-index:40}
+.tbar.sheetopen{z-index:80}
+.tbar::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(10,10,11,.8);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-bottom:1px solid rgba(255,255,255,.07)}
+.tbar-in{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;height:64px}
+.fchips{display:flex;gap:10px;align-items:center}
+.fchip{height:40px;padding:0 14px;border-radius:999px;display:inline-flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);font-weight:600;font-size:14px;color:var(--text2);position:relative;transition:transform .25s var(--ease),color .2s,border-color .2s}
+.fchip:hover{color:var(--text);border-color:#46464c}
+.fchip.open{color:var(--text);border-color:#6a6a72}
+.fchip.on{color:var(--text);border-color:var(--red)}
+.fchip .ic{width:14px;height:14px;transition:transform .25s var(--ease)}
+.fchip.open .ic.chev{transform:rotate(180deg)}
+.fchip .n{min-width:20px;height:20px;border-radius:10px;background:var(--red);color:#fff;font-size:11.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
+.fchip.sort b{color:var(--text);font-weight:700}
+.fbtn-m{display:none}
+.scrim{position:fixed;inset:0;z-index:4}
+.scrim.dim{background:rgba(0,0,0,.62);animation:fade .25s}
+.layer{position:absolute;top:calc(100% + 8px);z-index:5;border-radius:20px;background:rgba(28,28,31,.97);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid var(--line);box-shadow:0 30px 70px rgba(0,0,0,.65),0 0 0 1px rgba(0,0,0,.3);padding:18px;animation:pop .22s var(--ease);transform-origin:top left;max-height:calc(100vh - 150px);overflow:auto}
+.layer.r{right:0;left:auto !important;transform-origin:top right}
+.layer.w-genre{width:440px}.layer.w-year{width:380px}.layer.w-country{width:340px}.layer.w-rating{width:340px}.layer.w-sort{width:240px;padding:8px}
+.panel + .panel{margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+.panel-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.panel-h h3{font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--meta)}
+.lnk{font-size:13px;font-weight:600;color:var(--text2);min-height:32px;padding:0 4px;transition:color .2s}
+.lnk:hover{color:var(--red-light)}
+/* CLEAR ALL pill — end of the active-filters row */
+.clr{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 14px 0 11px;border-radius:999px;border:1px solid #E11D2E;background:rgba(225,29,46,.12);color:#FF4D5E;font-size:13.5px;font-weight:500;transition:background .2s,color .2s,box-shadow .2s,transform .2s}
+.clr .ic{width:14px;height:14px}
+.clr:hover{background:#E11D2E;color:#fff;box-shadow:0 0 18px rgba(225,29,46,.35)}
+.clr:active{background:#9E1220;transform:scale(.97)}
+.mh .clr:focus-visible{border-radius:999px;outline:2px solid var(--red-light);outline-offset:3px}
+.btn-ghost-clr{display:inline-flex;align-items:center;justify-content:center;height:52px;padding:0 20px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--text);font-size:15px;font-weight:600;white-space:nowrap;transition:border-color .2s,color .2s}
+.btn-ghost-clr:hover{border-color:#E11D2E;color:#FF4D5E}
+.mh .btn-ghost-clr:focus-visible{border-radius:999px}
+.gchips{display:flex;flex-wrap:wrap;gap:8px}
+.gchip{height:36px;padding:0 14px;border-radius:999px;font-size:13.5px;font-weight:600;background:var(--panel);border:1px solid var(--line);color:var(--text2);transition:transform .2s var(--ease),color .2s,border-color .2s}
+.gchip:hover{color:var(--text);border-color:#55555c}
+.gchip.on{background:rgba(225,29,46,.14);border-color:var(--red);color:#fff}
+.yr-read{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;font-size:26px;font-weight:800;letter-spacing:-.03em}
+.yr-read .dash{color:var(--meta);font-weight:600}
+.dual{position:relative;height:28px;margin-bottom:16px}
+.dual .rail{position:absolute;left:0;right:0;top:12px;height:4px;border-radius:4px;background:var(--line)}
+.dual .fill{position:absolute;top:12px;height:4px;border-radius:4px;background:var(--red)}
+.dual input[type=range],.rng{-webkit-appearance:none;appearance:none;background:none;margin:0;width:100%;height:28px;position:absolute;left:0;top:0;pointer-events:none}
+.dual input[type=range]::-webkit-slider-runnable-track{background:transparent;height:28px}
+.dual input[type=range]::-webkit-slider-thumb,.rng::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;pointer-events:auto;width:20px;height:20px;margin-top:4px;border-radius:50%;background:#fff;border:2px solid var(--red);box-shadow:0 0 0 4px rgba(225,29,46,.2);cursor:pointer}
+.dual input[type=range]::-moz-range-thumb,.rng::-moz-range-thumb{pointer-events:auto;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--red);box-shadow:0 0 0 4px rgba(225,29,46,.2);cursor:pointer}
+.dual input:focus-visible::-webkit-slider-thumb,.rng:focus-visible::-webkit-slider-thumb{outline:2px solid var(--red-light);outline-offset:3px}
+.dual input:focus-visible,.rng:focus-visible{outline:none}
+.rng{position:relative;display:block;height:4px;border-radius:4px;pointer-events:auto;margin:14px 0 18px}
+.rng::-webkit-slider-runnable-track{background:transparent;height:4px}
+.rng::-webkit-slider-thumb{margin-top:-8px}
+.rt-read{display:flex;align-items:baseline;gap:10px}
+.rt-read b{font-size:28px;font-weight:800;letter-spacing:-.03em}
+.rt-read span,.note{font-size:13px;color:var(--meta);font-weight:500}
+.cs-in{display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;border-radius:12px;background:var(--bg);border:1px solid var(--line);margin-bottom:10px}
+.cs-in input{flex:1;min-width:0;height:40px;background:none;border:0;color:var(--text);font:inherit;font-size:14.5px;outline:none}
+.cs-in input::placeholder{color:var(--meta)}
+.cs-in:focus-within{border-color:var(--red)}
+.cs-in input:focus-visible{outline:none}
+.cs-list{max-height:250px;overflow:auto;margin:0 -6px;padding:0 6px}
+.cs-grp{padding:10px 8px 4px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--meta)}
+.cs-row{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:0 10px;border-radius:10px;text-align:left;font-size:14.5px;font-weight:600;color:var(--text);transition:background-color .15s}
+.cs-row:hover{background:rgba(255,255,255,.06)}
+.cs-row .flag{font-size:20px;line-height:1;width:26px;text-align:center}
+.cs-row .nm{flex:1}
+.cs-row .ck{width:18px;height:18px;border-radius:5px;border:1.5px solid #55555c;display:inline-flex;align-items:center;justify-content:center;color:transparent}
+.cs-row.on .ck{background:var(--red);border-color:var(--red);color:#fff}
+.cs-row .ck .ic{width:12px;height:12px;stroke-width:3}
+.so-row{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;padding:0 12px;border-radius:12px;font-size:14.5px;font-weight:600;color:var(--text2)}
+.so-row:hover{background:rgba(255,255,255,.06);color:var(--text)}
+.so-row.on{color:var(--text)}
+.so-row .ic{width:16px;height:16px;color:var(--red-light)}
+.sheet-h,.sheet-f{display:none}
+
+/* ===== ACTIVE FILTERS ===== */
+.afrow{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap;padding:18px 0 0;min-height:56px}
+.afl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.achip{display:inline-flex;align-items:center;gap:4px;height:34px;padding:0 4px 0 13px;border-radius:999px;background:rgba(225,29,46,.1);border:1px solid rgba(225,29,46,.42);font-size:13px;font-weight:600;color:var(--text);animation:pop .25s var(--ease)}
+.achip button{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:var(--text2);transition:color .2s,background-color .2s}
+.achip button:hover{color:#fff;background:rgba(255,255,255,.1)}
+.achip button .ic{width:13px;height:13px}
+.res{font-size:14px;font-weight:700;color:var(--text2);white-space:nowrap}
+.res b{color:var(--text)}
+
+/* ===== POSTER GRID ===== */
+.cgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:30px 20px;margin-top:22px}
+.cc{position:relative;display:block;min-width:0;opacity:0;animation:cardA .5s var(--ease) forwards}
+.g-b .cc{animation-name:cardB}
+.g-a .cc{animation-name:cardA}
+@keyframes cardA{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes cardB{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.cc-frame{position:relative;aspect-ratio:2/3;border-radius:16px;transition:transform .38s var(--ease)}
+.cc-frame::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 1.5px var(--red),0 0 30px var(--glow),0 26px 44px rgba(0,0,0,.65);opacity:0;transition:opacity .35s;pointer-events:none;z-index:6}
+.cc:hover .cc-frame,.cc:focus-within .cc-frame{transform:scale(1.04);z-index:7}
+.cc:hover .cc-frame::after,.cc:focus-within .cc-frame::after{opacity:1}
+.cc-art{position:absolute;inset:0;border-radius:inherit;overflow:hidden;border:1px solid rgba(255,255,255,.08);background-color:var(--panel)}
+.cc-bdg{position:absolute;top:10px;left:10px;z-index:2}
+.cc-type{position:absolute;left:10px;bottom:10px;z-index:2;transition:opacity .25s}
+.cc:hover .cc-type,.cc:focus-within .cc-type{opacity:0}
+.cc-link{position:absolute;inset:0;z-index:1;border-radius:inherit}
+.cc-wl{position:absolute;top:10px;right:10px;z-index:5;width:40px;height:40px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:rgba(10,10,11,.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.18);transition:transform .25s var(--ease),background-color .2s,border-color .2s}
+.cc-wl:hover{border-color:var(--red);transform:scale(1.08)}
+.cc-wl.on{background:var(--red);border-color:var(--red);box-shadow:0 0 18px var(--glow)}
+.cc-wl .tip{position:absolute;top:46px;right:0;white-space:nowrap;padding:8px 12px;border-radius:10px;background:var(--elev);border:1px solid var(--line);font-size:12.5px;font-weight:600;color:var(--text);box-shadow:0 12px 30px rgba(0,0,0,.6);opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .25s var(--ease);pointer-events:none}
+.cc-wl:hover .tip,.cc-wl:focus-visible .tip{opacity:1;transform:none}
+.cc-ov{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;padding:14px;background:linear-gradient(0deg,rgba(10,10,11,.97) 12%,rgba(10,10,11,.86) 50%,rgba(10,10,11,0) 88%);opacity:0;transform:translateY(8px);transition:opacity .3s,transform .35s var(--ease);pointer-events:none}
+.cc:hover .cc-ov,.cc:focus-within .cc-ov{opacity:1;transform:none}
+.cc-ov p.syn{font-size:12.5px;line-height:1.5;color:#D4D4D8;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cc-btns{display:flex;gap:8px;pointer-events:auto}
+.cc-btns .btn{flex:1;height:38px;padding:0 8px;font-size:13px}
+.cc-btns .btn.on{background:rgba(225,29,46,.2);border-color:var(--red)}
+.cc-ov .chips{pointer-events:none}
+.cc-t{padding:12px 2px 0;min-width:0}
+.cc-t h3{font-size:15px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cc-t h3 a:hover{color:#fff}
+.cc-t p{font-size:12.5px;color:var(--meta);margin-top:2px;font-weight:500}
+.sk{position:relative;overflow:hidden;background:var(--panel);border:1px solid rgba(255,255,255,.04);border-radius:14px}
+.sk.pulse{animation:skpulse 1.5s ease-in-out infinite}
+@keyframes skpulse{50%{opacity:.55}}
+.sk-line{height:12px;border-radius:6px;margin-top:10px}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;min-height:420px;margin-top:22px;border:1px dashed var(--line);border-radius:24px;background:rgba(20,20,22,.5);padding:40px 24px}
+.empty .ring{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);color:var(--text2)}
+.empty .ring .ic{width:32px;height:32px}
+.empty h3{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.empty p{color:var(--text2);font-size:15px;max-width:380px;line-height:1.5}
+
+/* ===== PAGINATION ===== */
+.pg{display:flex;flex-direction:column;align-items:center;gap:16px;margin-top:52px}
+.pg-row{display:flex;align-items:center;gap:8px}
+.pg-b{min-width:44px;height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);font-weight:700;font-size:14.5px;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:transform .2s var(--ease),color .2s,border-color .2s}
+.pg-b:hover{color:#fff;border-color:#55555c}
+.pg-b.cur{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 0 22px var(--glow)}
+.pg-b.dis{opacity:.4;pointer-events:none}
+.pg-gap{min-width:28px;text-align:center;color:var(--meta);font-weight:700}
+.pg-m{display:none;font-weight:700;font-size:15px;min-width:90px;text-align:center}
+.pg-m span{color:var(--meta);font-weight:600}
+.pg-foot{display:flex;align-items:center;gap:20px;font-size:13.5px;color:var(--meta);font-weight:500;flex-wrap:wrap;justify-content:center}
+.goto{display:inline-flex;align-items:center;gap:8px}
+.goto input{width:68px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);font:inherit;font-size:14px;text-align:center;font-weight:600}
+.goto input:focus-visible{outline:2px solid var(--red-light);outline-offset:2px}
+
+/* ===== FOOTER / ASSISTANT (same as Home) ===== */
+/* ===== FOOTER — slim bar (one shared component, identical on every page) ===== */
+.foot{margin-top:44px;border-top:1px solid var(--line);background:var(--bg);padding:0 0 20px}
+.foot-row{display:flex;align-items:center;justify-content:space-between;gap:14px 32px;min-height:0;padding-top:16px;padding-bottom:0}
+.foot-l{display:flex;align-items:center;gap:14px;flex:none}
+.foot .logo{font-size:18px;min-height:32px}
+.foot .logo .dot{width:6px;height:6px;margin-top:5px}
+.foot-c{font-size:12.5px;color:var(--meta);font-weight:500;white-space:nowrap}
+.foot-links{display:flex;align-items:center;gap:2px;flex:none}
+.foot-links a{display:inline-flex;align-items:center;min-height:36px;padding:0 8px;font-size:13px;font-weight:500;color:var(--text2);transition:color .2s}
+.foot-links a:hover{color:var(--red-light)}
+.foot-links .sep{color:var(--muted);font-size:13px}
+.tmdb{display:flex;align-items:center;gap:10px;max-width:560px;padding-right:88px;margin:0;font-size:12px;line-height:1.5;color:var(--meta);font-weight:400}
+.tmdb em{flex:none;font-style:normal;font-weight:800;font-size:11px;letter-spacing:.06em;padding:3px 8px;border-radius:6px;background:var(--elev);border:1px solid var(--line);color:var(--text)}
+@media (max-width:1099px){
+  .foot-row{flex-wrap:wrap}
+  .tmdb{flex-basis:100%;max-width:none;padding-top:4px;padding-right:88px}
+}
+@media (max-width:767px){
+  .foot{margin-top:40px;padding-bottom:20px}
+  .foot-row{flex-direction:column;justify-content:center;text-align:center;gap:6px;padding-top:16px;padding-bottom:0}
+  .foot-l{flex-direction:column;gap:4px}
+  .foot-links{justify-content:center}
+  .foot-links a{min-height:44px;padding:0 12px}
+  .tmdb{flex-direction:column;align-items:center;gap:8px;max-width:none;padding:2px 64px 0}
+}
+.fab{position:fixed;right:24px;bottom:24px;z-index:70;width:60px;height:60px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 6px rgba(225,29,46,.16),0 0 38px var(--glow),0 12px 30px rgba(0,0,0,.5);transition:transform .3s var(--ease)}
+.fab:hover{transform:scale(1.07);background:var(--red-hover)}
+.fab .ic{width:26px;height:26px}
+.fab::before{content:"";position:absolute;inset:-6px;border-radius:50%;border:1px solid var(--red);opacity:0;animation:ping 2.8s ease-out infinite}
+@keyframes ping{0%{opacity:.7;transform:scale(.9)}100%{opacity:0;transform:scale(1.5)}}
+.chat{position:fixed;right:24px;bottom:100px;z-index:70;width:360px;max-width:calc(100vw - 32px);border-radius:24px;background:rgba(20,20,22,.92);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--line);box-shadow:0 30px 70px rgba(0,0,0,.7);overflow:hidden;transform-origin:bottom right;animation:pop .35s var(--ease)}
+.chat-h{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.chat-av{width:38px;height:38px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;box-shadow:0 0 18px var(--glow)}
+.chat-b{padding:18px;display:flex;flex-direction:column;gap:12px;min-height:200px}
+.bub{max-width:86%;padding:12px 14px;border-radius:16px 16px 16px 4px;background:var(--elev);font-size:14.5px;line-height:1.5}
+.bub.me{align-self:flex-end;border-radius:16px 16px 4px 16px;background:rgba(225,29,46,.18);border:1px solid rgba(225,29,46,.4)}
+.chat-f{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+.chat-f input{flex:1;min-width:0;height:46px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:0 16px;font:inherit;font-size:14.5px}
+.chat-f input::placeholder{color:var(--meta)}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width:1199px){
+  .wrap{padding:0 28px}
+  .cgrid{grid-template-columns:repeat(4,minmax(0,1fr));gap:28px 18px}
+  .tb-tile:nth-of-type(1){display:none}
+}
+@media (max-width:1099px){ .nav a{padding:0 8px} .nav{gap:2px} .hdr-in{gap:16px} }
+@media (max-width:959px){
+  .nav,.hdr-r .btn.sm.hide-m{display:none}
+  .burger{display:inline-flex}
+  .s-bar,.s-res{left:0}
+  .hdr-in{gap:12px}
+}
+@media (max-width:767px){
+  .wrap{padding:0 16px}
+  .hdr-r .btn{display:none}
+  .tb-in{padding:24px 0 22px}
+  .tb h1{font-size:40px;gap:12px}
+  .tb-tile:nth-of-type(2),.tb-tile:nth-of-type(3){display:none}
+  .fchips-d{display:none}
+  .fbtn-m{display:inline-flex}
+  .tbar-in{height:60px;gap:10px}
+  .fchip{height:44px}
+  .fchip.sort{margin-left:auto}
+  .cgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 14px}
+  .cc-t h3{font-size:14px}
+  .cc-ov{display:none}
+  .cc:hover .cc-frame{transform:none}
+  .cc-wl{width:44px;height:44px;top:8px;right:8px}
+  .layer.sheet{position:fixed;left:0 !important;right:0;bottom:0;top:auto;width:auto !important;max-height:88vh;padding:0;border-radius:24px 24px 0 0;animation:sheetin .34s var(--ease);display:flex;flex-direction:column;overflow:hidden;z-index:6}
+  .layer.sheet .sheet-body{overflow:auto;padding:4px 20px 20px;flex:1}
+  .layer.sheet .sheet-h{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;font-size:20px;font-weight:800;letter-spacing:-.02em}
+  .layer.sheet .sheet-f{display:flex;align-items:center;gap:14px;padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:rgba(20,20,22,.98)}
+  .layer.sheet .sheet-f .btn{flex:1;height:52px}
+  .clr{min-height:44px;padding:0 18px 0 14px}
+  .layer.w-sort{width:220px !important}
+  .pg{margin-top:40px}
+  .pg-num{display:none}
+  .pg-m{display:block}
+  .pg-foot .cap-d{display:none}
+  .fab{right:16px;bottom:16px;width:56px;height:56px}
+  .chat{right:16px;bottom:84px}
+}
+@keyframes sheetin{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .cc,.achip,.layer,.sk.pulse,.fab::before{animation:none;opacity:1;transform:none}
+  .mh *{transition-duration:.01ms !important}
+}
+</style>
+</helmet>
+
+<div class="mh">
+
+<!-- SVG ICON SPRITE -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.6l2.9 6.1 6.7.8-4.9 4.6 1.3 6.6L12 17.4 6 20.7l1.3-6.6L2.4 9.5l6.7-.8z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-bm" viewBox="0 0 24 24"><path d="M7 4.5h10v15l-5-3.6-5 3.6z"/></symbol>
+<symbol id="i-chl" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+<symbol id="i-chr" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5.5h16v11H10l-4.5 3.5v-3.5H4z"/><path d="M8.5 10h7M8.5 13h4"/></symbol>
+<symbol id="i-film" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M8 4.5v15M16 4.5v15M3.5 9h4.5M3.5 15h4.5M16 9h4.5M16 15h4.5"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12l16-7-6 15-2.5-6.5z"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.4"/><circle cx="8" cy="17" r="2.4"/></symbol>
+</defs></svg>
+
+<!-- ============ SITE HEADER (fixed glass — identical on every page; shared base layout) ============ -->
+<header class="hdr {{hdrCls}}" data-site-header>
+  <div class="wrap hdr-in">
+    <a href="#" class="logo" aria-label="Movies.hub — home">Movies<span class="dot"></span><b>hub</b></a>
+    <nav class="nav" aria-label="Primary">
+      <sc-for list="{{navItems}}" as="n" hint-placeholder-count="7">
+        <a href="#" class="{{n.cls}}" aria-current="{{n.cur}}" onClick="{{n.go}}">{{n.label}}</a>
+      </sc-for>
+      <span class="nav-line {{navLineCls}}" aria-hidden="true" style="transform:{{navLineT}}"></span>
+    </nav>
+    <div class="hdr-r">
+      <button class="btn-icon min" aria-label="Open search" onClick="{{openSearch}}"><svg class="ic"><use href="#i-search"/></svg></button>
+      <a href="#" class="btn btn-ghost sm hide-m">Login</a>
+      <a href="#" class="btn btn-red sm hide-m">Register</a>
+      <button class="btn-icon min burger" aria-label="Open menu" onClick="{{openDrawer}}"><svg class="ic"><use href="#i-menu"/></svg></button>
+    </div>
+    <sc-if value="{{searchOpen}}" hint-placeholder-val="{{ false }}">
+    <div class="s-bar" role="search">
+      <svg class="ic" style="color:var(--text2)"><use href="#i-search"/></svg>
+      <input type="search" autofocus placeholder="Search movies, TV shows, people…" aria-label="Search" value="{{query}}" onInput="{{onQuery}}">
+      <button class="btn-icon min" aria-label="Close search" style="border-color:transparent;background:rgba(255,255,255,.06)" onClick="{{closeSearch}}"><svg class="ic"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="s-res" role="listbox" aria-label="Search suggestions">
+      <sc-if value="{{res.hasTitles}}" hint-placeholder-val="{{ true }}">
+        <div class="s-grp">Anime</div>
+        <sc-for list="{{res.titles}}" as="m" hint-placeholder-count="2">
+          <a href="#" class="s-row" role="option"><span class="s-th" style="background:{{m.bg}}"></span><span><span class="s-t" style="display:block">{{m.title}}</span><span class="s-m" style="display:block">{{m.year}} · {{m.genre}}</span></span></a>
+        </sc-for>
+      </sc-if>
+      <sc-if value="{{res.hasPeople}}" hint-placeholder-val="{{ true }}">
+        <div class="s-grp">People</div>
+        <sc-for list="{{res.people}}" as="p" hint-placeholder-count="2">
+          <a href="#" class="s-row" role="option"><span class="s-th round" style="background:{{p.bg}}"></span><span><span class="s-t" style="display:block">{{p.name}}</span><span class="s-m" style="display:block">{{p.role}}</span></span></a>
+        </sc-for>
+      </sc-if>
+      <sc-if value="{{res.none}}" hint-placeholder-val="{{ false }}"><div class="s-empty">No results for “{{query}}”.</div></sc-if>
+    </div>
+    </sc-if>
+  </div>
+</header>
+
+<sc-if value="{{drawer}}" hint-placeholder-val="{{ false }}">
+<div class="drawer" role="dialog" aria-modal="true" aria-label="Menu">
+  <div class="drawer-top"><a href="#" class="logo">Movies<span class="dot"></span><b>hub</b></a><button class="btn-icon min" aria-label="Close menu" onClick="{{closeDrawer}}"><svg class="ic"><use href="#i-close"/></svg></button></div>
+  <sc-for list="{{navItems}}" as="n" hint-placeholder-count="7"><a href="#" class="big {{n.cls}}" aria-current="{{n.cur}}" onClick="{{n.go}}">{{n.label}}</a></sc-for>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:28px;padding-top:4px"><a href="#" class="btn btn-red" style="height:52px">Register</a><a href="#" class="btn btn-ghost" style="height:52px">Login</a></div>
+</div>
+</sc-if>
+
+<main>
+<!-- ============ [PAGE TITLE BAR] — data: section name + total_results from TMDB ============ -->
+<section class="tb" aria-labelledby="h-title">
+  <div class="tb-bg" aria-hidden="true"></div>
+  <span class="tb-tile" aria-hidden="true"></span><span class="tb-tile" aria-hidden="true"></span><span class="tb-tile" aria-hidden="true"></span><span class="tb-tile" aria-hidden="true"></span>
+  <div class="wrap tb-in">
+    <div class="eyebrow">Browse</div>
+    <h1 id="h-title">Anime <span class="count">2,000 titles</span></h1>
+  </div>
+</section>
+
+<!-- ============ [FILTER TOOLBAR] — sticky under the fixed header.
+     URL params: ?genre=16,14&year=2020-2026&country=JP&rating=7&sort=popularity&page=1 ============ -->
+<div class="tbar {{tbarCls}}">
+  <div class="wrap">
+    <div class="tbar-in" onKeyDown="{{onPopKey}}">
+      <div class="fchips fchips-d" role="group" aria-label="Filters">
+        <button class="fchip {{f.genre.cls}}" data-k="genre" aria-haspopup="dialog" aria-expanded="{{f.genre.open}}" onClick="{{f.genre.go}}">Genre<sc-if value="{{f.genre.has}}" hint-placeholder-val="{{ false }}"><span class="n">{{f.genre.n}}</span></sc-if><svg class="ic chev"><use href="#i-down"/></svg></button>
+        <button class="fchip {{f.year.cls}}" data-k="year" aria-haspopup="dialog" aria-expanded="{{f.year.open}}" onClick="{{f.year.go}}">Year<sc-if value="{{f.year.has}}" hint-placeholder-val="{{ false }}"><span class="n">{{f.year.n}}</span></sc-if><svg class="ic chev"><use href="#i-down"/></svg></button>
+        <button class="fchip {{f.country.cls}}" data-k="country" aria-haspopup="dialog" aria-expanded="{{f.country.open}}" onClick="{{f.country.go}}">Country<sc-if value="{{f.country.has}}" hint-placeholder-val="{{ false }}"><span class="n">{{f.country.n}}</span></sc-if><svg class="ic chev"><use href="#i-down"/></svg></button>
+        <button class="fchip {{f.rating.cls}}" data-k="rating" aria-haspopup="dialog" aria-expanded="{{f.rating.open}}" onClick="{{f.rating.go}}">Rating<sc-if value="{{f.rating.has}}" hint-placeholder-val="{{ false }}"><span class="n">{{f.rating.n}}</span></sc-if><svg class="ic chev"><use href="#i-down"/></svg></button>
+      </div>
+      <button class="fchip fbtn-m {{f.all.cls}}" aria-haspopup="dialog" aria-expanded="{{f.all.open}}" onClick="{{f.all.go}}"><svg class="ic" style="width:16px;height:16px"><use href="#i-sliders"/></svg>Filters<sc-if value="{{f.all.has}}" hint-placeholder-val="{{ false }}"><span class="n">{{f.all.n}}</span></sc-if></button>
+      <button class="fchip sort {{f.sort.cls}}" data-k="sort" aria-haspopup="listbox" aria-expanded="{{f.sort.open}}" onClick="{{f.sort.go}}">Sort: <b>{{sortLabel}}</b><svg class="ic chev"><use href="#i-down"/></svg></button>
+
+      <!-- popover layer (desktop) / bottom sheet (mobile "Filters") -->
+      <sc-if value="{{popOpen}}" hint-placeholder-val="{{ false }}">
+        <div class="scrim {{scrimCls}}" onClick="{{closePop}}" aria-hidden="true"></div>
+        <div class="layer {{layerCls}}" role="dialog" aria-label="Filters" style="left:{{popLeft}}px">
+          <div class="sheet-h"><span>Filters</span><button class="btn-icon min" aria-label="Close filters" style="border-color:transparent;background:rgba(255,255,255,.06)" onClick="{{closePop}}"><svg class="ic"><use href="#i-close"/></svg></button></div>
+          <div class="sheet-body">
+            <sc-if value="{{showGenre}}" hint-placeholder-val="{{ true }}">
+            <section class="panel" aria-label="Genre">
+              <div class="panel-h"><h3>Genre</h3><button class="lnk" onClick="{{clearGenres}}">Clear</button></div>
+              <div class="gchips"><sc-for list="{{genreList}}" as="g" hint-placeholder-count="8"><button class="gchip {{g.cls}}" aria-pressed="{{g.on}}" onClick="{{g.tog}}">{{g.name}}</button></sc-for></div>
+            </section>
+            </sc-if>
+            <sc-if value="{{showYear}}" hint-placeholder-val="{{ false }}">
+            <section class="panel" aria-label="Year">
+              <div class="panel-h"><h3>Year</h3><button class="lnk" onClick="{{clearYear}}">Reset</button></div>
+              <div class="yr-read"><span>{{yMin}}</span><span class="dash">—</span><span>{{yMax}}</span></div>
+              <div class="dual">
+                <span class="rail"></span><span class="fill" style="left:{{yl}}%;width:{{yw}}%"></span>
+                <input type="range" min="1960" max="2026" step="1" value="{{yMin}}" aria-label="From year" onInput="{{onYMin}}">
+                <input type="range" min="1960" max="2026" step="1" value="{{yMax}}" aria-label="To year" onInput="{{onYMax}}">
+              </div>
+              <div class="gchips"><sc-for list="{{presets}}" as="p" hint-placeholder-count="4"><button class="gchip {{p.cls}}" aria-pressed="{{p.on}}" onClick="{{p.go}}">{{p.label}}</button></sc-for></div>
+            </section>
+            </sc-if>
+            <sc-if value="{{showCountry}}" hint-placeholder-val="{{ false }}">
+            <section class="panel" aria-label="Country">
+              <div class="panel-h"><h3>Country</h3><button class="lnk" onClick="{{clearCountries}}">Clear</button></div>
+              <label class="cs-in"><svg class="ic" style="width:16px;height:16px;color:var(--meta)"><use href="#i-search"/></svg><input type="search" placeholder="Search country" aria-label="Search country" value="{{cq}}" onInput="{{onCq}}"></label>
+              <div class="cs-list" role="listbox" aria-multiselectable="true" aria-label="Countries">
+                <sc-if value="{{cl.hasPinned}}" hint-placeholder-val="{{ true }}">
+                  <div class="cs-grp">Popular</div>
+                  <sc-for list="{{cl.pinned}}" as="c" hint-placeholder-count="4"><button class="cs-row {{c.cls}}" role="option" aria-selected="{{c.on}}" onClick="{{c.tog}}"><span class="flag" aria-hidden="true">{{c.flag}}</span><span class="nm">{{c.name}}</span><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span></button></sc-for>
+                </sc-if>
+                <sc-if value="{{cl.hasRest}}" hint-placeholder-val="{{ true }}">
+                  <div class="cs-grp">{{cl.restLabel}}</div>
+                  <sc-for list="{{cl.rest}}" as="c" hint-placeholder-count="4"><button class="cs-row {{c.cls}}" role="option" aria-selected="{{c.on}}" onClick="{{c.tog}}"><span class="flag" aria-hidden="true">{{c.flag}}</span><span class="nm">{{c.name}}</span><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span></button></sc-for>
+                </sc-if>
+                <sc-if value="{{cl.none}}" hint-placeholder-val="{{ false }}"><div class="s-empty">No country matches “{{cq}}”.</div></sc-if>
+              </div>
+            </section>
+            </sc-if>
+            <sc-if value="{{showRating}}" hint-placeholder-val="{{ false }}">
+            <section class="panel" aria-label="Rating">
+              <div class="panel-h"><h3>Rating</h3><button class="lnk" onClick="{{clearRating}}">Reset</button></div>
+              <div class="rt-read"><b>{{rLabel}}</b><span>minimum score</span></div>
+              <input class="rng" type="range" min="0" max="10" step="0.5" value="{{rMin}}" aria-label="Minimum rating" onInput="{{onRMin}}" style="background:linear-gradient(90deg,var(--red) {{rPct}}%,var(--line) {{rPct}}%)">
+              <p class="note">Only titles with at least 100 votes are counted.</p>
+            </section>
+            </sc-if>
+            <sc-if value="{{showSort}}" hint-placeholder-val="{{ false }}">
+              <div role="listbox" aria-label="Sort by">
+                <sc-for list="{{sortList}}" as="s" hint-placeholder-count="4"><button class="so-row {{s.cls}}" role="option" aria-selected="{{s.on}}" onClick="{{s.go}}">{{s.label}}<sc-if value="{{s.on}}" hint-placeholder-val="{{ false }}"><svg class="ic"><use href="#i-check"/></svg></sc-if></button></sc-for>
+              </div>
+            </sc-if>
+          </div>
+          <div class="sheet-f"><button class="btn-ghost-clr" onClick="{{clearAll}}">Clear all</button><button class="btn btn-red" onClick="{{closePop}}">Show {{countTxt}} results</button></div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <!-- ============ [ACTIVE FILTERS] ============ -->
+  <div class="afrow">
+    <div class="afl" aria-label="Active filters">
+      <sc-for list="{{actives}}" as="a" hint-placeholder-count="3">
+        <span class="achip">{{a.label}}<button aria-label="Remove filter {{a.label}}" onClick="{{a.rm}}"><svg class="ic"><use href="#i-close"/></svg></button></span>
+      </sc-for>
+      <sc-if value="{{hasActives}}" hint-placeholder-val="{{ true }}"><button class="clr" onClick="{{clearAll}}"><svg class="ic"><use href="#i-close"/></svg>Clear all</button></sc-if>
+    </div>
+    <sc-if value="{{showCount}}" hint-placeholder-val="{{ true }}"><div class="res" aria-live="polite"><b>{{countTxt}}</b> results</div></sc-if>
+  </div>
+
+  <!-- ============ [POSTER GRID] — exactly 20 titles per page (TMDB page = 20 results).
+       Image: TMDB w342, loading="lazy", alt = title. Title tooltip via title="" ============ -->
+  <sc-if value="{{showSkel}}" hint-placeholder-val="{{ false }}">
+    <div class="cgrid" aria-busy="true" aria-label="Loading titles">
+      <sc-for list="{{sk20}}" as="k" hint-placeholder-count="10">
+        <div class="cc" style="opacity:1;animation:none"><div class="sk pulse" style="aspect-ratio:2/3;border-radius:16px"></div><div class="sk pulse sk-line" style="width:78%;margin-top:14px"></div><div class="sk pulse sk-line" style="width:42%;height:9px"></div></div>
+      </sc-for>
+    </div>
+  </sc-if>
+  <sc-if value="{{showEmpty}}" hint-placeholder-val="{{ false }}">
+    <div class="empty"><div class="ring"><svg class="ic"><use href="#i-film"/></svg></div><h3>No titles match your filters</h3><p>Try widening the year range, lowering the minimum rating or removing a country.</p><button class="btn btn-red" onClick="{{clearAll}}">Clear all filters</button></div>
+  </sc-if>
+  <sc-if value="{{showGrid}}" hint-placeholder-val="{{ true }}">
+    <div class="cgrid {{gridCls}}" role="list" aria-label="Titles">
+      <sc-for list="{{items}}" as="c" hint-placeholder-count="10">
+        <article class="cc" role="listitem" style="animation-delay:{{c.delay}}">
+          <div class="cc-frame">
+            <div class="cc-art" role="img" aria-label="Poster: {{c.title}}" style="background:{{c.bg}}">
+              <span class="cc-bdg badge"><svg class="ic fill"><use href="#i-star"/></svg>{{c.rating}}</span>
+              <span class="cc-type chip type">{{c.type}}</span>
+              <div class="cc-ov">
+                <p class="syn">{{c.syn}}</p>
+                <div class="chips"><span class="chip">{{c.g1}}</span><span class="chip">{{c.g2}}</span></div>
+                <div class="cc-btns"><a href="#" class="btn btn-red sm">Details</a><button class="btn btn-ghost sm {{c.wlOn}}" aria-pressed="{{c.watched}}" onClick="{{c.toggle}}"><svg class="ic sm"><use href="{{c.wlIcon}}"/></svg>{{c.wlText}}</button></div>
+              </div>
+            </div>
+            <a class="cc-link" href="#" aria-label="{{c.title}} ({{c.year}}), rated {{c.rating}}"></a>
+            <button class="cc-wl {{c.wlOn}}" aria-pressed="{{c.watched}}" aria-label="{{c.wlAria}}" onClick="{{c.toggle}}"><svg class="ic" style="width:18px;height:18px"><use href="{{c.bmIcon}}"/></svg><sc-if value="{{c.tip}}" hint-placeholder-val="{{ false }}"><span class="tip" role="tooltip">Sign in to save</span></sc-if></button>
+          </div>
+          <div class="cc-t"><h3><a href="#" title="{{c.title}}">{{c.title}}</a></h3><p>{{c.year}} · {{c.g1}}</p></div>
+        </article>
+      </sc-for>
+    </div>
+
+    <!-- ============ [PAGINATION] — real links: ?page=N (server-rendered in Django) ============ -->
+    <nav class="pg" aria-label="Pagination">
+      <div class="pg-row">
+        <a href="#" class="pg-b {{prevCls}}" aria-label="Previous page" onClick="{{goPrev}}"><svg class="ic sm"><use href="#i-chl"/></svg><span class="pg-num">Previous</span></a>
+        <sc-for list="{{pageItems}}" as="p" hint-placeholder-count="6">
+          <sc-if value="{{p.isNum}}" hint-placeholder-val="{{ true }}"><a href="#" class="pg-b pg-num {{p.cls}}" aria-label="Page {{p.label}}" aria-current="{{p.cur}}" onClick="{{p.go}}">{{p.label}}</a></sc-if>
+          <sc-if value="{{p.isGap}}" hint-placeholder-val="{{ false }}"><span class="pg-gap pg-num" aria-hidden="true">…</span></sc-if>
+        </sc-for>
+        <span class="pg-m" aria-hidden="true">{{page}} <span>/ {{pages}}</span></span>
+        <a href="#" class="pg-b {{nextCls}}" aria-label="Next page" onClick="{{goNext}}"><span class="pg-num">Next</span><svg class="ic sm"><use href="#i-chr"/></svg></a>
+      </div>
+      <div class="pg-foot">
+        <span>Page {{page}} of {{pages}}</span>
+        <form class="goto" onSubmit="{{submitGoto}}"><label for="goto" class="cap-d">Go to page</label><input id="goto" type="number" min="1" max="{{pages}}" placeholder="#" value="{{gotoVal}}" onInput="{{onGoto}}" aria-label="Go to page number"></form>
+      </div>
+    </nav>
+  </sc-if>
+</div>
+</main>
+
+<!-- ============ GLOBAL FOOTER (same as Home) ============ -->
+<footer class="foot" aria-label="Site footer">
+  <div class="wrap foot-row">
+    <div class="foot-l"><a href="#" class="logo" aria-label="Movies.hub — home">Movies<span class="dot"></span><b>hub</b></a><span class="foot-c">© 2026 Movies.hub</span></div>
+    <nav class="foot-links" aria-label="Legal"><a href="#">Privacy</a><span class="sep" aria-hidden="true">·</span><a href="#">Terms</a><span class="sep" aria-hidden="true">·</span><a href="#">Contact</a></nav>
+    <p class="tmdb"><em>TMDB</em><span>Data provided by TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.</span></p>
+  </div>
+</footer>
+
+<!-- CINEMA ASSISTANT -->
+<sc-if value="{{assistant}}" hint-placeholder-val="{{ false }}">
+<div class="chat" role="dialog" aria-label="Cinema Assistant">
+  <div class="chat-h"><span class="chat-av"><svg class="ic" style="width:20px;height:20px;color:#fff"><use href="#i-film"/></svg></span><div style="flex:1"><div style="font-weight:800">Cinema Assistant</div><div style="font-size:12.5px;color:var(--meta);font-weight:600">Ask for a pick · placeholder</div></div><button class="btn-icon min" aria-label="Close assistant" style="border-color:transparent" onClick="{{toggleAssistant}}"><svg class="ic"><use href="#i-close"/></svg></button></div>
+  <div class="chat-b"><div class="bub">Hi! Tell me what you’re in the mood for and I’ll find something to watch tonight.</div></div>
+  <form class="chat-f" onSubmit="{{noop}}"><input type="text" placeholder="Ask about movies and shows…" aria-label="Message the assistant"><button type="button" class="btn-icon min" aria-label="Send" style="background:var(--red);border-color:var(--red)"><svg class="ic"><use href="#i-send"/></svg></button></form>
+</div>
+</sc-if>
+<button class="fab" aria-label="Open Cinema Assistant" aria-expanded="{{assistant}}" onClick="{{toggleAssistant}}"><svg class="ic"><use href="#i-chat"/></svg></button>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"demoState":{"editor":"enum","default":"default","options":["default","active","open-genre","open-country","loading","empty","sheet"],"section":"Preview states"},"signedIn":{"editor":"boolean","default":true,"section":"Preview states"},"$preview":{"width":1440,"height":2900}}'>
+class Component extends DCLogic {
+  state = { scrolled: false, navActive: 'Anime', navLine: null, searchOpen: false, query: '', drawer: false, assistant: false,
+    genres: [], yMin: 1960, yMax: 2026, countries: [], cq: '', rMin: 0, sort: 'Popularity', open: null, popLeft: 0,
+    page: 1, loading: false, gFlip: 0, watch: { 3: true, 8: true }, gotoVal: '' };
+
+  componentDidMount() {
+    this.measureNav = () => {
+      const a = document.querySelector('.nav a.active'); if (!a || !a.offsetWidth) return;
+      const pl = parseFloat(getComputedStyle(a).paddingLeft) || 0; const x = a.offsetLeft + pl; const w = a.offsetWidth - 2 * pl;
+      const c = this.state.navLine; if (!c || Math.abs(c.x - x) > 0.5 || Math.abs(c.w - w) > 0.5) this.setState({ navLine: { x, w } });
+    };
+    setTimeout(this.measureNav, 50);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => this.measureNav());
+    window.addEventListener('resize', this.measureNav);
+    this.onPageScroll = () => { const y = window.scrollY || (document.scrollingElement && document.scrollingElement.scrollTop) || 0; const s = y > 40; if (s !== this.state.scrolled) this.setState({ scrolled: s }); };
+    document.addEventListener('scroll', this.onPageScroll, { passive: true, capture: true });
+    this.onPageScroll();
+    // demo presets for the state artboards
+    const d = this.props.demoState || 'default';
+    const chipLeft = (k) => { const c = document.querySelector('.fchip[data-k="' + k + '"]'); return c ? c.offsetLeft : 0; };
+    if (d === 'active') this.setState({ genres: ['Animation'], yMin: 2020, yMax: 2026, countries: ['JP'] });
+    if (d === 'open-genre') setTimeout(() => this.setState({ genres: ['Animation', 'Fantasy'], open: 'genre', popLeft: chipLeft('genre') }), 80);
+    if (d === 'open-country') setTimeout(() => this.setState({ genres: ['Animation'], yMin: 2020, yMax: 2026, countries: ['JP'], open: 'country', popLeft: chipLeft('country') }), 80);
+    if (d === 'empty') this.setState({ genres: ['Animation'], countries: ['KR'], rMin: 9.5 });
+    if (d === 'sheet') this.setState({ genres: ['Animation'], yMin: 2020, yMax: 2026, countries: ['JP'], open: 'all' });
+  }
+  componentWillUnmount() { clearTimeout(this.tl); window.removeEventListener('resize', this.measureNav); document.removeEventListener('scroll', this.onPageScroll, true); }
+  goNav(name, e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const a = e && e.currentTarget; const upd = { navActive: name };
+    if (a && a.closest && a.closest('.nav')) { const pl = parseFloat(getComputedStyle(a).paddingLeft) || 0; upd.navLine = { x: a.offsetLeft + pl, w: a.offsetWidth - 2 * pl }; }
+    this.setState(upd); if (this.measureNav) setTimeout(this.measureNav, 30);
+  }
+  // any filter / sort / page change: reset to page 1 (unless given), flash the skeleton grid, restage the cards
+  change(patch, keepPage) {
+    this.setState((s) => Object.assign({}, patch, { page: keepPage ? (patch.page || s.page) : 1, loading: true, gFlip: s.gFlip + 1 }));
+    clearTimeout(this.tl); this.tl = setTimeout(() => this.setState({ loading: false }), 550);
+  }
+  toggleOpen(k, e) {
+    if (this.state.open === k) { this.setState({ open: null }); return; }
+    const left = (e && e.currentTarget && k !== 'sort' && k !== 'all') ? e.currentTarget.offsetLeft : 0;
+    this.setState({ open: k, popLeft: left });
+  }
+
+  renderVals() {
+    const st = this.state; const demo = this.props.demoState || 'default'; const signedIn = this.props.signedIn !== false;
+
+    // ---------- placeholder art: black / grey / deep red only ----------
+    const mono = (s) => { const x = 20 + (s * 37) % 60; const a = (0.24 + ((s * 13) % 30) / 100).toFixed(2); const l = 12 + (s * 7) % 9; return `radial-gradient(110% 58% at ${x}% 0%, rgba(158,18,32,${a}), transparent 62%), radial-gradient(70% 36% at ${100 - x}% 92%, rgba(255,255,255,.08), transparent 70%), linear-gradient(172deg, hsl(240 4% ${l}%), hsl(240 6% 6%))`; };
+
+    // ---------- data: 20 titles / page ----------
+    const T = [
+      ['Re:ZERO -Starting Life in Another World-', 'TV', 'Fantasy', 2016, 8.3, 'A shut-in student is pulled into another world where dying only sends him back to the start of the day.'],
+      ['クレヨンしんちゃん', 'TV', 'Comedy', 1992, 8.0, 'The everyday chaos of a five-year-old and his long-suffering family in suburban Kasukabe.'],
+      ['Skyfall Cadence', 'TV', 'Action', 2026, 8.6, 'A drummer in a sinking sky-city discovers her rhythm is the only thing holding the clouds together.'],
+      ['Ashen Blade Chronicle', 'TV', 'Fantasy', 2025, 8.2, 'Exiled swordsmen race to forge a blade that can outlast the age of ash.'],
+      ['Moonlit Apothecary Diaries of the Northern Capital', 'TV', 'Mystery', 2024, 8.4, 'A young herbalist untangles palace poisonings one remedy at a time.'],
+      ['Kitsune Station 9', 'TV', 'Mystery', 2026, 8.0, 'Every night the last train brings one more passenger who should not exist.'],
+      ['星降る夜の約束', 'Movie', 'Romance', 2023, 8.1, 'Two strangers promise to meet again under the same meteor shower, ten years apart.'],
+      ['Tidebound', 'TV', 'Adventure', 2025, 7.9, 'A lighthouse keeper’s daughter sails the drowned continent to find her missing father.'],
+      ['Neon Ronin', 'TV', 'Sci-Fi', 2025, 8.1, 'A masterless cyber-samurai takes odd jobs in a city that never turns its lights off.'],
+      ['Starlit Dojo', 'TV', 'Sports', 2026, 7.7, 'The worst martial arts club in Tokyo has one season to qualify for nationals.'],
+      ['Clockwork Haruna', 'Movie', 'Fantasy', 2026, 7.8, 'A repair-shop girl discovers the town clock is counting down to something.'],
+      ['Paper Lantern Detective Agency', 'TV', 'Mystery', 2023, 7.6, 'Two retired spirits and one nervous intern solve crimes only the dead can see.'],
+      ['Salt & Ember Academy', 'TV', 'Drama', 2024, 7.5, 'Rival cooking schools compete for the right to feed a mountain festival.'],
+      ['雨のち晴れの魔法使い', 'Movie', 'Fantasy', 2022, 7.9, 'A weather wizard in training must stop one very persistent storm.'],
+      ['Hollow Sakura', 'TV', 'Horror', 2021, 7.4, 'Every spring, one tree in the old orchard blooms a little too early.'],
+      ['Orbit Heroes Club', 'TV', 'Sci-Fi', 2022, 7.3, 'After-school space cadets save the school from an alien talent show.'],
+      ['Garden of Thirteen Clocks', 'Movie', 'Fantasy', 2020, 8.2, 'A clockmaker’s apprentice steps into a garden where time grows wild.'],
+      ['Sword & Spice', 'TV', 'Comedy', 2025, 7.2, 'A wandering swordswoman accidentally becomes the head chef of a roadside inn.'],
+      ['Tokyo Dusk Runners', 'TV', 'Action', 2024, 7.8, 'Couriers race rooftop to rooftop with parcels that must arrive before sunrise.'],
+      ['Blue Hour Orchestra', 'Movie', 'Music', 2021, 8.0, 'A failing school orchestra rehearses only in the minutes between day and night.']
+    ];
+    const G2 = (a, b) => (a === b ? 'Animation' : b);
+
+    // ---------- filters → fake result count / pages ----------
+    const W = (y) => 1 + (y - 1960) / 15; let tot = 0; for (let y = 1960; y <= 2026; y++) tot += W(y);
+    let sel = 0; for (let y = st.yMin; y <= st.yMax; y++) sel += W(y);
+    const CW = { JP: 0.85, KR: 0.06, US: 0.05, CN: 0.04 };
+    const gf = st.genres.length ? Math.min(1, 0.86 + 0.12 * (st.genres.length - 1)) : 1;
+    const cf = st.countries.length ? Math.min(1, st.countries.reduce((a, c) => a + (CW[c] || 0.02), 0)) : 1;
+    const rf = st.rMin >= 9.5 ? 0 : 1 - 0.09 * st.rMin;
+    const count = Math.max(0, Math.round(2000 * gf * (sel / tot) * cf * rf));
+    const pages = Math.max(1, Math.min(100, Math.ceil(count / 20)));
+    const page = Math.min(st.page, pages);
+    const countTxt = count.toLocaleString('en-US');
+
+    // ---------- cards ----------
+    const wl = (id) => !!st.watch[id];
+    const toggle = (id) => () => { if (!signedIn) return; this.setState((s) => ({ watch: Object.assign({}, s.watch, { [id]: !s.watch[id] }) })); };
+    let items = T.map((t, i) => {
+      const k = (i + (page - 1) * 3) % 20; const d = T[k]; const id = k + 1 + (page - 1) * 20;
+      const span = st.yMax - st.yMin + 1; const filtered = st.yMin > 1960 || st.yMax < 2026;
+      const year = filtered ? st.yMin + ((k * 7 + page * 3) % span) : d[3];
+      const rating = Math.min(9.9, Math.max(d[4], st.rMin ? st.rMin + (k % 4) * 0.3 : 0));
+      const g1 = st.genres[0] || 'Animation'; const g2 = G2(g1, d[2]);
+      const on = !!st.watch[id];
+      return { title: d[0], type: d[1], year, rating, g1, g2, syn: d[5], bg: mono(k + page * 3), wl: on, id,
+        watched: on, wlOn: on ? 'on' : '', wlIcon: on ? '#i-check' : '#i-plus', wlText: on ? 'In Watchlist' : 'Watchlist',
+        bmIcon: on ? '#i-check' : '#i-bm', wlAria: signedIn ? (on ? 'Remove from watchlist' : 'Add to watchlist') : 'Sign in to save to watchlist', tip: !signedIn, toggle: toggle(id) };
+    });
+    if (st.sort === 'Rating') items.sort((a, b) => b.rating - a.rating);
+    else if (st.sort === 'Release date') items.sort((a, b) => b.year - a.year);
+    else if (st.sort === 'A–Z') items.sort((a, b) => a.title.localeCompare(b.title));
+    items = items.map((c, i) => Object.assign(c, { rating: c.rating.toFixed(1), delay: (i * 28) + 'ms' }));
+
+    // ---------- toolbar chips ----------
+    const yAct = st.yMin > 1960 || st.yMax < 2026; const rAct = st.rMin > 0;
+    const open = st.open; const nAll = st.genres.length + (yAct ? 1 : 0) + st.countries.length + (rAct ? 1 : 0);
+    const chip = (k, n) => ({ has: n > 0, n, cls: (open === k ? 'open ' : '') + (n > 0 ? 'on' : ''), open: open === k, go: (e) => this.toggleOpen(k, e) });
+    const f = { genre: chip('genre', st.genres.length), year: chip('year', yAct ? 1 : 0), country: chip('country', st.countries.length), rating: chip('rating', rAct ? 1 : 0), all: chip('all', nAll), sort: chip('sort', 0) };
+
+    // ---------- popover contents ----------
+    const GEN = ['Action', 'Adventure', 'Animation', 'Comedy', 'Drama', 'Fantasy', 'Horror', 'Mystery', 'Romance', 'Sci-Fi', 'Slice of Life', 'Sports', 'Thriller', 'Music'];
+    const genreList = GEN.map((g) => { const on = st.genres.indexOf(g) >= 0; return { name: g, on, cls: on ? 'on' : '', tog: () => this.change({ genres: on ? st.genres.filter((x) => x !== g) : st.genres.concat(g) }) }; });
+    const PRE = [['2020s', 2020, 2026], ['2010s', 2010, 2019], ['2000s', 2000, 2009], ['Older', 1960, 1999]];
+    const presets = PRE.map((p) => { const on = st.yMin === p[1] && st.yMax === p[2]; return { label: p[0], on, cls: on ? 'on' : '', go: () => this.change({ yMin: p[1], yMax: p[2] }) }; });
+    const flagOf = (c) => String.fromCodePoint.apply(null, c.split('').map((ch) => 127397 + ch.charCodeAt(0)));
+    const PIN = [['JP', 'Japan'], ['KR', 'South Korea'], ['US', 'United States'], ['CN', 'China'], ['GB', 'United Kingdom'], ['FR', 'France']];
+    const REST = [['AU', 'Australia'], ['BR', 'Brazil'], ['CA', 'Canada'], ['DE', 'Germany'], ['ES', 'Spain'], ['HK', 'Hong Kong'], ['ID', 'Indonesia'], ['IN', 'India'], ['IT', 'Italy'], ['MX', 'Mexico'], ['PH', 'Philippines'], ['RU', 'Russia'], ['SE', 'Sweden'], ['TH', 'Thailand'], ['TR', 'Türkiye'], ['TW', 'Taiwan'], ['VN', 'Vietnam']];
+    const cq = st.cq.trim().toLowerCase();
+    const crow = (c) => { const on = st.countries.indexOf(c[0]) >= 0; return { name: c[1], flag: flagOf(c[0]), on, cls: on ? 'on' : '', tog: () => this.change({ countries: on ? st.countries.filter((x) => x !== c[0]) : st.countries.concat(c[0]) }) }; };
+    const match = (c) => !cq || c[1].toLowerCase().indexOf(cq) >= 0;
+    const pinned = cq ? [] : PIN.map(crow);
+    const rest = (cq ? PIN.concat(REST).filter(match) : REST).map(crow);
+    const cl = { pinned, rest, hasPinned: pinned.length > 0, hasRest: rest.length > 0, none: !pinned.length && !rest.length, restLabel: cq ? 'Results' : 'All countries' };
+    const sortList = ['Popularity', 'Rating', 'Release date', 'A–Z'].map((s) => ({ label: s, on: st.sort === s, cls: st.sort === s ? 'on' : '', go: () => { this.change({ sort: s }); this.setState({ open: null }); } }));
+    const sheet = open === 'all';
+
+    // ---------- active filter chips ----------
+    const actives = [];
+    st.genres.forEach((g) => actives.push({ label: g, rm: () => this.change({ genres: st.genres.filter((x) => x !== g) }) }));
+    if (yAct) actives.push({ label: st.yMin + '–' + st.yMax, rm: () => this.change({ yMin: 1960, yMax: 2026 }) });
+    st.countries.forEach((c) => { const nm = (PIN.concat(REST).filter((x) => x[0] === c)[0] || [c, c])[1]; actives.push({ label: nm, rm: () => this.change({ countries: st.countries.filter((x) => x !== c) }) }); });
+    if (rAct) actives.push({ label: '★ ' + st.rMin.toFixed(1) + '+', rm: () => this.change({ rMin: 0 }) });
+
+    // ---------- pagination ----------
+    const goPage = (n) => (e) => { if (e && e.preventDefault) e.preventDefault(); if (n < 1 || n > pages || n === page) return; this.change({ page: n }, true); };
+    const pn = []; const num = (n) => pn.push({ isNum: true, isGap: false, label: n, cur: n === page ? 'page' : 'false', cls: n === page ? 'cur' : '', go: goPage(n) }); const gap = () => pn.push({ isNum: false, isGap: true });
+    if (pages <= 7) { for (let n = 1; n <= pages; n++) num(n); }
+    else if (page <= 2) { num(1); num(2); num(3); gap(); num(pages); }
+    else if (page >= pages - 1) { num(1); gap(); num(pages - 2); num(pages - 1); num(pages); }
+    else { num(1); if (page > 3) gap(); num(page - 1); num(page); num(page + 1); if (page < pages - 2) gap(); num(pages); }
+
+    // ---------- search (header) ----------
+    const q = (st.query || '').trim().toLowerCase();
+    const titles = T.filter((t) => !q || t[0].toLowerCase().indexOf(q) >= 0).slice(0, 4).map((t, i) => ({ title: t[0], year: t[3], genre: t[2], bg: mono(i + 2) }));
+    const people = [['Mara Voss', 'Voice actor'], ['Elio Tanaka', 'Director'], ['Junia Okafor', 'Voice actor']].filter((p) => !q || p[0].toLowerCase().indexOf(q) >= 0).slice(0, 2).map((p, i) => ({ name: p[0], role: p[1], bg: mono(i + 9) }));
+    const res = { titles, people, hasTitles: titles.length > 0, hasPeople: people.length > 0, none: !titles.length && !people.length };
+
+    const showSkel = st.loading || demo === 'loading';
+    const isEmpty = !showSkel && (count === 0 || demo === 'empty');
+    const showGrid = !showSkel && !isEmpty;
+    const yl = ((st.yMin - 1960) / 66) * 100; const yw = ((st.yMax - st.yMin) / 66) * 100;
+    const pad = (cls) => cls;
+
+    return {
+      hdrCls: st.scrolled ? 'scrolled' : '',
+      navItems: ['Home', 'Movies', 'TV', 'Anime', 'Doramas', 'Cartoons', 'Watchlist'].map((label) => ({ label, cls: st.navActive === label ? 'active' : '', cur: st.navActive === label ? 'page' : 'false', go: (e) => this.goNav(label, e) })),
+      navLineCls: st.navLine ? 'ready' : '', navLineT: st.navLine ? `translateX(${st.navLine.x}px) scaleX(${st.navLine.w})` : 'translateX(0) scaleX(1)',
+      searchOpen: st.searchOpen, openSearch: () => this.setState({ searchOpen: true }), closeSearch: () => this.setState({ searchOpen: false, query: '' }), query: st.query, onQuery: (e) => this.setState({ query: e.target.value }), res,
+      drawer: st.drawer, openDrawer: () => this.setState({ drawer: true }), closeDrawer: () => this.setState({ drawer: false }),
+      assistant: st.assistant, toggleAssistant: () => this.setState((s) => ({ assistant: !s.assistant })), noop: (e) => { if (e && e.preventDefault) e.preventDefault(); },
+      f, popOpen: !!open, tbarCls: sheet ? 'sheetopen' : '', scrimCls: sheet ? 'dim' : '',
+      layerCls: (sheet ? 'sheet w-all' : 'w-' + open) + (open === 'sort' ? ' r' : ''), popLeft: st.popLeft,
+      closePop: () => this.setState({ open: null }), onPopKey: (e) => { if (e.key === 'Escape' && this.state.open) this.setState({ open: null }); },
+      showGenre: open === 'genre' || sheet, showYear: open === 'year' || sheet, showCountry: open === 'country' || sheet, showRating: open === 'rating' || sheet, showSort: open === 'sort',
+      genreList, presets, yMin: st.yMin, yMax: st.yMax, yl: yl.toFixed(2), yw: yw.toFixed(2),
+      onYMin: (e) => this.change({ yMin: Math.min(+e.target.value, this.state.yMax - 1) }), onYMax: (e) => this.change({ yMax: Math.max(+e.target.value, this.state.yMin + 1) }),
+      clearGenres: () => this.change({ genres: [] }), clearYear: () => this.change({ yMin: 1960, yMax: 2026 }), clearCountries: () => this.change({ countries: [] }), clearRating: () => this.change({ rMin: 0 }),
+      cq: st.cq, onCq: (e) => this.setState({ cq: e.target.value }), cl,
+      rMin: st.rMin, rLabel: st.rMin ? st.rMin.toFixed(1) + '+' : 'Any', rPct: (st.rMin / 10 * 100).toFixed(1), onRMin: (e) => this.change({ rMin: +e.target.value }),
+      sortList, sortLabel: st.sort,
+      actives, hasActives: actives.length > 0, clearAll: () => this.change({ genres: [], yMin: 1960, yMax: 2026, countries: [], rMin: 0, open: null }),
+      countTxt, items, gridCls: st.gFlip % 2 ? 'g-b' : 'g-a', showSkel, showEmpty: isEmpty, showCount: !isEmpty, showGrid, sk20: Array.from({ length: 20 }, (_, i) => i),
+      page, pages, pageItems: pn, prevCls: page <= 1 ? 'dis' : '', nextCls: page >= pages ? 'dis' : '', goPrev: goPage(page - 1), goNext: goPage(page + 1),
+      gotoVal: st.gotoVal, onGoto: (e) => this.setState({ gotoVal: e.target.value }), submitGoto: (e) => { if (e && e.preventDefault) e.preventDefault(); const n = parseInt(this.state.gotoVal, 10); if (n >= 1 && n <= pages) this.change({ page: n, gotoVal: '' }, true); }
+    };
+  }
+}
+</script>
+</body>
+</html>
