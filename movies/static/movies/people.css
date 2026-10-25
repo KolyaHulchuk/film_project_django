@@ -1,0 +1,21 @@
+/* People grid (popular actors) — source: Search.dc.html people block. Scoped to body.people-page. */
+.people-page .pgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:30px 20px;margin-top:22px}
+.people-page .pc{position:relative;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center;padding:6px 4px 4px;opacity:0;animation:cardA .5s var(--ease) forwards}
+.people-page .g-b .pc{animation-name:cardB}
+.people-page .pc-ph{position:relative;width:min(100%,168px);aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:34px;letter-spacing:-.02em;color:#D4D4D8;border:1px solid rgba(255,255,255,.1);transition:transform .38s var(--ease)}
+.people-page .pc-ph::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--red);box-shadow:0 0 28px var(--glow);opacity:0;transform:scale(.94);transition:opacity .3s,transform .38s var(--ease);pointer-events:none}
+.people-page .pc:hover .pc-ph,.people-page .pc:focus-within .pc-ph{transform:scale(1.03)}
+.people-page .pc:hover .pc-ph::after,.people-page .pc:focus-within .pc-ph::after{opacity:1;transform:none}
+.people-page .pc-n{margin-top:16px;font-size:15px;font-weight:700;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.people-page .pc-k{font-size:12.5px;color:var(--meta);margin-top:3px;font-weight:500;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.people-page .pc-cover{position:absolute;inset:0;z-index:1;border-radius:20px}
+.people-page .pgrid .pc-ph{overflow:hidden;background:linear-gradient(160deg,#34343a,#18181b)}
+.people-page .pc-ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.people-page .pc-ph .ini{position:relative}
+.people-page .pc-n,.people-page .pc-k{margin-left:0}
+.people-page .pc-pop{margin-top:8px}
+@media (max-width:1199px){.people-page .pgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:959px){.people-page .pgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:767px){.people-page .pgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 14px}}
+@media (prefers-reduced-motion:reduce){.people-page .pc{animation:none;opacity:1}}
+@keyframes cardA{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}

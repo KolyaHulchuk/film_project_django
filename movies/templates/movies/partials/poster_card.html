@@ -4,7 +4,7 @@
 {% firstof item.media_type media_type "movie" as mt %}
 {% firstof item.tmdb_rating item.vote_average as rating %}
 {% firstof item.title item.name as title %}
-<article class="cc" role="listitem" id="items-{{ tid }}">
+<article class="cc" role="listitem" id="items-{{ tid }}" data-type="{{ mt }}">
   <div class="cc-frame">
     <div class="cc-art">
       {% if item.poster_url %}
@@ -17,8 +17,8 @@
       {% if rating %}<span class="cc-bdg badge"><svg class="ic fill"><use href="#i-star"/></svg>{{ rating|floatformat:1 }}</span>{% endif %}
       <span class="cc-type chip type">{% if mt == "movie" %}Movie{% else %}TV{% endif %}</span>
       <div class="cc-ov">
-        {% if item.overview %}<p class="syn">{{ item.overview }}</p>{% endif %}
-        {% if item.genres %}<div class="chips">{% for genre in item.genres|slice:":2" %}<span class="chip">{{ genre }}</span>{% endfor %}</div>{% endif %}
+        {% firstof item.overview item.description as synopsis %}{% if synopsis %}<p class="syn">{{ synopsis }}</p>{% endif %}
+        {% if item.genres.all %}<div class="chips">{% for genre in item.genres.all|slice:":2" %}<span class="chip">{{ genre.name }}</span>{% endfor %}</div>{% elif item.genres.0 %}<div class="chips">{% for genre in item.genres|slice:":2" %}<span class="chip">{{ genre }}</span>{% endfor %}</div>{% endif %}
         <div class="cc-btns">
           <a href="{% url 'movie-detail' tid mt %}" class="btn btn-red sm">Details</a>
           {% if item.watchlist_id %}
@@ -50,6 +50,7 @@
   </div>
   <div class="cc-t">
     <h3><a href="{% url 'movie-detail' tid mt %}" title="{{ title }}">{{ title }}</a></h3>
-    <p>{{ item.release_date|year_of }}{% if item.genres %}{% if item.release_date %} · {% endif %}{{ item.genres.0 }}{% endif %}</p>
+    {% firstof item.genres.all.0.name item.genres.0 as g1 %}
+    <p>{{ item.release_date|year_of }}{% if g1 %}{% if item.release_date %} · {% endif %}{{ g1 }}{% endif %}</p>
   </div>
 </article>

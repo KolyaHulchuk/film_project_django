@@ -1,99 +1,70 @@
 {% extends "movies/base.html" %}
 {% load static %}
-{% block body_class %}search-page{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/results.css' %}?v=1">{% endblock %}
+{% block body_class %}mh-body results-page{% endblock %}
+{% block main_class %}mh-main{% endblock %}
+{% block page_js %}<script src="{% static 'movies/search.js' %}?v=1" defer></script>{% endblock %}
+
 {% block content %}
+<section class="rh" aria-labelledby="h-title">
+  <div class="rh-bg" aria-hidden="true"></div>
+  <div class="wrap rh-in">
+    <div class="eyebrow">Search</div>
+    {% if query %}
+      <h1 id="h-title"><span class="ttl">Results for “<span class="rq">{{ query }}</span>”</span> <span class="count" aria-live="polite" data-total-label>{{ results|length }} result{{ results|length|pluralize }}</span></h1>
+    {% else %}
+      <h1 id="h-title"><span class="ttl">Search</span></h1>
+    {% endif %}
+  </div>
+</section>
+
 {% if results %}
-<div class="movie-container" >
-    {% for movie in results %}
-        <div class="movie-previe">
-                {% if user.is_authenticated %}
-                <form method="post" 
-                      action="{% url 'add_watchlist' movie.tmdb_id movie.media_type %}"
-                      class="watchlist-form"
-                      data-watchlist-form
-                      data-remove-url="{% if movie.watchlist_id %}{% url 'delete_watchlist' movie.watchlist_id %}{% endif %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                    <button type="submit" class="btn btn-link p-0 watchlist-btn{% if movie.watchlist_id %} in-watchlist{% endif %}"
-                    aria-pressed="{% if movie.watchlist_id %}true{% else %}false{% endif %}"
-                    aria-label="Toggle watchlist" title="Toggle watchlist">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-plus-fill" viewBox="0 0 16 16">
-                            <path fill-rule="evenodd" d="M2 15.5V2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.74.439L8 13.069l-5.26 2.87A.5.5 0 0 1 2 15.5m6.5-11a.5.5 0 0 0-1 0V6H6a.5.5 0 0 0 0 1h1.5v1.5a.5.5 0 0 0 1 0V7H10a.5.5 0 0 0 0-1H8.5z"/>
-                        </svg>
-                    </button>
-                    
-                            <!-- is_watched is only set on results the view found in the user's Watchlist,
-                               so the toggle only appears once the item has actually been added  -->
-                            {% if movie.is_watched %}
-                                <input type="checkbox" 
-                                    id="watch-{{ movie.id }}" 
-                                    class="watch-checkbox"
-                                    {% if movie.watched %}checked{% endif %}
-                                    hx-post="{% url 'toggle-watchlist' movie.id %}"
-                                    hx-triger="changed">
-                                <label for="watch-{{ movie.id }}" class="watch-lable">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="Green" class="bi bi-eye-fill" viewBox="0 0 16 16">
-                                        <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
-                                        <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/>
-                                    </svg>
-                                </label>   
-                            {% endif %}
-                </form>
-                {% else %}
-                <a class="back-register" href="{% url 'register' %}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-plus-fill" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd" d="M2 15.5V2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.74.439L8 13.069l-5.26 2.87A.5.5 0 0 1 2 15.5m6.5-11a.5.5 0 0 0-1 0V6H6a.5.5 0 0 0 0 1h1.5v1.5a.5.5 0 0 0 1 0V7H10a.5.5 0 0 0 0-1H8.5z"/>
-                </svg>   
-                </a>             
-                {% endif %}
-
-
-            <a href="{% url 'movie-detail' movie.tmdb_id movie.media_type %}" class="movie-card-link">
-                <div class="movie-poster">
-                    {% if movie.poster_url %}
-                    <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" class="movie-img">
-                    {% else %}
-                    <img src="{% static 'movies/image/default_poster.jpg' %}" alt="None">
-                    {% endif %}
-                </div>
-            
-            
-                <div class="movie-info">
-                    <p class="movie-title">
-                        {{ movie.title }}
-                        {% if movie.media_type == "tv" %}
-                            <span> - TV</span>
-                        {% else %}
-                            <span> - Movie</span>
-                        {% endif %}
-                    </p>
-                    <p class="movie-year">
-                        {{ movie.release_date|date:"Y" }}
-                    </p>
-                    <div class="more-movie-info" >
-                        <div class="movie-genre">
-                            {% for genre in movie.genres.all|slice:":2" %} <!-- show at most 2 genres -->
-                                <span class="genre-badge">{{ genre.name }}</span>
-                            {% empty %} 
-                                <span class="genre-badge">None</span>
-                            {% endfor %}
-                        </div> 
-                        <div class="movie-rating">
-                            {% if movie.tmdb_rating %}
-                                <span class="rating-badge">
-                                    <i class="bi bi-star-fill"></i>{{ movie.tmdb_rating|floatformat:1 }} <!-- floatformat:1 rounds -->
-                                </span>
-                            {% else %}
-                                <span class="rating-badge">
-                                    <i class="bi bi-star-fill"></i>None
-                                </span>
-                            {% endif %}
-                        </div>                   
-                    </div>
-                </div>
-            </a>
+<div class="tbar" data-result-tabs>
+  <div class="wrap">
+    <div class="tbar-in">
+      <div class="tabs-sc">
+        <div class="tabs" role="tablist" aria-label="Result types">
+          <button type="button" class="tab on" role="tab" aria-selected="true" aria-controls="results" data-filter="all">All<span class="cnt">{{ results|length }}</span></button>
+          <button type="button" class="tab" role="tab" aria-selected="false" aria-controls="results" data-filter="movie">Movies<span class="cnt" data-count="movie">0</span></button>
+          <button type="button" class="tab" role="tab" aria-selected="false" aria-controls="results" data-filter="tv">TV<span class="cnt" data-count="tv">0</span></button>
+          <span class="t-line" aria-hidden="true"></span>
         </div>
-    {% endfor %}
+      </div>
+    </div>
+  </div>
 </div>
 {% endif %}
+
+<div class="wrap rwrap" id="results" role="tabpanel">
+  {% if results %}
+    <div class="cgrid" role="list" aria-label="Search results" data-result-grid>
+      {% for item in results %}{% include 'movies/partials/poster_card.html' %}{% endfor %}
+    </div>
+    <div class="empty tall" data-tab-empty hidden>
+      <div class="ring"><svg class="ic"><use href="#i-film"/></svg></div>
+      <h3>Nothing in this category</h3>
+      <p>Nothing in this category matches your search, but other categories do.</p>
+      <button type="button" class="btn btn-red" data-filter="all">View all results</button>
+    </div>
+  {% elif query %}
+    <div class="empty tall">
+      <div class="ring"><svg class="ic"><use href="#i-film"/></svg></div>
+      <h3>No results for “{{ query }}”</h3>
+      <p>We couldn’t find anything that matches. A few things to try:</p>
+      <ul class="tips">
+        <li><span class="ti"><svg class="ic"><use href="#i-spell"/></svg></span>Check the spelling</li>
+        <li><span class="ti"><svg class="ic"><use href="#i-words"/></svg></span>Try fewer or more general words</li>
+        <li><span class="ti"><svg class="ic"><use href="#i-person"/></svg></span>Search by actor name or release year</li>
+      </ul>
+      <a href="{% url 'popular-movies' %}" class="btn btn-red">Browse popular movies</a>
+    </div>
+  {% else %}
+    <div class="empty tall hint-state">
+      <div class="ring"><svg class="ic"><use href="#i-search"/></svg></div>
+      <h3>Search movies and TV</h3>
+      <p>Type a title in the search bar above to find something to watch.</p>
+      <a href="{% url 'popular-movies' %}" class="btn btn-red">Browse popular movies</a>
+    </div>
+  {% endif %}
+</div>
 {% endblock %}
