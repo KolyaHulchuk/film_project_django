@@ -1,0 +1,38 @@
+{% load catalog_tags %}
+{# Home poster card (design: .pc). Params: item, media_type ("movie"|"tv"), variant ("tr" wide with rank | "pp" compact), rank (optional). #}
+{% firstof item.title item.name as title %}
+{% firstof item.id item.tmdb_id as tid %}
+{% firstof item.release_date item.first_air_date as date %}
+<article class="pc {% if variant == 'tr' %}tr-card{% else %}pp-card{% endif %}">
+  <div class="pc-frame">
+    <div class="pc-art">
+      {% if item.poster_url %}<img src="{{ item.poster_url }}" alt="Poster: {{ title }}" loading="lazy" width="342" height="513">
+      {% elif item.poster_path %}<img src="https://image.tmdb.org/t/p/w342{{ item.poster_path }}" alt="Poster: {{ title }}" loading="lazy" width="342" height="513">
+      {% else %}<span class="noposter" style="position:absolute;inset:0"></span><span class="pc-ptitle">{{ title }}</span>{% endif %}
+      {% if rank %}<span class="rank{% if variant != 'tr' %} sm{% endif %}" aria-hidden="true">{{ rank }}</span>{% endif %}
+      {% if item.vote_average %}<span class="pc-tl badge"><svg class="ic fill"><use href="#i-star"/></svg>{{ item.vote_average|floatformat:1 }}</span>{% endif %}
+      {% if variant == "tr" %}<span class="pc-tr chip type">{% if media_type == "movie" %}Movie{% else %}TV{% endif %}</span>{% endif %}
+      <div class="pc-ov">
+        {% if variant == "tr" %}
+          <h3>{{ title }}</h3>
+          <div class="m"><span>{{ date|year_of }}</span>{% with g=item.genre_ids|genre_names:1 %}{% if g %}<span>·</span><span>{{ g.0 }}</span>{% endif %}{% endwith %}</div>
+        {% endif %}
+        {% if user.is_authenticated %}
+          <form method="post" action="{% url 'add_watchlist' tid media_type %}" class="watchlist-form" data-watchlist-form data-remove-url="">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit" class="wl watchlist-btn" aria-pressed="false"><svg class="ic sm"><use href="#i-bm"/></svg><span class="wl-add">Watchlist</span><span class="wl-in">In watchlist</span></button>
+          </form>
+        {% else %}
+          <a class="wl" href="{% url 'register' %}"><svg class="ic sm"><use href="#i-bm"/></svg>Watchlist</a>
+        {% endif %}
+      </div>
+    </div>
+    <a class="pc-link" href="{% url 'movie-detail' tid media_type %}" aria-label="{{ title }}{% if date %} ({{ date|year_of }}){% endif %}{% if item.vote_average %}, rated {{ item.vote_average|floatformat:1 }}{% endif %}"></a>
+  </div>
+  {% if variant == "tr" %}
+    <div class="cap"><h3>{{ title }}</h3><p>{% if media_type == "movie" %}Movie{% else %}TV{% endif %} · {{ date|year_of }}</p></div>
+  {% else %}
+    <div class="pp-cap"><h3>{{ title }}</h3><p>{{ date|year_of }}{% with g=item.genre_ids|genre_names:1 %}{% if g %} · {{ g.0 }}{% endif %}{% endwith %}{% if kind_label %} · {{ kind_label }}{% endif %}</p></div>
+  {% endif %}
+</article>

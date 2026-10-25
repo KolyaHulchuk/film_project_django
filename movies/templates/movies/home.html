@@ -1,19 +1,276 @@
 {% extends 'movies/base.html' %}
-{% load static %}
-
-{% block body_class %}home-page{% endblock %}
+{% load static catalog_tags %}
+{% block body_class %}mh-body home-page{% endblock %}
+{% block main_class %}mh-main{% endblock %}
 
 {% block content %}
-  {% include 'movies/movie_section.html' with title="Popular Movies" items=now_popular link='popular-movies' %}
+{# SECTION 1 — HERO SPOTLIGHT: first 5 of TMDB movie/popular (now_popular). Trailer keys aren't in this context, so "Watch Trailer" opens the detail page. #}
+{% if now_popular %}
+<section class="hero" data-hero aria-roledescription="carousel" aria-label="Featured titles">
+  <div class="hero-slides">
+    {% for item in now_popular|slice:":5" %}
+      <div class="hero-bg{% if not item.backdrop_path %} noimg{% endif %}{% if forloop.first %} on kb{% endif %}" data-hero-bg
+           {% if item.backdrop_path %}style="background-image:url('https://image.tmdb.org/t/p/w1280{{ item.backdrop_path }}')"{% endif %}
+           role="img" aria-label="Backdrop: {{ item.title }}"></div>
+    {% endfor %}
+  </div>
+  <div class="hero-shade"></div>
+  <div class="hero-vig"></div>
+  <svg class="grain" aria-hidden="true"><filter id="gr"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#gr)"/></svg>
 
-  {% include 'movies/movie_section.html' with title="TV Popular" items=tv_serials_popular link='popular-tv' %}
+  <div class="wrap hero-in">
+    <div class="hero-copies">
+    {% for item in now_popular|slice:":5" %}
+      <div class="hero-copy" data-hero-copy{% if not forloop.first %} hidden{% endif %}>
+        <span class="pill-red fu d1"><i></i>Popular now</span>
+        <h1 class="fu d2">{{ item.title }}</h1>
+        <div class="hero-meta fu d3">
+          {% with y=item.release_date|year_of %}{% if y %}<span>{{ y }}</span><span class="sep"></span>{% endif %}{% endwith %}
+          {% for name in item.genre_ids|genre_names:2 %}<span class="chip">{{ name }}</span>{% endfor %}
+          {% if item.vote_average %}<span class="badge big"><svg class="ic fill"><use href="#i-star"/></svg>{{ item.vote_average|floatformat:1 }}</span>{% endif %}
+        </div>
+        {% if item.overview %}<p class="hero-syn fu d4">{{ item.overview }}</p>{% endif %}
+        <div class="hero-btns fu d5">
+          <a href="{% url 'movie-detail' item.id 'movie' %}#trailer" class="btn btn-red"><svg class="ic" style="width:18px;height:18px;fill:currentColor;stroke:none"><use href="#i-play"/></svg>Watch Trailer</a>
+          <a href="{% url 'movie-detail' item.id 'movie' %}" class="btn btn-ghost"><svg class="ic" style="width:18px;height:18px"><use href="#i-info"/></svg>More Info</a>
+          {% if user.is_authenticated %}
+            <form method="post" action="{% url 'add_watchlist' item.id 'movie' %}" class="watchlist-form" data-watchlist-form data-remove-url="">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button type="submit" class="btn-icon wlh watchlist-btn" aria-pressed="false" aria-label="Toggle watchlist"><svg class="ic"><use href="#i-bm"/></svg><span class="wl-txt" style="margin-left:8px;font-weight:700;font-size:15px"><span class="wl-add">Watchlist</span><span class="wl-in">In watchlist</span></span></button>
+            </form>
+          {% else %}
+            <a class="btn-icon wlh" href="{% url 'register' %}" aria-label="Sign up to save to your watchlist"><svg class="ic"><use href="#i-bm"/></svg><span class="wl-txt" style="margin-left:8px;font-weight:700;font-size:15px">Watchlist</span></a>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+    </div>
+  </div>
 
-  {% include 'movies/movie_section.html' with title="Top Rated" items=top_rated link='top-rated' %}
+  <div class="hero-ctrl">
+    <div class="wrap">
+      <div class="segs">
+        {% for item in now_popular|slice:":5" %}
+          <button type="button" class="seg" data-hero-seg aria-label="Show featured title {{ forloop.counter }}: {{ item.title }}"{% if forloop.first %} aria-current="true"{% endif %}><span class="bar"><span class="seg-fill"></span></span></button>
+        {% endfor %}
+      </div>
+      <span class="counter" data-hero-counter aria-hidden="true">01 / {{ now_popular|slice:":5"|length|stringformat:"02d" }}</span>
+      <div class="hero-nav">
+        <button type="button" class="btn-icon min" data-hero-prev aria-label="Previous title"><svg class="ic"><use href="#i-chl"/></svg></button>
+        <button type="button" class="btn-icon min" data-hero-next aria-label="Next title"><svg class="ic"><use href="#i-chr"/></svg></button>
+      </div>
+    </div>
+  </div>
+</section>
+{% else %}
+<div class="page-top"></div>
+{% endif %}
 
-  {% include 'movies/movie_section.html' with title="Now Playings" items=now_playings link='now-playings' %}
+{# SECTION 2 — POPULAR MOVIES (design: Trending Wave, without the Today/Week toggle: only movie/popular is loaded) #}
+{% if now_popular %}
+<section class="sec reveal" aria-labelledby="h-trend">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><div class="eyebrow">Right now</div><h2 id="h-trend">Popular Movies</h2></div>
+      <a href="{% url 'popular-movies' %}" class="viewall">View all <svg class="ic sm"><use href="#i-chr"/></svg></a>
+    </div>
+    <div class="row-wrap" data-row>
+      <button type="button" class="arrow l" data-row-prev aria-label="Scroll popular movies left"><svg class="ic"><use href="#i-chl"/></svg></button>
+      <button type="button" class="arrow r" data-row-next aria-label="Scroll popular movies right"><svg class="ic"><use href="#i-chr"/></svg></button>
+      <div class="track" tabindex="0" role="region" aria-label="Popular movies, scrollable">
+        {% for item in now_popular|slice:":14" %}
+          {% include 'movies/partials/media_card.html' with media_type='movie' variant='tr' rank=forloop.counter %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
 
-  {% include 'movies/movie_section.html' with title="Upcoming" items=filtered_upcoming link='upcoming' %}
+{# SECTION 3 — COMING SOON: TMDB movie/upcoming minus titles already in theaters (filtered_upcoming) #}
+{% if filtered_upcoming %}
+<section class="sec reveal" style="--sg:68px" aria-labelledby="h-soon">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><div class="eyebrow">In theaters soon</div><h2 id="h-soon">Coming Soon</h2></div>
+      <a href="{% url 'upcoming' %}" class="viewall">View all <svg class="ic sm"><use href="#i-chr"/></svg></a>
+    </div>
+    <div class="row-wrap" data-row>
+      <button type="button" class="arrow l" data-row-prev aria-label="Scroll coming soon left"><svg class="ic"><use href="#i-chl"/></svg></button>
+      <button type="button" class="arrow r" data-row-next aria-label="Scroll coming soon right"><svg class="ic"><use href="#i-chr"/></svg></button>
+      <div class="track" tabindex="0" role="region" aria-label="Upcoming releases, scrollable">
+        {% for item in filtered_upcoming|slice:":8" %}
+          <article class="cs-card">
+            <div class="cs-bg" role="img" aria-label="Backdrop: {{ item.title }}">
+              {% if item.backdrop_path %}<img src="https://image.tmdb.org/t/p/w780{{ item.backdrop_path }}" alt="" loading="lazy">{% elif item.poster_url %}<img src="{{ item.poster_url }}" alt="" loading="lazy">{% endif %}
+            </div>
+            <div class="cs-shade"></div>
+            <div class="cs-top">
+              {% with cd=item.release_date|days_until %}{% if cd %}<span class="cd"><i></i>{{ cd }}</span><span class="pill-red" style="height:24px;font-size:11px">Soon</span>{% endif %}{% endwith %}
+            </div>
+            <div class="cs-body">
+              <h3>{{ item.title }}</h3>
+              {% with d=item.release_date|pretty_date %}{% if d %}<div class="cs-date"><svg class="ic sm"><use href="#i-cal"/></svg>{{ d }}</div>{% endif %}{% endwith %}
+              <div class="cs-foot">
+                <div class="chips">{% for name in item.genre_ids|genre_names:2 %}<span class="chip">{{ name }}</span>{% endfor %}</div>
+                <a href="{% url 'movie-detail' item.id 'movie' %}" class="btn btn-ghost sm">Details</a>
+              </div>
+            </div>
+            <a class="pc-link" href="{% url 'movie-detail' item.id 'movie' %}" aria-label="{{ item.title }} details" style="z-index:1"></a>
+          </article>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
 
-  {% include 'movies/actors_section.html' with title="Popular Actor" items=popular_actors %}
-  
+{# SECTION 5 — POPULAR RIGHT NOW: tv/popular + movies in theaters (filtered_now_playings), filtered client-side by tab #}
+{% if tv_serials_popular or filtered_now_playings %}
+<section class="sec sec-pop reveal" aria-labelledby="h-pop">
+  <div class="wrap">
+    <div class="pop-head">
+      <div class="pop-title"><div class="eyebrow">What everyone is watching</div><h2 id="h-pop">Popular Right Now</h2></div>
+      <div class="pop-tools">
+        <div class="ptabs" role="group" aria-label="Filter popular titles" data-tabs="pop">
+          <button type="button" class="ptab on" data-tab="all" aria-pressed="true">All</button>
+          <button type="button" class="ptab" data-tab="theater" aria-pressed="false">In Theaters</button>
+          <button type="button" class="ptab" data-tab="tv" aria-pressed="false">TV</button>
+          <span class="ptab-line" aria-hidden="true"></span>
+        </div>
+        <a href="{% url 'popular-tv' %}" class="viewall">View all <svg class="ic sm"><use href="#i-chr"/></svg></a>
+      </div>
+    </div>
+    <div class="row-wrap" data-row>
+      <button type="button" class="arrow l" data-row-prev aria-label="Scroll popular left"><svg class="ic"><use href="#i-chl"/></svg></button>
+      <button type="button" class="arrow r" data-row-next aria-label="Scroll popular right"><svg class="ic"><use href="#i-chr"/></svg></button>
+      <div class="track pop-track" data-tab-panel="pop" tabindex="0" role="region" aria-label="Popular titles, scrollable">
+        {% for item in filtered_now_playings|slice:":10" %}<div data-kind="theater" style="display:contents">{% include 'movies/partials/media_card.html' with media_type='movie' variant='pp' kind_label='Movie' %}</div>{% endfor %}
+        {% for item in tv_serials_popular|slice:":10" %}<div data-kind="tv" style="display:contents">{% include 'movies/partials/media_card.html' with media_type='tv' variant='pp' kind_label='TV' %}</div>{% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# SECTION 6 — PICK BY MOOD: mood chips link into the catalog filtered by genre (no extra TMDB calls) #}
+{% url 'movie' as mood_url %}
+<section class="sec sec-mood reveal" style="--sg:64px" aria-labelledby="h-mood">
+  <div class="wrap">
+    {% include 'movies/partials/section_header.html' with eyebrow="Not sure what to watch?" title="Pick by Mood" title_id="h-mood" link_url=mood_url %}
+    <div class="moods" role="group" aria-label="Pick a mood">
+      <a class="mood" href="{% url 'movie' %}?genre_search=35"><svg class="ic"><use href="#i-smile"/></svg>Comedy</a>
+      <a class="mood" href="{% url 'movie' %}?genre_search=18"><svg class="ic"><use href="#i-masks"/></svg>Drama</a>
+      <a class="mood" href="{% url 'movie' %}?genre_search=53"><svg class="ic"><use href="#i-eye"/></svg>Thriller</a>
+      <a class="mood" href="{% url 'movie' %}?genre_search=27"><svg class="ic"><use href="#i-ghost"/></svg>Horror</a>
+      <a class="mood" href="{% url 'movie' %}?genre_search=10749"><svg class="ic"><use href="#i-heart"/></svg>Romance</a>
+      <a class="mood" href="{% url 'movie' %}?genre_search=878"><svg class="ic"><use href="#i-planet"/></svg>Sci-Fi</a>
+      <a class="mood" href="{% url 'movie' %}?genre_search=28"><svg class="ic"><use href="#i-bolt"/></svg>Action</a>
+      <a class="mood" href="{% url 'movie' %}?genre_search=14"><svg class="ic"><use href="#i-spark"/></svg>Fantasy</a>
+      <a class="mood" href="{% url 'movie' %}?genre_search=99"><svg class="ic"><use href="#i-camera"/></svg>Documentary</a>
+      <a class="mood" href="{% url 'movie' %}?genre_search=9648"><svg class="ic"><use href="#i-moon"/></svg>Mystery</a>
+    </div>
+  </div>
+</section>
+
+{# SECTION 7 — ALL-TIME GREATS: TMDB movie/top_rated, first 10 #}
+{% if top_rated %}
+<section class="sec reveal" style="--sg:64px" aria-labelledby="h-greats">
+  <div class="wrap">
+    {% url 'top-rated' as top_url %}
+    {% include 'movies/partials/section_header.html' with eyebrow="Ranked by viewers" title="All-Time Greats" title_id="h-greats" link_url=top_url %}
+    <div class="gr-panel">
+      <ol class="gr-list" aria-label="Top rated titles of all time">
+        {% for item in top_rated|slice:":10" %}
+          <li style="display:contents">
+            <a href="{% url 'movie-detail' item.id 'movie' %}" class="gr-row" aria-label="{{ forloop.counter }}. {{ item.title }}{% if item.release_date %} ({{ item.release_date|year_of }}){% endif %}, rated {{ item.vote_average|floatformat:1 }}">
+              <span class="gr-num" aria-hidden="true">{{ forloop.counter }}</span>
+              <span class="gr-th{% if not item.poster_url %} noposter{% endif %}">{% if item.poster_url %}<img src="{{ item.poster_url }}" alt="" loading="lazy" width="50" height="75">{% endif %}</span>
+              <span><span class="gr-t">{{ item.title }}</span><span class="gr-m">{{ item.release_date|year_of }}{% with g=item.genre_ids|genre_names:1 %}{% if g %} · {{ g.0 }}{% endif %}{% endwith %}</span></span>
+              <span class="gr-rate"><b><svg class="ic fill"><use href="#i-star"/></svg>{{ item.vote_average|floatformat:1 }}</b><small>{{ item.vote_count|compact_votes }}</small></span>
+            </a>
+          </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# SECTION 8 — STARS: TMDB person/popular, acting only (actors) #}
+{% if actors %}
+<section class="sec hov reveal" style="--sg:60px;--at:41px" aria-labelledby="h-stars">
+  <div class="wrap">
+    {% url 'popular-actors' as actors_url %}
+    {% include 'movies/partials/section_header.html' with eyebrow="Popular people" title="Popular Actors" title_id="h-stars" link_url=actors_url %}
+    <div class="row-wrap stars-row" data-row>
+      <button type="button" class="arrow l" data-row-prev aria-label="Scroll stars left"><svg class="ic"><use href="#i-chl"/></svg></button>
+      <button type="button" class="arrow r" data-row-next aria-label="Scroll stars right"><svg class="ic"><use href="#i-chr"/></svg></button>
+      <div class="track stars-track" tabindex="0" role="list" aria-label="Popular actors, scrollable">
+        {% for actor in actors|slice:":12" %}{% include 'movies/partials/actor_card.html' %}{% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# SECTION 10 — TV & CATEGORIES: featured + 6 minis from tv/popular; category tabs are links to the existing catalog pages #}
+{% if tv_serials_popular %}
+<section class="sec reveal" style="--sg:68px" aria-labelledby="h-cats">
+  <div class="wrap">
+    <div class="pop-head">
+      <div class="pop-title"><div class="eyebrow">Beyond movies</div><h2 id="h-cats">TV &amp; Categories</h2></div>
+      <div class="pop-tools">
+        <nav class="ctabs" aria-label="Choose a category">
+          <a class="ptab on" href="{% url 'tv' %}" aria-current="true">TV Shows</a>
+          <a class="ptab" href="{% url 'dorams-tv' %}">Doramas</a>
+          <a class="ptab" href="{% url 'anime-tv' %}">Anime</a>
+          <a class="ptab" href="{% url 'cartoon-tv' %}">Cartoons</a>
+        </nav>
+        <a href="{% url 'popular-tv' %}" class="viewall">View all <svg class="ic sm"><use href="#i-chr"/></svg></a>
+      </div>
+    </div>
+    <div class="sc">
+      {% with feat=tv_serials_popular.0 %}
+      <article class="sc-feat">
+        <div class="bg" role="img" aria-label="Backdrop: {{ feat.name }}">
+          {% if feat.backdrop_path %}<img src="https://image.tmdb.org/t/p/w780{{ feat.backdrop_path }}" alt="" loading="lazy">{% elif feat.poster_url %}<img src="{{ feat.poster_url }}" alt="" loading="lazy">{% endif %}
+        </div>
+        <div class="shade"></div>
+        <div class="top"><span class="chip type">TV Shows</span>{% if feat.vote_average %}<span class="badge"><svg class="ic fill"><use href="#i-star"/></svg>{{ feat.vote_average|floatformat:1 }}</span>{% endif %}</div>
+        <div class="body">
+          <h3>{{ feat.name }}</h3>
+          <div class="m">{{ feat.first_air_date|year_of }}{% with g=feat.genre_ids|genre_names:1 %}{% if g %} · {{ g.0 }}{% endif %}{% endwith %}</div>
+          {% if feat.overview %}<p>{{ feat.overview }}</p>{% endif %}
+        </div>
+        <a class="pc-link" href="{% url 'movie-detail' feat.id 'tv' %}" aria-label="{{ feat.name }} details" style="z-index:1"></a>
+      </article>
+      {% endwith %}
+      <div class="sc-grid">
+        {% for item in tv_serials_popular|slice:"1:7" %}
+          <a href="{% url 'movie-detail' item.id 'tv' %}" class="mc" aria-label="{{ item.name }}{% if item.first_air_date %} ({{ item.first_air_date|year_of }}){% endif %}{% if item.vote_average %}, rated {{ item.vote_average|floatformat:1 }}{% endif %}">
+            <span class="mc-th{% if not item.poster_url %} noposter{% endif %}">{% if item.poster_url %}<img src="{{ item.poster_url }}" alt="" loading="lazy" width="74" height="111">{% endif %}</span>
+            <span class="mc-b"><span class="mc-t">{{ item.name }}</span><span class="mc-m">{{ item.first_air_date|year_of }}{% with g=item.genre_ids|genre_names:1 %}{% if g %} · {{ g.0 }}{% endif %}{% endwith %}</span>{% if item.vote_average %}<span class="badge"><svg class="ic fill"><use href="#i-star"/></svg>{{ item.vote_average|floatformat:1 }}</span>{% endif %}</span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# SECTION 11 — CALL TO ACTION (guests only) #}
+{% if not user.is_authenticated %}
+<section class="sec reveal" style="--sg:52px" aria-labelledby="h-cta">
+  <div class="wrap">
+    <div class="cta">
+      <div><h2 id="h-cta">Build your watchlist</h2><p>Rate, save and track what you watch.</p></div>
+      <div class="cta-btns"><a href="{% url 'register' %}" class="btn btn-red">Register</a><a href="{% url 'login' %}" class="btn btn-ghost">Login</a></div>
+    </div>
+  </div>
+</section>
+{% endif %}
 {% endblock %}
+
+{% block page_js %}<script src="{% static 'movies/home.js' %}" defer></script>{% endblock %}

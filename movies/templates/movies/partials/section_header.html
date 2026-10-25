@@ -1,0 +1,5 @@
+{# Section header (design: .pop-head). Params: eyebrow, title, title_id, link_url (optional), link_text (optional). Tabs go in the `tabs` block of the caller via the "pop-tools" wrapper, so this one is for plain headers. #}
+<div class="pop-head">
+  <div class="pop-title"><div class="eyebrow">{{ eyebrow }}</div><h2 id="{{ title_id }}">{{ title }}</h2></div>
+  {% if link_url %}<div class="pop-tools"><a href="{{ link_url }}" class="viewall">{{ link_text|default:"View all" }} <svg class="ic sm"><use href="#i-chr"/></svg></a></div>{% endif %}
+</div>
