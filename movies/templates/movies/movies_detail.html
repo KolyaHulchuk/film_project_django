@@ -1,229 +1,192 @@
 {% extends "movies/base.html" %}
-{% load static %}
+{% load static catalog_tags %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'movies/movie_detail.css' %}">
-<link rel="stylesheet" href="{% static 'movies/comments.css' %}">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-{% endblock %}
-
-{% block body_class %}detail-body{% endblock %}
-{% block main_class %}detail-main-wrap{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/detail.css' %}?v=1">{% endblock %}
+{% block body_class %}mh-body detail-page{% endblock %}
+{% block main_class %}mh-main{% endblock %}
+{% block page_js %}<script src="{% static 'movies/detail.js' %}?v=2" defer></script>{% endblock %}
 
 {% block content %}
-
-
-
-
-<div class="detail-hero">
-
-    <!-- A blurry full-screen poster -->
-    <div class="detail-bg" style="background-image: url('{{ data.poster_url }}');"></div>
-    <div class="detail-bg-overlay"></div>
-
-    <div class="detail-hero-inner">
-
-        <!-- Left column: poster + goal -->
-        <aside class="detail-sidebar">
-
-            <img src="{{ data.poster_url }}"
-                 alt="{{ data.title }}"
-                 class="detail-poster">
-
-            <!-- The goal under the poster in the column -->
-            <div class="detail-sidebar-meta">
-
-                {% if data.tmdb_rating %}
-                <div class="detail-meta-row">
-                    <span class="detail-meta-icon">⭐</span>
-                    <div>
-                        <div class="detail-meta-val">
-                            {{ data.tmdb_rating|floatformat:1 }}
-                            <span class="detail-meta-max">/10</span>
-                        </div>
-                        <div class="detail-meta-label">TMDB Rating</div>
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if data.average_user_ratings %}
-                <div class="detail-meta-row">
-                    <span class="detail-meta-icon">👥</span>
-                    <div>
-                        <div class="detail-meta-val">
-                            {{ data.average_user_ratings }}
-                            <span class="detail-meta-max">/10</span>
-                        </div>
-                        <div class="detail-meta-label">User Rating</div>
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if data.release_date %}
-                <div class="detail-meta-row">
-                    <span class="detail-meta-icon">📅</span>
-                    <div>
-                        <div class="detail-meta-val">{{ data.release_date|date:"Y" }}</div>
-                        <div class="detail-meta-label">{{ data.release_date|date:"d M Y" }}</div>
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if data.country %}
-                <div class="detail-meta-row">
-                    <span class="detail-meta-icon">🌍</span>
-                    <div>
-                        <div class="detail-meta-val">{{ data.country }}</div>
-                        <div class="detail-meta-label">Country</div>
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if director %}
-                <div class="detail-meta-row">
-                    <span class="detail-meta-icon">🎬</span>
-                    <div>
-                        <div class="detail-meta-val">{{ director.name }}</div>
-                        <div class="detail-meta-label">Director</div>
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if data.author %}
-                <div class="detail-meta-row">
-                    <span class="detail-meta-icon">🏢</span>
-                    <div>
-                        <div class="detail-meta-val">{{ data.author }}</div>
-                        <div class="detail-meta-label">Studio</div>
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if data.media_type %}
-                <div class="detail-meta-row">
-                    <span class="detail-meta-icon">
-                        {% if data.media_type == "movie" %}🎥{% else %}📺{% endif %}
-                    </span>
-                    <div>
-                        <div class="detail-meta-val">
-                            {% if data.media_type == "movie" %}Movie{% else %}TV Series{% endif %}
-                        </div>
-                        <div class="detail-meta-label">Type</div>
-                    </div>
-                </div>
-                {% endif %}
-
-            </div>
-        </aside>
-
-        <!-- Right column: title, genres, description, cast -->
-        <div class="detail-content">
-
-            <span class="detail-type-badge">
-                {% if data.media_type == "movie" %}🎬 Movie{% else %}📺 TV Series{% endif %}
-            </span>
-
-            <h1 class="detail-title">{{ data.title }}</h1>
-
-            {% if data.genres.all %}
-            <div class="detail-genres">
-                {% for genre in data.genres.all %}
-                <span class="detail-genre-tag">{{ genre.name }}</span>
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            {% if data.description %}
-            <p class="detail-description">{{ data.description }}</p>
-            {% endif %}
-
-            <div class="detail-actions">
-                {% if user.is_authenticated %}
-                {# Toggled by watchlist_toggle.js; CSS shows exactly one of the three labels below #}
-                <form method="post"
-                    action="{% url 'add_watchlist' data.tmdb_id data.media_type %}"
-                    data-watchlist-form
-                    data-remove-url="{% if watchlist_id %}{% url 'delete_watchlist' watchlist_id %}{% endif %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                    <button type="submit" class="detail-btn-watchlist watchlist-btn{% if watchlist_id %} in-watchlist{% endif %}"
-                        aria-pressed="{% if watchlist_id %}true{% else %}false{% endif %}">
-                        <span class="wl-label wl-add"><i class="bi bi-plus-lg"></i> Add to Watchlist</span>
-                        <span class="wl-label wl-in"><i class="bi bi-check-lg"></i> In Watchlist</span>
-                        <span class="wl-label wl-remove"><i class="bi bi-x-lg"></i> Remove from Watchlist</span>
-                    </button>
-                </form>
-                {% else %}
-                <a href="{% url 'login' %}" class="detail-btn-watchlist">
-                    <i class="bi bi-plus-lg"></i> Add to Watchlist
-                </a>
-                {% endif %}
-            </div>
-
-            <!-- Gallery -->
-            {% if gallery %}
-            <div class="detail-gallery-section">
-                <div class="detail-gallery-scroll">
-                    {% for image_url in gallery %}
-                    <img src="{{ image_url }}"
-                         alt="{{ data.title }} still {{ forloop.counter }}"
-                         class="detail-gallery-img"
-                         loading="lazy">
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Trailer -->
-            {% if trailer %}
-            <div class="detail-trailer-section">
-                <div class="detail-trailer-wrapper">
-                    <!-- playsinline avoids iOS pushing playback into the native fullscreen
-                         player; sandbox (no allow-top-navigation) stops a stray tap on the
-                         player's own YouTube logo/link overlays from navigating this page away. -->
-                    <iframe
-                        src="https://www.youtube.com/embed/{{ trailer.key }}?playsinline=1&rel=0&modestbranding=1"
-                        title="{{ trailer.name|default:'Trailer' }}"
-                        referrerpolicy="strict-origin-when-cross-origin"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation"
-                        allowfullscreen>
-                    </iframe>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Cast -->
-            {% if cast %}
-            <div class="detail-cast-section">
-                <h3 class="detail-cast-title">Cast</h3>
-                <div class="detail-cast-grid">
-                    {% for actor in cast %}
-                    <div class="detail-cast-card">
-                        {% if actor.profile_path %}
-                        <img src="https://image.tmdb.org/t/p/w185{{ actor.profile_path }}"
-                             alt="{{ actor.name }}"
-                             class="detail-cast-photo">
-                        {% else %}
-                        <div class="detail-cast-photo detail-cast-nophoto">👤</div>
-                        {% endif %}
-                        <div class="detail-cast-name">{{ actor.name }}</div>
-                        {% if actor.character %}
-                        <div class="detail-cast-role">as {{ actor.character }}</div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Comments -->
-            {% if movie %}
-            {% include "movies/partials/comments/section.html" %}
-            {% endif %}
-
-        </div>
+{# HERO — data: Movies row (title, poster, rating, genres, description...), first backdrop from the TMDB gallery #}
+<section class="hero" id="hero" aria-labelledby="h-title">
+  <div class="hero-bd" aria-hidden="true">
+    {% if gallery %}<img class="hero-bd-img" src="{{ gallery.0 }}" alt="" loading="eager" fetchpriority="high">{% endif %}
+    <i></i><i></i><i></i>
+  </div>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="wrap hero-in">
+    <div class="hero-c">
+      <span class="tchip fu" style="animation-delay:.05s"><svg class="ic"><use href="#{% if data.media_type == 'movie' %}i-film{% else %}i-tv{% endif %}"/></svg>{% if data.media_type == "movie" %}Movie{% else %}TV Series{% endif %}</span>
+      <h1 id="h-title" class="fu" style="animation-delay:.12s">{{ data.title }}</h1>
+      <div class="meta-row fu" style="animation-delay:.24s">
+        {% if data.release_date %}<span class="mi"><svg class="ic"><use href="#i-cal"/></svg>{{ data.release_date|date:"Y" }}</span>{% endif %}
+        {% if data.country %}<span class="mi"><svg class="ic"><use href="#i-globe"/></svg>{{ data.country }}</span>{% endif %}
+        {% if data.author %}<span class="mi"><svg class="ic"><use href="#i-studio"/></svg>{{ data.author }}</span>{% endif %}
+      </div>
+      {% if data.genres.all %}
+      <div class="chips fu" style="animation-delay:.3s">
+        {% for genre in data.genres.all %}
+          {% if genre.tmdb_id %}<a href="{% if data.media_type == 'movie' %}{% url 'movie' %}{% else %}{% url 'tv' %}{% endif %}?genre_search={{ genre.tmdb_id }}" class="chip">{{ genre.name }}</a>{% else %}<span class="chip">{{ genre.name }}</span>{% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% with community=data.average_user_ratings %}
+      {% if data.tmdb_rating or community %}
+      <div class="rate-row fu" style="animation-delay:.36s">
+        {% if data.tmdb_rating %}<div class="rbadge" title="TMDB user score"><svg class="ic"><use href="#i-star"/></svg><b>{{ data.tmdb_rating|floatformat:1 }}<small>/10</small></b><span><em>TMDB</em>user score</span></div>{% endif %}
+        {% if community %}<div class="rbadge" title="Movies.hub community score"><svg class="ic"><use href="#i-users"/></svg><b>{{ community }}<small>/10</small></b><span><em>Community</em>Movies.hub</span></div>{% endif %}
+      </div>
+      {% endif %}
+      {% endwith %}
+      {% if data.description %}
+      <div class="syn-w fu" style="animation-delay:.42s">
+        <p class="syn" data-syn>{{ data.description }}</p>
+        <button type="button" class="lnk" data-syn-toggle aria-expanded="false" hidden>Read more</button>
+      </div>
+      {% endif %}
+      <div class="hero-act fu" style="animation-delay:.5s">
+        {% if trailer %}
+          <button type="button" class="btn btn-red lg btn-trailer" data-trailer-open="{{ trailer.key }}" data-trailer-title="{{ trailer.name|default:data.title }}"><svg class="ic fill" style="width:18px;height:18px"><use href="#i-play"/></svg>Watch Trailer</button>
+        {% else %}
+          <span class="btn btn-red lg btn-trailer dis" aria-disabled="true"><svg class="ic fill" style="width:18px;height:18px"><use href="#i-play"/></svg>No trailer</span>
+        {% endif %}
+        {% if user.is_authenticated %}
+          <form method="post" action="{% url 'add_watchlist' data.tmdb_id data.media_type %}" class="watchlist-form" data-watchlist-form
+                data-remove-url="{% if watchlist_id %}{% url 'delete_watchlist' watchlist_id %}{% endif %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit" class="btn btn-ghost lg watchlist-btn{% if watchlist_id %} in-watchlist{% endif %}" data-wl-main
+                    aria-pressed="{% if watchlist_id %}true{% else %}false{% endif %}">
+              <svg class="ic" style="width:18px;height:18px"><use href="#i-plus"/></svg><span class="wl-add">Add to Watchlist</span>
+              <svg class="ic" style="width:18px;height:18px"><use href="#i-check"/></svg><span class="wl-in">In Watchlist</span>
+            </button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}?next={{ request.path|urlencode }}" class="btn btn-ghost lg"><svg class="ic" style="width:18px;height:18px"><use href="#i-plus"/></svg>Add to Watchlist</a>
+        {% endif %}
+        <button type="button" class="btn-icon lg" data-copy-link aria-label="Copy link" title="Copy link"><svg class="ic"><use href="#i-share"/></svg></button>
+      </div>
     </div>
+    <div class="poster fu" style="animation-delay:.3s">
+      <div class="poster-in">
+        {% if data.poster_url %}<img src="{{ data.poster_url }}" alt="Poster: {{ data.title }}" width="300" height="450">{% else %}<span class="poster-t">{{ data.title }}</span><span class="poster-ic"><svg class="ic"><use href="#i-film"/></svg></span>{% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{# SUB-NAV — anchors with scroll-spy (detail.js); mini bar shows once the hero is out of view #}
+<div class="snav-bar" data-snav>
+  <div class="wrap">
+    <div class="snav">
+      <div class="stabs" role="tablist" aria-label="Page sections">
+        <a class="stab on" role="tab" href="#overview" data-target="overview">Overview</a>
+        {% if trailer or gallery %}<a class="stab" role="tab" href="#media" data-target="media">Trailer &amp; Media</a>{% endif %}
+        {% if cast %}<a class="stab" role="tab" href="#cast" data-target="cast">Cast &amp; Crew</a>{% endif %}
+        {% if movie %}<a class="stab" role="tab" href="#comments" data-target="comments">Comments <span class="sn">{{ total|default:0 }}</span></a>{% endif %}
+        <span class="sline" aria-hidden="true"></span>
+      </div>
+      <div class="mini" data-mini aria-hidden="true">
+        {% if data.poster_url %}<img class="mini-p" src="{{ data.poster_url }}" alt="" width="28" height="42">{% endif %}<b>{{ data.title }}</b>
+        {% if user.is_authenticated %}<button type="button" class="btn btn-ghost" data-wl-proxy tabindex="-1"><svg class="ic sm"><use href="#i-plus"/></svg><span data-wl-proxy-text>Add to Watchlist</span></button>{% endif %}
+      </div>
+    </div>
+  </div>
 </div>
 
+{# OVERVIEW #}
+<section class="dsec reveal" id="overview" aria-labelledby="h-ov">
+  <div class="wrap">
+    <div class="sec-head"><h2 id="h-ov">Overview</h2></div>
+    <div class="ov">
+      <div class="ov-l">
+        <div class="ov-text">{% if data.description %}{{ data.description|linebreaks }}{% else %}<p>No description available yet.</p>{% endif %}</div>
+        {% if director %}
+        <div class="credits"><div><div class="cr-k">Director</div><div class="cr-v">{{ director.name }}</div></div></div>
+        {% endif %}
+      </div>
+      <aside class="ov-d">
+        <div class="card"><h3>Details</h3>
+          <dl class="dl">
+            <div class="dl-row"><dt>Type</dt><dd>{% if data.media_type == "movie" %}Movie{% else %}TV Series{% endif %}</dd></div>
+            {% if data.release_date %}<div class="dl-row"><dt>Release date</dt><dd>{{ data.release_date|date:"d M Y" }}</dd></div>{% endif %}
+            {% if data.country %}<div class="dl-row"><dt>Country</dt><dd>{{ data.country }}</dd></div>{% endif %}
+            {% if data.author %}<div class="dl-row"><dt>Studio</dt><dd>{{ data.author }}</dd></div>{% endif %}
+            {% if director %}<div class="dl-row"><dt>Director</dt><dd>{{ director.name }}</dd></div>{% endif %}
+            {% if data.tmdb_rating %}<div class="dl-row"><dt>TMDB score</dt><dd>{{ data.tmdb_rating|floatformat:1 }} / 10</dd></div>{% endif %}
+          </dl>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+{# TRAILER & MEDIA — trailer (YouTube, loaded on click) + TMDB backdrops #}
+{% if trailer or gallery %}
+<section class="dsec reveal" id="media" aria-labelledby="h-media">
+  <div class="wrap">
+    <div class="sec-head"><h2 id="h-media">Trailer &amp; Media</h2></div>
+    <div class="media">
+      <div class="trailer" id="trailer">
+        {% if trailer %}
+          <span class="tr-bg" aria-hidden="true"></span>
+          <button type="button" class="tr-btn" data-trailer-inline="{{ trailer.key }}" data-trailer-title="{{ trailer.name|default:data.title }}" aria-label="Play trailer: {{ data.title }}"><span class="tr-play"><svg class="ic"><use href="#i-play"/></svg></span></button>
+          <div class="tr-cap"><b>{{ trailer.name|default:"Official Trailer" }}</b></div>
+        {% else %}
+          <div class="tr-none"><span class="ring"><svg class="ic"><use href="#i-film"/></svg></span><b>No trailer available</b><p>We couldn’t find an official trailer for this title yet.</p></div>
+        {% endif %}
+      </div>
+      {% if gallery %}
+      <div class="gal-col">
+        <div class="gal" data-gallery>
+          {% for image_url in gallery|slice:":6" %}
+            <a href="{{ image_url }}" class="gt" data-lb="{{ forloop.counter0 }}" aria-label="{{ data.title }} still {{ forloop.counter }}"><img src="{{ image_url }}" alt="{{ data.title }} still {{ forloop.counter }}" loading="lazy"></a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# CAST & CREW #}
+{% if cast %}
+<section class="dsec reveal" id="cast" aria-labelledby="h-cast">
+  <div class="wrap">
+    <div class="sec-head"><h2 id="h-cast">Cast &amp; Crew</h2>
+      <div class="arrows"><button type="button" class="btn-icon" data-cast-prev aria-label="Scroll cast left"><svg class="ic"><use href="#i-chl"/></svg></button><button type="button" class="btn-icon" data-cast-next aria-label="Scroll cast right"><svg class="ic"><use href="#i-chr"/></svg></button></div>
+    </div>
+    <div class="track cast-track" role="list" data-cast-track>
+      {% for actor in cast %}
+        <div class="cast" role="listitem">
+          <span class="cast-ph" style="background:linear-gradient(160deg,#34343a,#18181b)"><span aria-hidden="true">{{ actor.name|slice:":1" }}</span>{% if actor.profile_path %}<img src="https://image.tmdb.org/t/p/w185{{ actor.profile_path }}" alt="Photo of {{ actor.name }}" loading="lazy" onerror="this.remove()">{% endif %}</span>
+          <b>{{ actor.name }}</b>
+          {% if actor.character %}<span class="rl">{{ actor.character }}</span>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    {% if director %}<div class="crew"><div><div class="cr-k">Director</div><div class="cr-v">{{ director.name }}</div></div></div>{% endif %}
+  </div>
+</section>
+{% endif %}
+
+{# COMMENTS (HTMX fragments, see partials/comments/) #}
+{% if movie %}
+<section class="dsec reveal" id="comments-wrap">
+  {% include "movies/partials/comments/section.html" %}
+</section>
+{% endif %}
+
+{# Trailer modal + lightbox (filled by detail.js) #}
+<div class="tm" data-tm hidden role="dialog" aria-modal="true" aria-label="Trailer">
+  <button type="button" class="btn-icon min tm-x" data-tm-close aria-label="Close trailer"><svg class="ic"><use href="#i-close"/></svg></button>
+  <div class="tm-in" data-tm-body></div>
+</div>
+<div class="lb" data-lb-root hidden role="dialog" aria-modal="true" aria-label="Image viewer">
+  <div class="lb-top"><b>{{ data.title }}</b><span data-lb-count></span><button type="button" class="btn-icon min" data-lb-close aria-label="Close viewer"><svg class="ic"><use href="#i-close"/></svg></button></div>
+  <button type="button" class="btn-icon lb-nav l" data-lb-prev aria-label="Previous image"><svg class="ic"><use href="#i-chl"/></svg></button>
+  <div class="lb-stage"><img data-lb-img alt="" style="width:100%;height:100%;object-fit:contain;background:#050506"></div>
+  <button type="button" class="btn-icon lb-nav r" data-lb-next aria-label="Next image"><svg class="ic"><use href="#i-chr"/></svg></button>
+</div>
 {% endblock %}

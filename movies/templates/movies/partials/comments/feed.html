@@ -1,8 +1,8 @@
 <div id="cm-feed" class="cm-feed"{% if oob %} hx-swap-oob="true"{% endif %}>
-    <div class="cm-toolbar" role="group" aria-label="Sort comments">
+    <div class="ctabs cm-toolbar" role="group" aria-label="Sort comments">
         {% for key, label in sort_options %}
         <button type="button"
-                class="cm-sort{% if sort == key %} is-active{% endif %}"
+                class="ctab cm-sort{% if sort == key %} on is-active{% endif %}"
                 aria-pressed="{% if sort == key %}true{% else %}false{% endif %}"
                 hx-get="{% url 'comment-list' movie.id %}?sort={{ key }}"
                 hx-target="#cm-feed"
@@ -16,5 +16,9 @@
     </div>
 
     {# Hidden by CSS as soon as #cm-list contains a comment, so deleting the last one brings it back without a request #}
-    <p class="cm-empty">No comments yet.{% if user.is_authenticated %} Be the first to share your thoughts.{% endif %}</p>
+    <div class="cm-empty">
+        <span class="ring"><svg class="ic"><use href="#i-chat"/></svg></span>
+        <b>No comments yet.</b>
+        <p>{% if user.is_authenticated %}Be the first to share what you think.{% else %}Log in to be the first to share what you think.{% endif %}</p>
+    </div>
 </div>

@@ -2,13 +2,15 @@
 {% include "movies/partials/comments/item.html" %}
 {% endfor %}
 {% if has_more %}
+<div class="cm-more">
 <button type="button"
-        class="cm-btn cm-more"
+        class="btn btn-ghost sm"
         hx-get="{% url 'comment-list' movie.id %}?sort={{ sort }}&append=1"
         hx-vals='js:{offset: document.querySelectorAll("#cm-list .cm-item").length}'
-        hx-target="this"
+        hx-target="closest .cm-more"
         hx-swap="outerHTML">
-    <span class="cm-idle">Show more</span>
+    <span class="cm-idle">Show more comments</span>
     <span class="cm-busy">Loading…</span>
 </button>
+</div>
 {% endif %}

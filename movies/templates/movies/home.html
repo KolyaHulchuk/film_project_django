@@ -1,5 +1,6 @@
 {% extends 'movies/base.html' %}
 {% load static catalog_tags %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/home.css' %}">{% endblock %}
 {% block body_class %}mh-body home-page{% endblock %}
 {% block main_class %}mh-main{% endblock %}
 

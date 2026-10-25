@@ -4,13 +4,15 @@ the comment_* views in movies/views.py and swapped in via HTMX; Alpine only
 handles purely local UI state (delete confirmation, char counter).
 {% endcomment %}
 <section id="comments" class="cm-section" aria-labelledby="cm-title">
-    <h3 id="cm-title" class="cm-title">Comments {% include "movies/partials/comments/count.html" %}</h3>
+  <div class="wrap cm-wrap">
+    <div class="sec-head"><h2 id="cm-title">Comments {% include "movies/partials/comments/count.html" %}</h2></div>
 
     {% include "movies/partials/comments/compose.html" %}
 
     <div id="cm-flash" class="cm-flash" role="alert" aria-live="assertive"></div>
 
     {% include "movies/partials/comments/feed.html" %}
+  </div>
 </section>
 
 <script>
