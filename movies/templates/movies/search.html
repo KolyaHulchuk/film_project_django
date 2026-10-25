@@ -1,9 +1,9 @@
 {% extends "movies/base.html" %}
-{% load static %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/results.css' %}?v=1">{% endblock %}
+{% load static catalog_tags %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/results.css' %}?v=2">{% endblock %}
 {% block body_class %}mh-body results-page{% endblock %}
 {% block main_class %}mh-main{% endblock %}
-{% block page_js %}<script src="{% static 'movies/search.js' %}?v=1" defer></script>{% endblock %}
+{% block page_js %}<script src="{% static 'movies/search.js' %}?v=2" defer></script>{% endblock %}
 
 {% block content %}
 <section class="rh" aria-labelledby="h-title">
@@ -18,7 +18,7 @@
   </div>
 </section>
 
-{% if results %}
+{% if results or query %}
 <div class="tbar" data-result-tabs>
   <div class="wrap">
     <div class="tbar-in">
@@ -27,9 +27,13 @@
           <button type="button" class="tab on" role="tab" aria-selected="true" aria-controls="results" data-filter="all">All<span class="cnt">{{ results|length }}</span></button>
           <button type="button" class="tab" role="tab" aria-selected="false" aria-controls="results" data-filter="movie">Movies<span class="cnt" data-count="movie">0</span></button>
           <button type="button" class="tab" role="tab" aria-selected="false" aria-controls="results" data-filter="tv">TV<span class="cnt" data-count="tv">0</span></button>
+          {# PLACEHOLDER: needs TMDB search/person (or people from search/multi) for the People tab #}
+          <button type="button" class="tab" role="tab" aria-selected="false" aria-controls="results" data-filter="people">People<span class="cnt"><span class="sk pulse sk-inline" style="width:12px;height:10px"></span></span></button>
           <span class="t-line" aria-hidden="true"></span>
         </div>
       </div>
+      {# PLACEHOLDER: needs a sort param (relevance / popularity / rating / newest) in SerachView #}
+      <div class="sortwrap"><button type="button" class="fchip sort" aria-disabled="true" aria-haspopup="listbox" tabindex="-1"><span class="sl">Sort:</span><b>Relevance</b><svg class="ic chev"><use href="#i-down"/></svg></button></div>
     </div>
   </div>
 </div>
@@ -37,9 +41,29 @@
 
 <div class="wrap rwrap" id="results" role="tabpanel">
   {% if results %}
+    <div class="lh" aria-live="polite" data-showing>Showing <b>1–{{ results|length }}</b> of {{ results|length }} results</div>
     <div class="cgrid" role="list" aria-label="Search results" data-result-grid>
       {% for item in results %}{% include 'movies/partials/poster_card.html' %}{% endfor %}
     </div>
+    {# PLACEHOLDER: needs people results (search/person); the section is skeleton cards until then #}
+    <section class="sec" data-people-section aria-label="People">
+      <div class="sec-h"><h2>People <span class="n"><span class="sk pulse sk-inline" style="width:18px;height:10px"></span></span></h2><a href="#" class="vall" aria-disabled="true" tabindex="-1">View all people <svg class="ic"><use href="#i-arrow"/></svg></a></div>
+      <div class="pgrid" aria-busy="true" role="list" aria-label="People results (not loaded yet)">
+        {% for i in 5|times %}<div class="pc skp" aria-hidden="true" style="opacity:1;animation:none"><div class="sk pulse pc-ph"></div><div class="sk pulse sk-line" style="width:62%;margin-top:16px"></div><div class="sk pulse sk-line" style="width:44%;height:9px"></div></div>{% endfor %}
+      </div>
+    </section>
+    {# PLACEHOLDER: needs total_results + server-side paging in SerachView (all results come in one page today) #}
+    <nav class="pg" aria-label="Pagination">
+      <div class="pg-row">
+        <span class="pg-b dis" aria-hidden="true"><svg class="ic sm"><use href="#i-chl"/></svg><span class="pg-num">Previous</span></span>
+        <span class="pg-b pg-num cur" aria-current="page">1</span>
+        <span class="pg-m" aria-hidden="true">1 <span>/ 1</span></span>
+        <span class="pg-b dis" aria-hidden="true"><span class="pg-num">Next</span><svg class="ic sm"><use href="#i-chr"/></svg></span>
+      </div>
+      <div class="pg-foot"><span>Page 1 of 1</span>
+        <form class="goto" onsubmit="return false"><label for="goto" class="cap-d">Go to page</label><input id="goto" type="number" min="1" max="1" placeholder="#" aria-label="Go to page number" disabled></form>
+      </div>
+    </nav>
     <div class="empty tall" data-tab-empty hidden>
       <div class="ring"><svg class="ic"><use href="#i-film"/></svg></div>
       <h3>Nothing in this category</h3>

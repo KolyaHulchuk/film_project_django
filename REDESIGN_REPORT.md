@@ -20,15 +20,15 @@ Old templates that were replaced are in `templates_old/` (outside the template p
 - No view, URL, model, form, migration or `tmdb_service.py` change. Added only a template-tag module `movies/templatetags/catalog_tags.py` (year/countdown/date helpers, a static TMDB genre-id→name map, `qs_without` for filter chips).
 - Bootstrap, Bootstrap Icons and every old stylesheet were removed from `base.html` (nothing needs them any more); Alpine + HTMX are still used (assistant, comments, watchlist filters/remove/watched).
 - All forms keep their field names / POST targets / `{% csrf_token %}`; watchlist toggle still goes through `watchlist_toggle.js` (`data-watchlist-form`); filter and pagination query params are unchanged (`genre_search`, `years_search`, `country_search`, `rating_search`, `page`, `q`).
-- Blocks with no data are listed in `MISSING_DATA.md`.
+- Blocks with no data are NOT hidden any more: they render as grey skeletons / inert controls (see "Restored placeholder blocks" below and `MISSING_DATA.md`).
 
 ## Behaviour that differs from the old site
 - Catalog: genre/country/year are single-choice radios (as the old backend only accepted one value); filters apply immediately on desktop and via "Show results" in the mobile sheet; filtering is now a normal GET (no HTMX swap) so URLs are shareable. Active filters are removable chips.
 - Catalog cards: the old "watched" checkbox (which posted the TMDB id to the toggle URL) is replaced by a "Watched" toggle that posts the real watchlist id; it only appears for titles already in the watchlist.
-- Home: no Trending toggle, no Movie of the Week / Topic of the Day, mood chips link to the catalog (see MISSING_DATA).
-- Detail: emoji icons replaced by line icons; the user-rating widget does not exist on the old page either, only the average is shown when present; "Add to Watchlist" for guests now goes to login with `?next=`.
+- Home: Trending, Movie of the Week, Topic of the Day and the mood picks row are skeleton blocks; mood chips link to the catalog; "Popular Right Now" has All / Movies / TV / In Theaters tabs.
+- Detail: emoji icons replaced by line icons; the rating widget is an inert placeholder (the old page had none); "Add to Watchlist" for guests now goes to login with `?next=`.
 - Profile: the profile form now shows field errors; the avatar preview script was fixed (it referenced a missing element).
-- Search: tabs All/Movies/TV filter the already-returned results in the browser.
+- Search: tabs All/Movies/TV/People; All/Movies/TV filter the already-returned results in the browser, People is a skeleton.
 - Auth: login field is e-mail (unchanged); register shows the checklist (informational, Django validators still decide).
 - Flash messages are toasts under the header (no Bootstrap alerts).
 - The 72px header is taller than the old 56px navbar; page spacing comes from the design, not the old `.main-default` margins.
@@ -47,3 +47,29 @@ Old templates that were replaced are in `templates_old/` (outside the template p
 - Keyboard/screen-reader pass (focus order in popovers, lightbox, trailer modal) was implemented following the design but not tested with assistive tech.
 - `password_reset_email.html` (HTML e-mail) exists but is not sent (see MISSING_DATA).
 - Hero carousel autoplay timings, reduced-motion handling and the TMDB hot-linked images are untested under slow networks.
+
+## Restored placeholder blocks (second pass: "never hide a block")
+Everything below was hidden or reduced in the first pass and is now present as in the design, with skeletons / inert controls and a
+`{# PLACEHOLDER: needs … #}` comment. Full list with suggested endpoints: `MISSING_DATA.md`.
+
+| Page | Restored block | What data it needs |
+|---|---|---|
+| Header | Search dropdown (recent + suggestions rows, key hints) | suggestions endpoint, recent-searches store |
+| Footer | Privacy · Terms · Contact links | those pages |
+| Home | Trending row + Today/This Week toggle | trending/all day+week |
+| Home | Movie of the Week | curated id, movie details, cast |
+| Home | Pick by Mood poster row | discover/movie per genre |
+| Home | Topic of the Day | keyword/{id}/movies |
+| Home | Popular Right Now "Movies" tab; Coming Soon "Release calendar" link and "Trailer" buttons | (tab uses popular; trailer keys; calendar page) |
+| Home | Stars of the Week title/eyebrow (real popular actors, skeleton when empty); TV&Categories skeleton fallback | trending/person/week; tv lists |
+| Catalog | "N titles" counter, "N results", Sort chip, toolbar on list pages (disabled) | total_results, sort param, filter support |
+| Detail | Tagline, runtime, status, vote counts, community badge, Your rating, Watched eye | movie/tv details, ratings endpoint, watched flag |
+| Detail | Keywords, Writer/Producer/Music, extra Details rows | keywords, crew, details |
+| Detail | Posters tab, trailer duration, View full cast | images.posters, videos, full cast page |
+| Detail | Seasons/episodes (TV) / Collection (movies) | tv/{id}/season/{n}; collection |
+| Detail | You may also like | recommendations |
+| Detail | Comment Reply | Comment.parent |
+| Profile/Watchlist | Edit profile button (links to Settings), 3 stat tiles, Stats tab content, Sort chip, status filter (To watch / Watched) | aggregates, sort + watched filter |
+| Profile/Settings | Disconnect Google, Delete account | routes |
+| Search | People tab + section + "View all people", Sort chip, Showing x–y line (real), pagination (static) | people search, sort, total_results/paging |
+| Auth | Terms/Privacy checkbox (register), Resend (reset sent), legal links in e-mail | pages, resend endpoint |

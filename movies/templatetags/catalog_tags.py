@@ -82,3 +82,12 @@ def compact_votes(value):
     if n <= 0:
         return ""
     return f"{n / 1000:.1f}k votes" if n >= 1000 else f"{n} votes"
+
+
+@register.filter
+def times(n):
+    """Loop helper for skeleton placeholders: {% for i in 8|times %}."""
+    try:
+        return range(int(n))
+    except (TypeError, ValueError):
+        return range(0)

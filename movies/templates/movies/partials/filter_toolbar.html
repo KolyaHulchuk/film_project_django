@@ -1,14 +1,18 @@
 {# Filter toolbar (design: .tbar). Plain GET form with the existing params: genre_search, years_search, country_search, rating_search. #}
-<div class="tbar" data-filters>
+<div class="tbar" data-filters{% if inert %} data-inert{% endif %}>
   <div class="wrap">
+    {# inert=True on list pages whose views ignore filters (popular, top rated, ...): controls are visible but disabled #}
     <form class="tbar-in" id="filter-form" method="get" role="search" aria-label="Filters">
       <div class="fchips fchips-d" role="group" aria-label="Filters">
-        <button type="button" class="fchip{% if request.GET.genre_search %} on{% endif %}" data-pop="genre" aria-haspopup="dialog" aria-expanded="false">Genre{% if request.GET.genre_search %}<span class="n">1</span>{% endif %}<svg class="ic chev"><use href="#i-down"/></svg></button>
-        <button type="button" class="fchip{% if request.GET.years_search %} on{% endif %}" data-pop="year" aria-haspopup="dialog" aria-expanded="false">Year{% if request.GET.years_search %}<span class="n">1</span>{% endif %}<svg class="ic chev"><use href="#i-down"/></svg></button>
-        <button type="button" class="fchip{% if request.GET.country_search %} on{% endif %}" data-pop="country" aria-haspopup="dialog" aria-expanded="false">Country{% if request.GET.country_search %}<span class="n">1</span>{% endif %}<svg class="ic chev"><use href="#i-down"/></svg></button>
-        <button type="button" class="fchip{% if request.GET.rating_search %} on{% endif %}" data-pop="rating" aria-haspopup="dialog" aria-expanded="false">Rating{% if request.GET.rating_search %}<span class="n">1</span>{% endif %}<svg class="ic chev"><use href="#i-down"/></svg></button>
+        <button type="button" class="fchip{% if request.GET.genre_search %} on{% endif %}" data-pop="genre"{% if inert %} aria-disabled="true"{% endif %} aria-haspopup="dialog" aria-expanded="false">Genre{% if request.GET.genre_search %}<span class="n">1</span>{% endif %}<svg class="ic chev"><use href="#i-down"/></svg></button>
+        <button type="button" class="fchip{% if request.GET.years_search %} on{% endif %}" data-pop="year"{% if inert %} aria-disabled="true"{% endif %} aria-haspopup="dialog" aria-expanded="false">Year{% if request.GET.years_search %}<span class="n">1</span>{% endif %}<svg class="ic chev"><use href="#i-down"/></svg></button>
+        <button type="button" class="fchip{% if request.GET.country_search %} on{% endif %}" data-pop="country"{% if inert %} aria-disabled="true"{% endif %} aria-haspopup="dialog" aria-expanded="false">Country{% if request.GET.country_search %}<span class="n">1</span>{% endif %}<svg class="ic chev"><use href="#i-down"/></svg></button>
+        <button type="button" class="fchip{% if request.GET.rating_search %} on{% endif %}" data-pop="rating"{% if inert %} aria-disabled="true"{% endif %} aria-haspopup="dialog" aria-expanded="false">Rating{% if request.GET.rating_search %}<span class="n">1</span>{% endif %}<svg class="ic chev"><use href="#i-down"/></svg></button>
       </div>
-      <button type="button" class="fchip fbtn-m" data-pop="all" aria-haspopup="dialog" aria-expanded="false"><svg class="ic" style="width:16px;height:16px"><use href="#i-sliders"/></svg>Filters</button>
+      <button type="button" class="fchip fbtn-m" data-pop="all"{% if inert %} aria-disabled="true"{% endif %} aria-haspopup="dialog" aria-expanded="false"><svg class="ic" style="width:16px;height:16px"><use href="#i-sliders"/></svg>Filters</button>
+
+      {# PLACEHOLDER: needs a sort param (sort_by) in AllMoviesView.search_filter_movie; the chip is visible but inert #}
+      <button type="button" class="fchip sort" aria-disabled="true" aria-haspopup="listbox" tabindex="-1">Sort: <b>Popularity</b><svg class="ic chev"><use href="#i-down"/></svg></button>
 
       <div class="scrim" data-scrim hidden></div>
       <div class="layer" data-layer role="dialog" aria-label="Filters" hidden>

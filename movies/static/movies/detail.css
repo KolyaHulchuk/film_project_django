@@ -457,3 +457,18 @@ html{scroll-padding-top:130px}
 @media (max-width:767px){.detail-page .hero-bd-img{height:420px;bottom:auto}}
 .detail-page .cm-locked b .cm-link{color:inherit;border-bottom:1px solid rgba(255,255,255,.3)}
 .detail-page .cm-locked b .cm-link:hover{color:var(--red-light)}
+
+/* skeleton / inert additions */
+.detail-page .sk .sk{background:var(--elev)}
+.detail-page .gt.sk{display:block;min-height:0}
+.detail-page .gal.posters{grid-template-columns:repeat(3,1fr)}
+.detail-page .gal.posters .gt{aspect-ratio:2/3}
+.detail-page [hidden]{display:none !important}
+.detail-page .rbtn[aria-disabled="true"],.detail-page .btn-icon[aria-disabled="true"],.detail-page .star-b[aria-disabled="true"],.detail-page .viewall[aria-disabled="true"]{opacity:.5;cursor:not-allowed;pointer-events:none}
+.detail-page .cmb[aria-disabled="true"]{opacity:.45;cursor:not-allowed;pointer-events:none}
+.detail-page .tag .sk-inline{display:inline-block}
+.detail-page .cast-sk{flex:none;width:148px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.detail-page .schip.sk{display:inline-block;height:38px;border-radius:999px}
+.detail-page .ep-th.sk{width:184px}
+.detail-page .sim .track .sk-card{flex:none;width:calc((100% - 108px)/7);scroll-snap-align:start}
+@media (min-width:768px){.detail-page .ov-m{display:none}}

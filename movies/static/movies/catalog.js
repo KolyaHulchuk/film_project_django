@@ -48,7 +48,7 @@
     if (focusable && focusable.focus) focusable.focus({ preventScroll: true });
   }
 
-  triggers.forEach((t) => t.addEventListener("click", () => open(t.dataset.pop, t)));
+  triggers.forEach((t) => t.addEventListener("click", () => t.getAttribute("aria-disabled") !== "true" && open(t.dataset.pop, t)));
   root.querySelectorAll("[data-pop-close]").forEach((b) => b.addEventListener("click", close));
   scrim.addEventListener("click", close);
   document.addEventListener("keydown", (e) => e.key === "Escape" && close());

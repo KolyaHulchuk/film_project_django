@@ -1,9 +1,9 @@
 {% extends "movies/base.html" %}
 {% load static socialaccount %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/profile.css' %}?v=1">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/profile.css' %}?v=2">{% endblock %}
 {% block body_class %}mh-body pf-page{% endblock %}
 {% block main_class %}mh-main{% endblock %}
-{% block page_js %}<script src="{% static 'movies/profile.js' %}?v=1" defer></script>{% endblock %}
+{% block page_js %}<script src="{% static 'movies/profile.js' %}?v=2" defer></script>{% endblock %}
 
 {% block content %}
 {% include 'users/partials/profile_header.html' with active='settings' %}
@@ -61,7 +61,7 @@
       <div class="acc-row">
         <span class="acc-ic">G</span>
         <div class="acc-t"><b>Google</b><small>Sign in with Google</small></div>
-        {% if google_connected %}<span class="sbadge"><svg class="ic"><use href="#i-check"/></svg>Connected</span>{% else %}<span class="sbadge">Not connected</span>{% endif %}
+        {% if google_connected %}<span class="sbadge"><svg class="ic"><use href="#i-check"/></svg>Connected</span>{# PLACEHOLDER: needs a "disconnect Google" route #}<button type="button" class="lnk mute" aria-disabled="true" tabindex="-1">Disconnect</button>{% else %}<span class="sbadge">Not connected</span>{% endif %}
       </div>
       {% if not google_connected %}
         {# process='connect' links Google to the logged-in user, skipping the email-match checks used for login #}
@@ -75,6 +75,8 @@
       {% csrf_token %}
       <button type="submit" class="btn btn-ghost"><svg class="ic sm"><use href="#i-out"/></svg>Log out</button>
     </form>
+    {# PLACEHOLDER: needs a "delete account" route #}
+    <button type="button" class="lnk del" aria-disabled="true" tabindex="-1">Delete account</button>
   </div>
 </div>
 {% endblock %}

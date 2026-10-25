@@ -185,3 +185,18 @@ html{scroll-padding-top:130px}
 .pf-page .photo-row .btn{cursor:pointer}
 .pf-page .photo-row input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
 .pf-page .gchip input{position:absolute;opacity:0;pointer-events:none}
+.pf-page .ph-in{grid-template-columns:minmax(0,1fr) auto}
+.pf-page .stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.pf-page .lnk.mute{color:var(--meta);font-size:13px;margin-left:6px}
+.pf-page .lnk.del{color:var(--meta);font-weight:500;min-height:44px;display:inline-flex;align-items:center}
+.pf-page [aria-disabled="true"]{opacity:.5;cursor:not-allowed;pointer-events:none}
+.pf-page .seg{grid-template-columns:repeat(3,auto)}
+.pf-page .seg-ind{display:none}
+.pf-page .seg button.on{background:rgba(225,29,46,.16);box-shadow:inset 0 0 0 1px var(--red)}
+.pf-page .bar-row .bar-t .sk{border-radius:8px}
+.pf-page .col-b.sk{animation:none}
+.pf-page .donut.sk{border-radius:50%;width:132px;height:132px}
+.pf-page .donut.sk::after{background:var(--panel)}
+.pf-page .sk .sk{background:#232327}
+.pf-page .stat-v .sk{display:inline-block}
+.pf-page .afrow .res b{color:var(--text)}

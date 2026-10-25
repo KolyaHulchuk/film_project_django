@@ -1,4 +1,5 @@
-{# Profile header + tabs shared by the watchlist and profile pages. Params: active ("watchlist"|"settings"), count (optional saved titles). #}
+{% load catalog_tags %}
+{# Profile header + tabs shared by the watchlist and profile pages. Params: active ("watchlist"|"stats"|"settings"), count (saved titles, optional). #}
 <section class="ph" aria-labelledby="h-name">
   <div class="tb-bg" aria-hidden="true"></div>
   <div class="wrap ph-in">
@@ -12,17 +13,21 @@
         <p class="ph-since">Member since {{ user.date_joined|date:"F Y" }}</p>
       </div>
     </div>
-    {% if count is not None and count != "" %}
+    <a href="{% url 'profile' %}" class="btn btn-ghost sm ph-edit" aria-label="Edit profile"><svg class="ic sm"><use href="#i-edit"/></svg><span class="lbl">Edit profile</span></a>
+    {# PLACEHOLDER: needs watched count, average user rating and hours watched (aggregates over Watchlist/Rating/runtime) in the context; "In watchlist" is real when the page passes a count #}
     <ul class="stats" aria-label="Your stats">
-      <li class="stat"><span class="stat-l">Saved titles</span><b class="stat-v">{{ count }}</b></li>
+      <li class="stat"><span class="stat-l">In watchlist</span>{% if count is not None and count != "" %}<b class="stat-v">{{ count }}</b>{% else %}<b class="stat-v"><span class="sk pulse sk-inline" style="width:36px;height:24px"></span></b>{% endif %}</li>
+      <li class="stat" aria-hidden="true"><span class="stat-l">Watched</span><b class="stat-v"><span class="sk pulse sk-inline" style="width:36px;height:24px"></span></b></li>
+      <li class="stat" aria-hidden="true"><span class="stat-l">Avg. rating</span><b class="stat-v"><span class="sk pulse sk-inline" style="width:44px;height:24px"></span></b></li>
+      <li class="stat" aria-hidden="true"><span class="stat-l">Hours watched</span><b class="stat-v"><span class="sk pulse sk-inline" style="width:52px;height:24px"></span></b></li>
     </ul>
-    {% endif %}
   </div>
 </section>
 <div class="ptabs-bar" data-ptabs>
   <div class="wrap">
     <div class="ptabs" role="tablist" aria-label="Profile sections">
-      <a class="ptab{% if active == 'watchlist' %} on{% endif %}" role="tab" aria-selected="{% if active == 'watchlist' %}true{% else %}false{% endif %}" href="{% url 'watchlist' %}">Watchlist{% if count %}<span class="ptn">{{ count }}</span>{% endif %}</a>
+      <a class="ptab{% if active == 'watchlist' %} on{% endif %}" role="tab" data-ptab="watchlist" aria-selected="{% if active == 'watchlist' %}true{% else %}false{% endif %}" href="{% url 'watchlist' %}">Watchlist{% if count %}<span class="ptn">{{ count }}</span>{% endif %}</a>
+      <a class="ptab{% if active == 'stats' %} on{% endif %}" role="tab" data-ptab="stats" aria-selected="{% if active == 'stats' %}true{% else %}false{% endif %}" href="{% url 'watchlist' %}?tab=stats">Stats</a>
       <a class="ptab{% if active == 'settings' %} on{% endif %}" role="tab" aria-selected="{% if active == 'settings' %}true{% else %}false{% endif %}" href="{% url 'profile' %}">Settings</a>
       <span class="pline" aria-hidden="true"></span>
     </div>

@@ -1,0 +1,9 @@
+{# Grey round-person skeletons (design .st-card). Params: count (default 8). #}
+{% load catalog_tags %}
+{% for i in count|default:8|times %}
+  <div class="st-card" aria-hidden="true">
+    <div class="sk pulse" style="width:128px;height:128px;border-radius:50%;margin:0 auto"></div>
+    <div class="sk pulse sk-line" style="width:70%;margin:16px auto 0"></div>
+    <div class="sk pulse sk-line" style="width:50%;height:9px;margin:8px auto 0"></div>
+  </div>
+{% endfor %}

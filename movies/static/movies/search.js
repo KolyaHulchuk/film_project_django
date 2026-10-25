@@ -7,6 +7,9 @@
   const line = bar.querySelector(".t-line");
   const empty = document.querySelector("[data-tab-empty]");
   const cards = Array.from(grid.querySelectorAll(".cc"));
+  const people = document.querySelector("[data-people-section]");
+  const showing = document.querySelector("[data-showing]");
+  const pager = document.querySelector(".results-page .pg");
 
   ["movie", "tv"].forEach((type) => {
     const n = cards.filter((c) => c.dataset.type === type).length;
@@ -29,13 +32,17 @@
       t.setAttribute("aria-selected", on ? "true" : "false");
     });
     let shown = 0;
+    const onlyPeople = type === "people";
     cards.forEach((c) => {
-      const show = type === "all" || c.dataset.type === type;
+      const show = !onlyPeople && (type === "all" || c.dataset.type === type);
       c.hidden = !show;
       if (show) shown++;
     });
     grid.hidden = shown === 0;
-    if (empty) empty.hidden = shown !== 0;
+    if (people) people.hidden = !(type === "all" || onlyPeople);
+    if (showing) showing.hidden = onlyPeople;
+    if (pager) pager.hidden = onlyPeople;
+    if (empty) empty.hidden = onlyPeople || shown !== 0;
     placeLine();
   }
   document.querySelectorAll("[data-filter]").forEach((el) => el.addEventListener("click", () => select(el.dataset.filter)));

@@ -1,10 +1,10 @@
 {% extends "movies/base.html" %}
 {% load static catalog_tags %}
 
-{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/detail.css' %}?v=1">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/detail.css' %}?v=2">{% endblock %}
 {% block body_class %}mh-body detail-page{% endblock %}
 {% block main_class %}mh-main{% endblock %}
-{% block page_js %}<script src="{% static 'movies/detail.js' %}?v=2" defer></script>{% endblock %}
+{% block page_js %}<script src="{% static 'movies/detail.js' %}?v=3" defer></script>{% endblock %}
 
 {% block content %}
 {# HERO — data: Movies row (title, poster, rating, genres, description...), first backdrop from the TMDB gallery #}
@@ -18,10 +18,15 @@
     <div class="hero-c">
       <span class="tchip fu" style="animation-delay:.05s"><svg class="ic"><use href="#{% if data.media_type == 'movie' %}i-film{% else %}i-tv{% endif %}"/></svg>{% if data.media_type == "movie" %}Movie{% else %}TV Series{% endif %}</span>
       <h1 id="h-title" class="fu" style="animation-delay:.12s">{{ data.title }}</h1>
+      {# PLACEHOLDER: needs TMDB tagline (movie/{id} or tv/{id}) #}
+      <p class="tag fu" style="animation-delay:.18s" aria-hidden="true"><span class="sk pulse sk-inline" style="width:min(320px,70%);height:18px"></span></p>
       <div class="meta-row fu" style="animation-delay:.24s">
         {% if data.release_date %}<span class="mi"><svg class="ic"><use href="#i-cal"/></svg>{{ data.release_date|date:"Y" }}</span>{% endif %}
         {% if data.country %}<span class="mi"><svg class="ic"><use href="#i-globe"/></svg>{{ data.country }}</span>{% endif %}
         {% if data.author %}<span class="mi"><svg class="ic"><use href="#i-studio"/></svg>{{ data.author }}</span>{% endif %}
+        {# PLACEHOLDER: needs runtime and status (movie/{id}, tv/{id}) #}
+        <span class="mi" aria-hidden="true"><svg class="ic"><use href="#i-clock"/></svg><span class="sk pulse sk-inline" style="width:56px"></span></span>
+        <span class="stbadge" aria-hidden="true"><span class="sk pulse sk-inline" style="width:64px;height:10px"></span></span>
       </div>
       {% if data.genres.all %}
       <div class="chips fu" style="animation-delay:.3s">
@@ -29,14 +34,19 @@
           {% if genre.tmdb_id %}<a href="{% if data.media_type == 'movie' %}{% url 'movie' %}{% else %}{% url 'tv' %}{% endif %}?genre_search={{ genre.tmdb_id }}" class="chip">{{ genre.name }}</a>{% else %}<span class="chip">{{ genre.name }}</span>{% endif %}
         {% endfor %}
       </div>
+      {% else %}
+      {# PLACEHOLDER: needs genres for this title #}
+      <div class="chips fu" aria-hidden="true" style="animation-delay:.3s"><span class="sk pulse sk-pill" style="width:86px;height:26px"></span><span class="sk pulse sk-pill" style="width:96px;height:26px"></span><span class="sk pulse sk-pill" style="width:76px;height:26px"></span></div>
       {% endif %}
       {% with community=data.average_user_ratings %}
-      {% if data.tmdb_rating or community %}
       <div class="rate-row fu" style="animation-delay:.36s">
-        {% if data.tmdb_rating %}<div class="rbadge" title="TMDB user score"><svg class="ic"><use href="#i-star"/></svg><b>{{ data.tmdb_rating|floatformat:1 }}<small>/10</small></b><span><em>TMDB</em>user score</span></div>{% endif %}
-        {% if community %}<div class="rbadge" title="Movies.hub community score"><svg class="ic"><use href="#i-users"/></svg><b>{{ community }}<small>/10</small></b><span><em>Community</em>Movies.hub</span></div>{% endif %}
+        {% if data.tmdb_rating %}<div class="rbadge" title="TMDB user score"><svg class="ic"><use href="#i-star"/></svg><b>{{ data.tmdb_rating|floatformat:1 }}<small>/10</small></b><span><em>TMDB</em>{# PLACEHOLDER: needs vote_count #}<span class="sk pulse sk-inline" style="width:56px;height:10px"></span></span></div>
+        {% else %}<div class="rbadge" aria-hidden="true"><svg class="ic"><use href="#i-star"/></svg><span class="sk pulse sk-pill" style="width:54px;height:20px"></span><span><em>TMDB</em><span class="sk pulse sk-inline" style="width:56px;height:10px"></span></span></div>{% endif %}
+        {% if community %}<div class="rbadge" title="Movies.hub community score"><svg class="ic"><use href="#i-users"/></svg><b>{{ community }}<small>/10</small></b><span><em>Community</em>{# PLACEHOLDER: needs the number of ratings #}<span class="sk pulse sk-inline" style="width:56px;height:10px"></span></span></div>
+        {% else %}{# PLACEHOLDER: needs community ratings (no ratings stored for this title yet) #}<div class="rbadge" aria-hidden="true"><svg class="ic"><use href="#i-users"/></svg><span class="sk pulse sk-pill" style="width:54px;height:20px"></span><span><em>Community</em><span class="sk pulse sk-inline" style="width:56px;height:10px"></span></span></div>{% endif %}
+        {# PLACEHOLDER: needs a session-authenticated "rate" endpoint (ratings exist only in the JWT API) #}
+        <span class="rwrap d-only"><button type="button" class="rbadge rbtn" aria-disabled="true" tabindex="-1" title="Rating from the page is coming soon"><svg class="ic"><use href="#i-star"/></svg><b class="cta">Rate</b><span><em>Your rating</em>Not rated</span></button></span>
       </div>
-      {% endif %}
       {% endwith %}
       {% if data.description %}
       <div class="syn-w fu" style="animation-delay:.42s">
@@ -64,6 +74,8 @@
         {% else %}
           <a href="{% url 'login' %}?next={{ request.path|urlencode }}" class="btn btn-ghost lg"><svg class="ic" style="width:18px;height:18px"><use href="#i-plus"/></svg>Add to Watchlist</a>
         {% endif %}
+        {# PLACEHOLDER: needs Watchlist.watched for this title in the context + a watched toggle for titles not yet saved #}
+        <button type="button" class="btn-icon lg eye" aria-disabled="true" tabindex="-1" aria-label="Mark as watched (coming soon)" title="Mark as watched (coming soon)"><svg class="ic"><use href="#i-eye"/></svg><span class="eye-ck"><svg class="ic"><use href="#i-check"/></svg></span></button>
         <button type="button" class="btn-icon lg" data-copy-link aria-label="Copy link" title="Copy link"><svg class="ic"><use href="#i-share"/></svg></button>
       </div>
     </div>
@@ -81,9 +93,11 @@
     <div class="snav">
       <div class="stabs" role="tablist" aria-label="Page sections">
         <a class="stab on" role="tab" href="#overview" data-target="overview">Overview</a>
-        {% if trailer or gallery %}<a class="stab" role="tab" href="#media" data-target="media">Trailer &amp; Media</a>{% endif %}
-        {% if cast %}<a class="stab" role="tab" href="#cast" data-target="cast">Cast &amp; Crew</a>{% endif %}
-        {% if movie %}<a class="stab" role="tab" href="#comments" data-target="comments">Comments <span class="sn">{{ total|default:0 }}</span></a>{% endif %}
+        <a class="stab" role="tab" href="#media" data-target="media">Trailer &amp; Media</a>
+        <a class="stab" role="tab" href="#cast" data-target="cast">Cast &amp; Crew</a>
+        <a class="stab" role="tab" href="#seasons" data-target="seasons">{% if data.media_type == "movie" %}Collection{% else %}Seasons{% endif %}</a>
+        <a class="stab" role="tab" href="#similar" data-target="similar">Similar</a>
+        <a class="stab" role="tab" href="#comments" data-target="comments">Comments <span class="sn">{{ total|default:0 }}</span></a>
         <span class="sline" aria-hidden="true"></span>
       </div>
       <div class="mini" data-mini aria-hidden="true">
@@ -101,9 +115,14 @@
     <div class="ov">
       <div class="ov-l">
         <div class="ov-text">{% if data.description %}{{ data.description|linebreaks }}{% else %}<p>No description available yet.</p>{% endif %}</div>
-        {% if director %}
-        <div class="credits"><div><div class="cr-k">Director</div><div class="cr-v">{{ director.name }}</div></div></div>
-        {% endif %}
+        {# PLACEHOLDER: needs TMDB keywords (movie/{id}/keywords) #}
+        <div class="kw" aria-label="Keywords" aria-hidden="true">{% for w in "9090708"|make_list %}<span class="sk pulse sk-pill" style="width:{% if w == '9' %}92{% elif w == '0' %}76{% else %}64{% endif %}px;height:36px"></span>{% endfor %}</div>
+        {# PLACEHOLDER: needs writer / producer from credits.crew (the view passes only the director) #}
+        <div class="credits">
+          <div><div class="cr-k">Director</div>{% if director %}<div class="cr-v">{{ director.name }}</div>{% else %}<div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div>{% endif %}</div>
+          <div aria-hidden="true"><div class="cr-k">Writer</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
+          <div aria-hidden="true"><div class="cr-k">Producer</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
+        </div>
       </div>
       <aside class="ov-d">
         <div class="card"><h3>Details</h3>
@@ -114,48 +133,75 @@
             {% if data.author %}<div class="dl-row"><dt>Studio</dt><dd>{{ data.author }}</dd></div>{% endif %}
             {% if director %}<div class="dl-row"><dt>Director</dt><dd>{{ director.name }}</dd></div>{% endif %}
             {% if data.tmdb_rating %}<div class="dl-row"><dt>TMDB score</dt><dd>{{ data.tmdb_rating|floatformat:1 }} / 10</dd></div>{% endif %}
+            {# PLACEHOLDER: needs original title, language, certification (movie/{id}) #}
+            <div class="dl-row" aria-hidden="true"><dt>Original title</dt><dd><span class="sk pulse sk-inline" style="width:110px"></span></dd></div>
+            <div class="dl-row" aria-hidden="true"><dt>Language</dt><dd><span class="sk pulse sk-inline" style="width:70px"></span></dd></div>
+            <div class="dl-row" aria-hidden="true"><dt>Certification</dt><dd><span class="sk pulse sk-inline" style="width:50px"></span></dd></div>
           </dl>
+        </div>
+      </aside>
+      {# PLACEHOLDER: needs the rating endpoint (see hero); mobile-only card in the design #}
+      <aside class="ov-m">
+        <div class="card yr"><div class="yr-h"><h3>Your rating</h3><span class="yr-v">Not rated</span></div>
+          <div class="stars" role="radiogroup" aria-label="Rate this title from 1 to 10">{% for i in 10|times %}<button type="button" class="star-b" aria-disabled="true" tabindex="-1" aria-label="Rate {{ forloop.counter }} out of 10"><svg class="ic"><use href="#i-star"/></svg></button>{% endfor %}</div>
+          <p class="yr-note">Rating from the page is coming soon.</p>
         </div>
       </aside>
     </div>
   </div>
 </section>
 
-{# TRAILER & MEDIA — trailer (YouTube, loaded on click) + TMDB backdrops #}
-{% if trailer or gallery %}
+{# TRAILER & MEDIA — trailer (YouTube, loaded on click) + TMDB backdrops; posters tab needs images.posters #}
 <section class="dsec reveal" id="media" aria-labelledby="h-media">
   <div class="wrap">
-    <div class="sec-head"><h2 id="h-media">Trailer &amp; Media</h2></div>
+    <div class="sec-head"><h2 id="h-media">Trailer &amp; Media</h2>
+      <div class="mtabs hd" role="tablist" aria-label="Media" data-media-tabs>
+        <button type="button" class="mtab on" role="tab" aria-selected="true" data-media-tab="stills">Stills <span>{{ gallery|length }}</span></button>
+        {# PLACEHOLDER: needs TMDB images.posters #}
+        <button type="button" class="mtab" role="tab" aria-selected="false" data-media-tab="posters">Posters <span class="sk pulse sk-inline" style="width:14px;height:10px"></span></button>
+      </div>
+    </div>
     <div class="media">
       <div class="trailer" id="trailer">
         {% if trailer %}
           <span class="tr-bg" aria-hidden="true"></span>
           <button type="button" class="tr-btn" data-trailer-inline="{{ trailer.key }}" data-trailer-title="{{ trailer.name|default:data.title }}" aria-label="Play trailer: {{ data.title }}"><span class="tr-play"><svg class="ic"><use href="#i-play"/></svg></span></button>
-          <div class="tr-cap"><b>{{ trailer.name|default:"Official Trailer" }}</b></div>
+          {# PLACEHOLDER: needs the trailer duration #}
+          <div class="tr-cap"><b>{{ trailer.name|default:"Official Trailer" }}</b><em aria-hidden="true"><span class="sk pulse sk-inline" style="width:28px;height:10px"></span></em></div>
         {% else %}
           <div class="tr-none"><span class="ring"><svg class="ic"><use href="#i-film"/></svg></span><b>No trailer available</b><p>We couldn’t find an official trailer for this title yet.</p></div>
         {% endif %}
       </div>
-      {% if gallery %}
       <div class="gal-col">
-        <div class="gal" data-gallery>
+        <div class="mtabs m-only" role="tablist" aria-label="Media" data-media-tabs>
+          <button type="button" class="mtab on" role="tab" aria-selected="true" data-media-tab="stills">Stills <span>{{ gallery|length }}</span></button>
+          <button type="button" class="mtab" role="tab" aria-selected="false" data-media-tab="posters">Posters <span class="sk pulse sk-inline" style="width:14px;height:10px"></span></button>
+        </div>
+        <div class="gal" data-gallery data-media-panel="stills">
           {% for image_url in gallery|slice:":6" %}
             <a href="{{ image_url }}" class="gt" data-lb="{{ forloop.counter0 }}" aria-label="{{ data.title }} still {{ forloop.counter }}"><img src="{{ image_url }}" alt="{{ data.title }} still {{ forloop.counter }}" loading="lazy"></a>
+          {% empty %}
+            {# PLACEHOLDER: needs TMDB images.backdrops for this title #}
+            {% for i in 6|times %}<span class="gt sk pulse" aria-hidden="true"></span>{% endfor %}
           {% endfor %}
         </div>
+        <div class="gal posters" data-media-panel="posters" hidden aria-busy="true">
+          {% for i in 6|times %}<span class="gt sk pulse" aria-hidden="true"></span>{% endfor %}
+        </div>
       </div>
-      {% endif %}
     </div>
   </div>
 </section>
-{% endif %}
 
 {# CAST & CREW #}
-{% if cast %}
 <section class="dsec reveal" id="cast" aria-labelledby="h-cast">
   <div class="wrap">
     <div class="sec-head"><h2 id="h-cast">Cast &amp; Crew</h2>
-      <div class="arrows"><button type="button" class="btn-icon" data-cast-prev aria-label="Scroll cast left"><svg class="ic"><use href="#i-chl"/></svg></button><button type="button" class="btn-icon" data-cast-next aria-label="Scroll cast right"><svg class="ic"><use href="#i-chr"/></svg></button></div>
+      <div style="display:flex;align-items:center;gap:18px">
+        {# PLACEHOLDER: needs a full-cast page (credits for all cast) #}
+        <a href="#" class="viewall" aria-disabled="true" tabindex="-1">View full cast <svg class="ic"><use href="#i-chr"/></svg></a>
+        <div class="arrows"><button type="button" class="btn-icon" data-cast-prev aria-label="Scroll cast left"><svg class="ic"><use href="#i-chl"/></svg></button><button type="button" class="btn-icon" data-cast-next aria-label="Scroll cast right"><svg class="ic"><use href="#i-chr"/></svg></button></div>
+      </div>
     </div>
     <div class="track cast-track" role="list" data-cast-track>
       {% for actor in cast %}
@@ -164,12 +210,49 @@
           <b>{{ actor.name }}</b>
           {% if actor.character %}<span class="rl">{{ actor.character }}</span>{% endif %}
         </div>
+      {% empty %}
+        {# PLACEHOLDER: needs TMDB credits.cast for this title #}
+        {% for i in 8|times %}<div class="cast-sk" aria-hidden="true"><div class="sk pulse" style="width:116px;height:116px;border-radius:50%"></div><div class="sk pulse sk-line" style="width:80%"></div><div class="sk pulse sk-line" style="width:56%;height:9px;margin-top:0"></div></div>{% endfor %}
       {% endfor %}
     </div>
-    {% if director %}<div class="crew"><div><div class="cr-k">Director</div><div class="cr-v">{{ director.name }}</div></div></div>{% endif %}
+    {# PLACEHOLDER: needs more crew roles (writer, composer, ...) from credits.crew; the view passes only the director #}
+    <div class="crew">
+      <div><div class="cr-k">Director</div>{% if director %}<div class="cr-v">{{ director.name }}</div>{% else %}<div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div>{% endif %}</div>
+      <div aria-hidden="true"><div class="cr-k">Writer</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
+      <div aria-hidden="true"><div class="cr-k">Music</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
+    </div>
   </div>
 </section>
-{% endif %}
+
+{# SEASONS (TV) / COLLECTION (movies) #}
+{# PLACEHOLDER: needs tv/{id}/season/{n} (seasons + episodes) for TV, belongs_to_collection + collection/{id} for movies #}
+<section class="dsec reveal" id="seasons" aria-labelledby="h-seasons">
+  <div class="wrap">
+    {% if data.media_type == "movie" %}
+    <div class="coll" aria-busy="true">
+      <div><div class="eyebrow">Collection</div><h3 id="h-seasons">Part of a Collection</h3><p><span class="sk pulse sk-inline" style="width:200px"></span></p><span class="btn btn-ghost sm" aria-disabled="true" tabindex="-1">View collection</span></div>
+      <div class="coll-p">{% for i in 4|times %}<span class="sk pulse" style="display:block;width:96px;aspect-ratio:2/3;border-radius:12px" aria-hidden="true"></span>{% endfor %}</div>
+    </div>
+    {% else %}
+    <div class="sec-head"><h2 id="h-seasons">Seasons</h2>
+      <div class="schips" role="tablist" aria-label="Season">{% for i in 3|times %}<span class="schip sk pulse" style="width:96px" aria-hidden="true"></span>{% endfor %}</div>
+    </div>
+    <div class="se-sum"><span class="sk pulse sk-inline" style="width:220px;height:14px"></span></div>
+    <div class="eps" aria-busy="true">
+      {% for i in 4|times %}<article class="ep" aria-hidden="true"><span class="ep-n"><span class="sk pulse sk-inline" style="width:20px"></span></span><div class="ep-th sk pulse"></div><div><div class="sk pulse sk-line" style="width:50%;height:16px;margin:0"></div><div class="sk pulse sk-line" style="width:30%;height:10px"></div><div class="sk pulse sk-line" style="width:90%;height:12px"></div></div><span class="sk pulse sk-pill" style="width:46px"></span></article>{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{# SIMILAR #}
+{# PLACEHOLDER: needs TMDB /recommendations (or /similar) for this title #}
+<section class="dsec reveal sim" id="similar" aria-labelledby="h-sim">
+  <div class="wrap">
+    <div class="sec-head"><h2 id="h-sim">You may also like</h2><a href="#" class="viewall" aria-disabled="true" tabindex="-1">View all <svg class="ic"><use href="#i-chr"/></svg></a></div>
+    <div class="track" aria-busy="true" aria-label="Similar titles (not loaded yet)">{% include 'movies/components/skeleton_cards.html' with count=7 variant='cc' %}</div>
+  </div>
+</section>
 
 {# COMMENTS (HTMX fragments, see partials/comments/) #}
 {% if movie %}

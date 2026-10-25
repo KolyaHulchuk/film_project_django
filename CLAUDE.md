@@ -152,7 +152,7 @@ Rules:
 - Reuse components via {% include %}: poster card, section header, filter toolbar, pagination, actor card, form card.
 - Keep existing views, URLs, models and tmdb_service.py behavior. Change templates/static first (`<app>/templates/`, `<app>/static/`); extend services only when a page needs a new TMDB endpoint.
 - Files in `design/design-source/` that are only single-state frames with no content (e.g. AuthLoginError) can be ignored; the real pages are the large files (Home, Catalog, Detail, Profile, Search, Auth).
-- If data is missing (e.g. community rating), hide that block instead of inventing data.
+- Never hide a design block. If data/endpoint is missing, render grey skeletons (`movies/components/skeleton_*.html`, `.sk.pulse`) with inert controls and a `{# PLACEHOLDER: needs … #}` comment; never invent titles/ratings. List them in `MISSING_DATA.md`.
 - Work one page at a time, run the dev server, and show what changed before continuing.
 
 ### Redesign status (2026-10-25)

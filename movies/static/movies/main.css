@@ -416,3 +416,41 @@ html { scroll-padding-top: 76px; }
 .msg button:hover { color: #fff; background: rgba(255, 255, 255, .1); }
 :where(.mh-body) :where(h1, h2, h3, h4) { color: inherit; font-family: inherit; }
 
+
+/* ===== SKELETON PLACEHOLDERS (blocks the design has but the project has no data for yet) =====
+   Grey blocks, same size/shape/count as the real content; subtle pulse, none with prefers-reduced-motion.
+   Components: movies/components/skeleton_*.html. Every use is marked {# PLACEHOLDER: needs ... #}. */
+.sk.pulse { animation: skpulse 1.5s ease-in-out infinite; }
+.sk.pulse::after { display: none; }
+.sk-pill { height: 22px; border-radius: 999px; display: inline-block; vertical-align: middle; }
+.sk-inline { display: inline-block; vertical-align: middle; border-radius: 6px; height: 12px; }
+.sk-card { min-width: 0; }
+.sk-card .sk-line { margin-top: 12px; }
+.sk-card .sk-poster { border-radius: 16px; }
+.sk-card .sk-line + .sk-line { margin-top: 8px; }
+.sk-off { opacity: .55; pointer-events: none; cursor: default; }
+[aria-disabled="true"].btn, [aria-disabled="true"].fchip, [aria-disabled="true"].ptab, [aria-disabled="true"].tab { opacity: .5; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .sk.pulse { animation: none; opacity: .8; } }
+
+/* header search dropdown (design: .sb-dd) — skeleton rows until a suggestions endpoint exists */
+.foot-links { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 600; color: var(--meta); }
+.foot-links a { color: var(--text2); transition: color .2s; }
+.foot-links a:hover { color: var(--red-light); }
+.foot-links .sep { color: var(--muted); }
+.sb-dd { display: none; position: absolute; top: calc(100% + 10px); right: 0; left: 0; flex-direction: column; border-radius: 22px; background: rgba(20, 20, 22, .97); backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px); border: 1px solid var(--line); box-shadow: 0 30px 70px rgba(0, 0, 0, .65); padding: 6px 8px; animation: pop .22s var(--ease); }
+.s-bar:focus-within .sb-dd { display: flex; }
+.sb-dd .sg { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 4px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--meta); }
+.sb-dd .sg .lnk { font-size: 12.5px; letter-spacing: 0; text-transform: none; }
+.sb-dd .sr { display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 6px 14px 6px 16px; border-radius: 14px; }
+.sb-dd .sr.rc { min-height: 48px; }
+.sb-dd .sr-th { width: 36px; height: 52px; flex: none; border-radius: 8px; }
+.sb-dd .sr-ic { width: 34px; height: 34px; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--elev); color: var(--text2); }
+.sb-dd .sr-ic .ic { width: 15px; height: 15px; }
+.sb-dd .sr-b { flex: 1; min-width: 0; }
+.sb-dd .sb-foot { display: flex; gap: 18px; border-top: 1px solid var(--line); margin-top: 6px; padding: 10px 14px 8px; font-size: 12px; font-weight: 600; color: var(--meta); }
+
+.sk { background: #19191c; }
+.sk .sk { background: #232327; }
+.tb .count .sk { display: inline-block; }
+.fchip[aria-disabled="true"] { pointer-events: none; }
+.res .sk-inline { margin-right: 4px; }

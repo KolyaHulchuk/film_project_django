@@ -161,3 +161,6 @@
 .auth-page .agree input[type=checkbox]{width:20px;height:20px;accent-color:var(--red);flex:none;margin-top:2px}
 .auth-page .acard .btn.full{display:flex;text-decoration:none}
 .auth-page .acard a.btn.full{align-items:center;justify-content:center}
+.auth-page .agree[aria-disabled="true"]{opacity:.6;cursor:not-allowed}
+.auth-page .agree[aria-disabled="true"] a{pointer-events:none}
+.auth-page .acard .resend .lnk-a{min-height:0}

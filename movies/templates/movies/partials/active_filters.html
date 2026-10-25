@@ -1,8 +1,7 @@
 {% load catalog_tags %}
 {# Active filters row (design: .afrow). Each chip is a link that drops that one param from the current querystring. #}
-{% if request.GET.genre_search or request.GET.years_search or request.GET.country_search or request.GET.rating_search %}
 <div class="afrow">
-  <div class="afl" aria-label="Active filters">
+  <div class="afl" aria-label="Active filters">{% if request.GET.genre_search or request.GET.years_search or request.GET.country_search or request.GET.rating_search %}
     {% if request.GET.genre_search %}
       {% for genre in genres %}{% if genre.id|stringformat:"s" == request.GET.genre_search %}
         <span class="achip">{{ genre.name }}<a href="{% qs_without 'genre_search' %}" aria-label="Remove filter {{ genre.name }}"><svg class="ic"><use href="#i-close"/></svg></a></span>
@@ -19,7 +18,8 @@
     {% if request.GET.rating_search %}
       <span class="achip">Rating {{ request.GET.rating_search }}+<a href="{% qs_without 'rating_search' %}" aria-label="Remove rating filter"><svg class="ic"><use href="#i-close"/></svg></a></span>
     {% endif %}
-    <a class="clr" href="{% qs_without 'genre_search' 'years_search' 'country_search' 'rating_search' %}"><svg class="ic"><use href="#i-close"/></svg>Clear all</a>
+    <a class="clr" href="{% qs_without 'genre_search' 'years_search' 'country_search' 'rating_search' %}"><svg class="ic"><use href="#i-close"/></svg>Clear all</a>{% endif %}
   </div>
+  {# PLACEHOLDER: needs TMDB total_results for the "N results" counter #}
+  <div class="res" aria-hidden="true"><span class="sk pulse sk-inline" style="width:70px;height:14px"></span> results</div>
 </div>
-{% endif %}

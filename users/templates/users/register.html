@@ -14,6 +14,8 @@
   {% include "users/partials/auth_field.html" with field=form.password1 label="Password" icon="i-lock" type="password" placeholder="Create a password" autocomplete="new-password" eye=True checklist="req-r" %}
   {% include "users/partials/password_checklist.html" with id="req-r" %}
   {% include "users/partials/auth_field.html" with field=form.password2 label="Confirm password" icon="i-lock" type="password" placeholder="Repeat your password" autocomplete="new-password" eye=True %}
+  {# PLACEHOLDER: needs Terms and Privacy Policy pages (and a consent field on the form); shown but inert, does not block sign-up #}
+  <div class="agree" aria-disabled="true"><span class="cbx" aria-hidden="true"><svg class="ic"><use href="#i-check"/></svg></span><span>I agree to the <a href="#">Terms</a> and <a href="#">Privacy Policy</a></span></div>
   <button type="submit" class="btn btn-red full"><span class="spin" aria-hidden="true" hidden></span><span class="lbl">Sign up</span></button>
 </form>
 <div class="or" aria-hidden="true">or</div>

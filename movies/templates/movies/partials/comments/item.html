@@ -20,6 +20,8 @@
 
         <div class="cm-act">
             {% include "movies/partials/comments/votes.html" %}
+            {# PLACEHOLDER: needs reply threads (Comment.parent) #}
+            <button type="button" class="cmb" aria-disabled="true" tabindex="-1" title="Replies are coming soon"><svg class="ic"><use href="#i-reply"/></svg>Reply</button>
 
             {% if comment.user_id == user.id %}
             <button type="button" class="cmb del" x-show="!confirming" @click="confirming = true; $nextTick(() => $refs.confirmNo.focus())"><svg class="ic"><use href="#i-trash"/></svg>Delete</button>

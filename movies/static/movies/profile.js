@@ -14,6 +14,27 @@
     place();
   }
 
+  // Watchlist page: Watchlist / Stats tabs switch panels in place (Stats is a skeleton until aggregates exist).
+  const panels = document.querySelectorAll("[data-tab-panel]");
+  if (bar && panels.length) {
+    const show = (name, push) => {
+      panels.forEach((p) => (p.hidden = p.dataset.tabPanel !== name));
+      bar.querySelectorAll("[data-ptab]").forEach((t) => {
+        const on = t.dataset.ptab === name;
+        t.classList.toggle("on", on);
+        t.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      if (push) history.replaceState(null, "", name === "stats" ? "?tab=stats" : location.pathname);
+      window.dispatchEvent(new Event("resize"));
+    };
+    bar.querySelectorAll("[data-ptab]").forEach((t) =>
+      t.addEventListener("click", (e) => {
+        e.preventDefault();
+        show(t.dataset.ptab, true);
+      })
+    );
+  }
+
   const input = document.getElementById("id_image");
   if (input) {
     const fileName = document.getElementById("fileName");

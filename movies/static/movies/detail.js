@@ -182,6 +182,21 @@
     }
   });
 
+  // ---- Media tabs (Stills real, Posters is a skeleton until TMDB posters are wired) ----
+  document.querySelectorAll("[data-media-tabs]").forEach((group) => {
+    group.querySelectorAll("[data-media-tab]").forEach((tab) =>
+      tab.addEventListener("click", () => {
+        const which = tab.dataset.mediaTab;
+        document.querySelectorAll("[data-media-tab]").forEach((t) => {
+          const on = t.dataset.mediaTab === which;
+          t.classList.toggle("on", on);
+          t.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        document.querySelectorAll("[data-media-panel]").forEach((p) => (p.hidden = p.dataset.mediaPanel !== which));
+      })
+    );
+  });
+
   // ---- Cast arrows ----
   const track = $("[data-cast-track]");
   if (track) {
