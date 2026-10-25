@@ -1,0 +1,50 @@
+{# Filter toolbar (design: .tbar). Plain GET form with the existing params: genre_search, years_search, country_search, rating_search. #}
+<div class="tbar" data-filters>
+  <div class="wrap">
+    <form class="tbar-in" id="filter-form" method="get" role="search" aria-label="Filters">
+      <div class="fchips fchips-d" role="group" aria-label="Filters">
+        <button type="button" class="fchip{% if request.GET.genre_search %} on{% endif %}" data-pop="genre" aria-haspopup="dialog" aria-expanded="false">Genre{% if request.GET.genre_search %}<span class="n">1</span>{% endif %}<svg class="ic chev"><use href="#i-down"/></svg></button>
+        <button type="button" class="fchip{% if request.GET.years_search %} on{% endif %}" data-pop="year" aria-haspopup="dialog" aria-expanded="false">Year{% if request.GET.years_search %}<span class="n">1</span>{% endif %}<svg class="ic chev"><use href="#i-down"/></svg></button>
+        <button type="button" class="fchip{% if request.GET.country_search %} on{% endif %}" data-pop="country" aria-haspopup="dialog" aria-expanded="false">Country{% if request.GET.country_search %}<span class="n">1</span>{% endif %}<svg class="ic chev"><use href="#i-down"/></svg></button>
+        <button type="button" class="fchip{% if request.GET.rating_search %} on{% endif %}" data-pop="rating" aria-haspopup="dialog" aria-expanded="false">Rating{% if request.GET.rating_search %}<span class="n">1</span>{% endif %}<svg class="ic chev"><use href="#i-down"/></svg></button>
+      </div>
+      <button type="button" class="fchip fbtn-m" data-pop="all" aria-haspopup="dialog" aria-expanded="false"><svg class="ic" style="width:16px;height:16px"><use href="#i-sliders"/></svg>Filters</button>
+
+      <div class="scrim" data-scrim hidden></div>
+      <div class="layer" data-layer role="dialog" aria-label="Filters" hidden>
+        <div class="sheet-h"><span>Filters</span><button type="button" class="btn-icon min" data-pop-close aria-label="Close filters" style="border-color:transparent;background:rgba(255,255,255,.06)"><svg class="ic"><use href="#i-close"/></svg></button></div>
+        <div class="sheet-body">
+          <section class="panel" data-panel="genre" aria-label="Genre">
+            <div class="panel-h"><h3>Genre</h3><button type="button" class="lnk" data-clear="genre_search">Clear</button></div>
+            <div class="gchips">
+              {% for genre in genres %}
+                <label class="gchip{% if genre.id|stringformat:'s' == request.GET.genre_search %} on{% endif %}"><input class="sr" type="radio" name="genre_search" value="{{ genre.id }}"{% if genre.id|stringformat:'s' == request.GET.genre_search %} checked{% endif %}>{{ genre.name }}</label>
+              {% endfor %}
+            </div>
+          </section>
+          <section class="panel" data-panel="year" aria-label="Year">
+            <div class="panel-h"><h3>Year</h3><button type="button" class="lnk" data-clear="years_search">Reset</button></div>
+            <label class="cs-in"><input type="number" name="years_search" min="1900" max="2100" step="1" inputmode="numeric" placeholder="e.g. 2024" aria-label="Release year" value="{{ request.GET.years_search }}"></label>
+            <p class="note">Press Enter to apply.</p>
+          </section>
+          <section class="panel" data-panel="country" aria-label="Country">
+            <div class="panel-h"><h3>Country</h3><button type="button" class="lnk" data-clear="country_search">Clear</button></div>
+            <label class="cs-in"><svg class="ic" style="width:16px;height:16px;color:var(--meta)"><use href="#i-search"/></svg><input type="search" placeholder="Search country" aria-label="Search country" data-country-q autocomplete="off"></label>
+            <div class="cs-list" aria-label="Countries">
+              {% for code, name in countries.items %}{% if code != "UK" %}
+                <label class="cs-row{% if code == request.GET.country_search %} on{% endif %}" data-name="{{ name|lower }}"><input class="sr" type="radio" name="country_search" value="{{ code }}"{% if code == request.GET.country_search %} checked{% endif %}><span class="nm">{{ name }}</span><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span></label>
+              {% endif %}{% endfor %}
+              <div class="s-empty" data-country-none hidden>No country matches your search.</div>
+            </div>
+          </section>
+          <section class="panel" data-panel="rating" aria-label="Rating">
+            <div class="panel-h"><h3>Rating</h3><button type="button" class="lnk" data-clear="rating_search">Reset</button></div>
+            <div class="rt-read"><b data-rating-out>{% if request.GET.rating_search %}{{ request.GET.rating_search }}+{% else %}Any{% endif %}</b><span>minimum score</span></div>
+            <input class="rng" type="range" name="rating_search" min="0" max="10" step="0.5" value="{{ request.GET.rating_search|default:'0' }}" aria-label="Minimum rating">
+          </section>
+        </div>
+        <div class="sheet-f"><a class="btn-ghost-clr" href="?">Clear all</a><button type="submit" class="btn btn-red">Show results</button></div>
+      </div>
+    </form>
+  </div>
+</div>

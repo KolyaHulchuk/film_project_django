@@ -1,0 +1,55 @@
+{% load static catalog_tags %}
+{# Poster card (design: .cc). Expects `item`; optional `media_type` for raw TMDB lists that lack item.media_type. #}
+{% firstof item.tmdb_id item.id as tid %}
+{% firstof item.media_type media_type "movie" as mt %}
+{% firstof item.tmdb_rating item.vote_average as rating %}
+{% firstof item.title item.name as title %}
+<article class="cc" role="listitem" id="items-{{ tid }}">
+  <div class="cc-frame">
+    <div class="cc-art">
+      {% if item.poster_url %}
+        <img src="{{ item.poster_url }}" alt="Poster: {{ title }}" loading="lazy" width="342" height="513">
+      {% elif item.poster_path %}
+        <img src="https://image.tmdb.org/t/p/w342{{ item.poster_path }}" alt="Poster: {{ title }}" loading="lazy" width="342" height="513">
+      {% else %}
+        <img src="{% static 'movies/image/default_poster.jpg' %}" alt="No poster: {{ title }}" loading="lazy">
+      {% endif %}
+      {% if rating %}<span class="cc-bdg badge"><svg class="ic fill"><use href="#i-star"/></svg>{{ rating|floatformat:1 }}</span>{% endif %}
+      <span class="cc-type chip type">{% if mt == "movie" %}Movie{% else %}TV{% endif %}</span>
+      <div class="cc-ov">
+        {% if item.overview %}<p class="syn">{{ item.overview }}</p>{% endif %}
+        {% if item.genres %}<div class="chips">{% for genre in item.genres|slice:":2" %}<span class="chip">{{ genre }}</span>{% endfor %}</div>{% endif %}
+        <div class="cc-btns">
+          <a href="{% url 'movie-detail' tid mt %}" class="btn btn-red sm">Details</a>
+          {% if item.watchlist_id %}
+            <label class="btn btn-ghost sm cc-watched">
+              <input type="checkbox" class="sr" {% if item.is_watched %}checked{% endif %}
+                     hx-post="{% url 'toggle-watchlist' item.watchlist_id %}" hx-trigger="change" hx-swap="none">
+              <svg class="ic sm"><use href="#i-eye"/></svg>Watched
+            </label>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <a class="cc-link" href="{% url 'movie-detail' tid mt %}" aria-label="{{ title }}{% with y=item.release_date|year_of %}{% if y %} ({{ y }}){% endif %}{% endwith %}{% if rating %}, rated {{ rating|floatformat:1 }}{% endif %}"></a>
+    {% if user.is_authenticated %}
+      <form method="post" action="{% url 'add_watchlist' tid mt %}" class="watchlist-form" data-watchlist-form
+            data-remove-url="{% if item.watchlist_id %}{% url 'delete_watchlist' item.watchlist_id %}{% endif %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button type="submit" class="cc-wl watchlist-btn{% if item.watchlist_id %} in-watchlist{% endif %}"
+                aria-pressed="{% if item.watchlist_id %}true{% else %}false{% endif %}" aria-label="Toggle watchlist" title="Toggle watchlist">
+          <svg class="ic" style="width:18px;height:18px"><use href="#i-bm"/></svg>
+        </button>
+      </form>
+    {% else %}
+      <a class="cc-wl" href="{% url 'register' %}" aria-label="Sign up to save to your watchlist">
+        <svg class="ic" style="width:18px;height:18px"><use href="#i-bm"/></svg><span class="tip" role="tooltip">Sign in to save</span>
+      </a>
+    {% endif %}
+  </div>
+  <div class="cc-t">
+    <h3><a href="{% url 'movie-detail' tid mt %}" title="{{ title }}">{{ title }}</a></h3>
+    <p>{{ item.release_date|year_of }}{% if item.genres %}{% if item.release_date %} · {% endif %}{{ item.genres.0 }}{% endif %}</p>
+  </div>
+</article>

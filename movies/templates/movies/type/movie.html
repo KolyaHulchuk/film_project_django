@@ -1,9 +1,2 @@
-{% extends 'movies/base.html' %}
-{% load static %}
-{% block body_class %}search-page{% endblock %}
-{% block extra_css %}
-    <link rel="stylesheet" href="{% static 'movies/filters.css' %}">
-{% endblock %}
-{% block content %}
-    {% include 'movies/movies_type.html' %}
-{% endblock %}
+{% extends 'movies/catalog.html' %}
+{% block filters %}{% include 'movies/partials/filter_toolbar.html' %}{% endblock %}

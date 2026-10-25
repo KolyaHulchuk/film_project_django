@@ -1,0 +1,25 @@
+{% load catalog_tags %}
+{# Active filters row (design: .afrow). Each chip is a link that drops that one param from the current querystring. #}
+{% if request.GET.genre_search or request.GET.years_search or request.GET.country_search or request.GET.rating_search %}
+<div class="afrow">
+  <div class="afl" aria-label="Active filters">
+    {% if request.GET.genre_search %}
+      {% for genre in genres %}{% if genre.id|stringformat:"s" == request.GET.genre_search %}
+        <span class="achip">{{ genre.name }}<a href="{% qs_without 'genre_search' %}" aria-label="Remove filter {{ genre.name }}"><svg class="ic"><use href="#i-close"/></svg></a></span>
+      {% endif %}{% endfor %}
+    {% endif %}
+    {% if request.GET.years_search %}
+      <span class="achip">Year {{ request.GET.years_search }}<a href="{% qs_without 'years_search' %}" aria-label="Remove year filter"><svg class="ic"><use href="#i-close"/></svg></a></span>
+    {% endif %}
+    {% if request.GET.country_search %}
+      {% for code, name in countries.items %}{% if code == request.GET.country_search %}
+        <span class="achip">{{ name }}<a href="{% qs_without 'country_search' %}" aria-label="Remove filter {{ name }}"><svg class="ic"><use href="#i-close"/></svg></a></span>
+      {% endif %}{% endfor %}
+    {% endif %}
+    {% if request.GET.rating_search %}
+      <span class="achip">Rating {{ request.GET.rating_search }}+<a href="{% qs_without 'rating_search' %}" aria-label="Remove rating filter"><svg class="ic"><use href="#i-close"/></svg></a></span>
+    {% endif %}
+    <a class="clr" href="{% qs_without 'genre_search' 'years_search' 'country_search' 'rating_search' %}"><svg class="ic"><use href="#i-close"/></svg>Clear all</a>
+  </div>
+</div>
+{% endif %}

@@ -1,0 +1,19 @@
+{% extends 'movies/base.html' %}
+{% load static %}
+{% block body_class %}mh-body{% endblock %}
+{% block main_class %}mh-main{% endblock %}
+{% block content %}
+<section class="tb" aria-labelledby="h-title">
+  <div class="tb-bg" aria-hidden="true"></div>
+  <span class="tb-tile" aria-hidden="true"></span><span class="tb-tile" aria-hidden="true"></span><span class="tb-tile" aria-hidden="true"></span><span class="tb-tile" aria-hidden="true"></span>
+  <div class="wrap tb-in">
+    <div class="eyebrow">Browse</div>
+    <h1 id="h-title">{{ title }}</h1>
+  </div>
+</section>
+{% block filters %}{% endblock %}
+<div class="wrap">
+  {% include 'movies/partials/movie_list.html' %}
+</div>
+{% endblock %}
+{% block page_js %}<script src="{% static 'movies/catalog.js' %}" defer></script>{% endblock %}

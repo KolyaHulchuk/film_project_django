@@ -1,45 +1,43 @@
-
+{# Numbered pagination (design: .pg). Keeps the existing ?page= mechanism and filter querystring (current_filters). #}
 {% if is_paginated %}
-    <div class="pagination d-none d-md-flex">
+<nav class="pg" aria-label="Pagination">
+  <div class="pg-row">
     {% if current_page > 1 %}
-        <a class="btn btn-outline-secondary" href="?{% if current_filters %}{{ current_filters }}&{% endif %}page=1">First</a>
-        <a class="btn btn-outline-secondary" href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ current_page|add:'-1' }}">Previous</a>
+      <a href="?{% if current_filters %}{{ current_filters }}&amp;{% endif %}page={{ current_page|add:'-1' }}" class="pg-b" aria-label="Previous page"><svg class="ic sm"><use href="#i-chl"/></svg><span class="pg-num">Previous</span></a>
+    {% else %}
+      <span class="pg-b dis" aria-hidden="true"><svg class="ic sm"><use href="#i-chl"/></svg><span class="pg-num">Previous</span></span>
     {% endif %}
 
+    {% if page_range.0 > 1 %}
+      <a href="?{% if current_filters %}{{ current_filters }}&amp;{% endif %}page=1" class="pg-b pg-num" aria-label="Page 1">1</a>
+      {% if page_range.0 > 2 %}<span class="pg-gap pg-num" aria-hidden="true">…</span>{% endif %}
+    {% endif %}
     {% for num in page_range %}
-        {% if num == current_page %}
-            <span class="btn btn-secondary activate">{{ num }}</span>
-        {% else %}
-            <a class="btn btn-outline-secondary" href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ num }}">{{ num }}</a>
-        {% endif %}
+      {% if num == current_page %}
+        <span class="pg-b pg-num cur" aria-current="page" aria-label="Page {{ num }}">{{ num }}</span>
+      {% else %}
+        <a href="?{% if current_filters %}{{ current_filters }}&amp;{% endif %}page={{ num }}" class="pg-b pg-num" aria-label="Page {{ num }}">{{ num }}</a>
+      {% endif %}
     {% endfor %}
+    {% if page_range|last < total_pages %}
+      {% if page_range|last|add:1 < total_pages %}<span class="pg-gap pg-num" aria-hidden="true">…</span>{% endif %}
+      <a href="?{% if current_filters %}{{ current_filters }}&amp;{% endif %}page={{ total_pages }}" class="pg-b pg-num" aria-label="Page {{ total_pages }}">{{ total_pages }}</a>
+    {% endif %}
 
+    <span class="pg-m" aria-hidden="true">{{ current_page }} <span>/ {{ total_pages }}</span></span>
     {% if current_page < total_pages %}
-        <a class="btn btn-outline-secondary" href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ current_page|add:'1' }}">Next</a>
-        <a class="btn btn-outline-secondary" href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ total_pages }}">Last</a>
-    {% endif %}
-</div>
-
-<!-- Mobile pagination — shown only on small screens -->
-<div class="pagination-mobile d-flex d-md-none">
-    {% if current_page > 1 %}
-    <a href="?{% if current_filters %}{{ current_filters }}&{% endif %}page=1" class="pagination-mobile-btn">«</a>
-    <a href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ current_page|add:'-1' }}" class="pagination-mobile-btn">‹</a>
+      <a href="?{% if current_filters %}{{ current_filters }}&amp;{% endif %}page={{ current_page|add:'1' }}" class="pg-b" aria-label="Next page"><span class="pg-num">Next</span><svg class="ic sm"><use href="#i-chr"/></svg></a>
     {% else %}
-    <span class="pagination-mobile-btn disabled">«</span>
-    <span class="pagination-mobile-btn disabled">‹</span>
+      <span class="pg-b dis" aria-hidden="true"><span class="pg-num">Next</span><svg class="ic sm"><use href="#i-chr"/></svg></span>
     {% endif %}
-
-    <span class="pagination-mobile-current">
-        {{ current_page }} / {{ total_pages }}
-    </span>
-
-    {% if current_page < total_pages %}
-    <a href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ current_page|add:'1' }}" class="pagination-mobile-btn">›</a>
-    <a href="?{% if current_filters %}{{ current_filters }}&{% endif %}page={{ total_pages }}" class="pagination-mobile-btn">»</a>
-    {% else %}
-    <span class="pagination-mobile-btn disabled">›</span>
-    <span class="pagination-mobile-btn disabled">»</span>
-    {% endif %}
-</div>
+  </div>
+  <div class="pg-foot">
+    <span>Page {{ current_page }} of {{ total_pages }}</span>
+    <form class="goto" method="get">
+      {% for key, value in request.GET.items %}{% if key != "page" %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
+      <label for="goto" class="cap-d">Go to page</label>
+      <input id="goto" type="number" name="page" min="1" max="{{ total_pages }}" placeholder="#" aria-label="Go to page number">
+    </form>
+  </div>
+</nav>
 {% endif %}
