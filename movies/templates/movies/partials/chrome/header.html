@@ -28,15 +28,18 @@
 
     <form class="s-bar" role="search" action="{% url 'movies-search' %}" method="get" hidden data-search-bar>
       <svg class="ic" style="color:var(--text2)"><use href="#i-search"/></svg>
-      <input type="search" name="q" placeholder="Search movies, TV shows, people…" aria-label="Search" autocomplete="off">
+      <input type="search" name="q" placeholder="Search movies, TV shows, people…" aria-label="Search" autocomplete="off" data-search-input>
       <button type="button" class="btn-icon min" aria-label="Close search" style="border-color:transparent;background:rgba(255,255,255,.06)" data-search-close><svg class="ic"><use href="#i-close"/></svg></button>
 
-      {# PLACEHOLDER: needs a search-suggestions endpoint (TMDB search/multi, debounced) + a recent-searches store; rows are inert grey skeletons #}
-      <div class="sb-dd" aria-hidden="true">
+      {# Live suggestions render into [data-search-live] (chrome.js); the grey skeleton rows below are the idle state. PLACEHOLDER: needs a recent-searches store #}
+      <div class="sb-dd" data-search-dd data-suggest-url="{% url 'search-suggest' %}">
+      <div aria-hidden="true" data-search-idle>
         <div class="sg"><span>Recent searches</span><span class="lnk sk-off">Clear</span></div>
         {% for i in 3|times %}<div class="sr rc skr"><span class="sr-ic"><svg class="ic"><use href="#i-clock"/></svg></span><div class="sr-b"><span class="sk pulse sk-inline" style="width:{% if forloop.counter == 1 %}58%{% elif forloop.counter == 2 %}42%{% else %}50%{% endif %}"></span></div></div>{% endfor %}
         <div class="sg"><span>Suggestions</span></div>
         {% for i in 3|times %}<div class="sr skr"><span class="sr-th sk pulse"></span><div class="sr-b"><span class="sk pulse sk-inline" style="width:62%;height:13px"></span><span class="sk pulse sk-inline" style="width:38%;height:9px;margin-top:8px;display:block"></span></div><span class="sk pulse sk-pill" style="width:42px"></span></div>{% endfor %}
+      </div>
+      <div hidden data-search-live aria-live="polite"></div>
         <div class="sb-foot"><span>↑ ↓ navigate</span><span>Enter search</span><span>Esc close</span></div>
       </div>
     </form>

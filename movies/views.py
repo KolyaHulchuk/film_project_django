@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 from functools import wraps
 
+import requests
 from celery.result import AsyncResult
 from django.contrib.auth.decorators import login_required
 
@@ -559,6 +560,30 @@ def ai_recomendations(request):
 
     task = get_ai_recommendation_task.delay(request.user.id, message, media_type)
     return JsonResponse({"task_id": task.id})
+
+
+@require_GET
+def search_suggest(request):
+    """JSON for the header search dropdown: up to 6 movie/TV matches. 502 if TMDB fails."""
+    query = " ".join(request.GET.get("q", "").split())[:100]
+    if len(query) < 2:
+        return JsonResponse({"results": []})
+    try:
+        items = TMDBClient().suggest(query)
+    except (TMDBFetchError, requests.RequestException):
+        return JsonResponse({"error": "TMDB unavailable"}, status=502)
+    results = [
+        {
+            "title": item.get("title") or "",
+            "year": (item.get("release_date") or "")[:4],
+            "media_type": item["media_type"],
+            "poster_url": item.get("poster_url"),
+            "rating": round(item["vote_average"], 1) if item.get("vote_average") else None,
+            "url": reverse("movie-detail", args=[item["id"], item["media_type"]]),
+        }
+        for item in items
+    ]
+    return JsonResponse({"results": results})
 
 
 @login_required

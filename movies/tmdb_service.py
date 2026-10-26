@@ -201,6 +201,16 @@ class TMDBClient:
 
         return self._type_items(combined)
 
+    def suggest(self, query, limit=6):
+        # Header search dropdown: one search/multi call, movies + TV only. Unlike
+        # search_movies(), a failed TMDB call raises so the UI can show an error
+        # instead of "No results found".
+        data = self._request("search/multi", {"query": query, "language": self.languages[0]})
+        if "results" not in data:
+            raise TMDBFetchError([])
+        items = [i for i in data["results"] if i.get("media_type") in ("movie", "tv")]
+        return self._type_items(items[:limit])
+
     @staticmethod
     def get_release_date(details, media_type):
         raw_date = details.get("release_date") if media_type == "movie" else details.get("first_air_date")
