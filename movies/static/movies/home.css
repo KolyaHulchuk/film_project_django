@@ -49,6 +49,7 @@
 .home-page .track{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 32px;padding:10px 0 20px;margin:-10px 0 -20px;scrollbar-width:none;overscroll-behavior-x:contain}
 .home-page .track::-webkit-scrollbar{display:none}
 .home-page .track > *{scroll-snap-align:start;flex:none}
+.home-page .track > .pc{flex:none;scroll-snap-align:start}
 .home-page .arrow{position:absolute;top:calc(50% - 22px);z-index:5;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(10,10,11,.8);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--line);transition:transform .25s var(--ease),border-color .25s}
 .home-page .arrow:hover{border-color:var(--red);box-shadow:0 0 22px var(--glow)}
 .home-page .arrow.l{left:-22px}

@@ -186,9 +186,9 @@
       <button type="button" class="arrow l" data-row-prev aria-label="Scroll popular left"><svg class="ic"><use href="#i-chl"/></svg></button>
       <button type="button" class="arrow r" data-row-next aria-label="Scroll popular right"><svg class="ic"><use href="#i-chr"/></svg></button>
       <div class="track pop-track" data-tab-panel="pop" tabindex="0" role="region" aria-label="Popular titles, scrollable">
-        {% for item in now_popular|slice:":10" %}<div data-kind="movie" style="display:contents">{% include 'movies/partials/media_card.html' with media_type='movie' variant='pp' kind_label='Movie' %}</div>{% endfor %}
-        {% for item in filtered_now_playings|slice:":10" %}<div data-kind="theater" style="display:contents">{% include 'movies/partials/media_card.html' with media_type='movie' variant='pp' kind_label='Movie' %}</div>{% endfor %}
-        {% for item in tv_serials_popular|slice:":10" %}<div data-kind="tv" style="display:contents">{% include 'movies/partials/media_card.html' with media_type='tv' variant='pp' kind_label='TV' %}</div>{% endfor %}
+        {% for item in now_popular|slice:":10" %}{% include 'movies/partials/media_card.html' with data_kind="movie" media_type='movie' variant='pp' kind_label='Movie' %}{% endfor %}
+        {% for item in filtered_now_playings|slice:":10" %}{% include 'movies/partials/media_card.html' with data_kind="theater" media_type='movie' variant='pp' kind_label='Movie' %}{% endfor %}
+        {% for item in tv_serials_popular|slice:":10" %}{% include 'movies/partials/media_card.html' with data_kind="tv" media_type='tv' variant='pp' kind_label='TV' %}{% endfor %}
         {% if not now_popular and not filtered_now_playings and not tv_serials_popular %}
           {# PLACEHOLDER: needs TMDB movie/popular, movie/now_playing and tv/popular in the home context #}
           {% include 'movies/components/skeleton_cards.html' with count=7 variant='pp' %}
