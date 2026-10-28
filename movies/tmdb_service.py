@@ -88,6 +88,19 @@ class TMDBClient:
             if backdrop.get("file_path")
         ]
 
+    def get_list_with_trailers(self, endpoint, page, media_type):
+        # List endpoints (popular, trending, ...) don't include videos, so the trailer
+        # needs a separate per-movie call. Only the first 5 items (the home hero
+        # slides) get one to keep cold-cache TMDB requests down; get_credit is cached.
+        herodict = self.get_list(endpoint, page)
+        result = herodict["results"][:5]
+        for item in result:
+            movie_id = item["id"]
+            data = self.get_credit(movie_id, media_type)
+            item["trailer"] = data["trailer"]
+
+        return result
+
     def get_credit(self, tmdb_id, media_type):
         # append_to_response bundles videos/images into the same request this
         # view already makes for cast/crew, instead of adding extra TMDB calls

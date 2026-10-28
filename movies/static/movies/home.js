@@ -35,7 +35,7 @@
 
     function schedule() {
       clearTimeout(timer);
-      if (reduce || total < 2) return;
+      if (reduce || total < 2 || document.querySelector("[data-tm]:not([hidden])")) return;
       timer = setTimeout(next, 7000);
     }
     function go(i) {
@@ -108,5 +108,55 @@
     window.addEventListener("resize", moveLine);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(moveLine);
     moveLine();
+  });
+
+  // ---- Hero trailer modal (YouTube embed is created only on click, same sandbox rules as the detail page) ----
+  const tm = document.querySelector("[data-tm]");
+  if (tm) {
+    const body = tm.querySelector("[data-tm-body]");
+    const closeBtn = tm.querySelector("[data-tm-close]");
+    let lastFocus = null;
+    function openTrailer(btn) {
+      const f = document.createElement("iframe");
+      f.src = "https://www.youtube.com/embed/" + encodeURIComponent(btn.dataset.trailerOpen) + "?playsinline=1&rel=0&modestbranding=1&autoplay=1";
+      f.title = btn.dataset.trailerTitle || "Trailer";
+      f.referrerPolicy = "strict-origin-when-cross-origin";
+      f.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+      f.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation");
+      f.allowFullscreen = true;
+      lastFocus = btn;
+      body.replaceChildren(f);
+      tm.hidden = false;
+      document.body.style.overflow = "hidden";
+      closeBtn.focus();
+    }
+    function closeTrailer() {
+      if (tm.hidden) return;
+      body.replaceChildren();
+      tm.hidden = true;
+      document.body.style.overflow = "";
+      if (lastFocus) lastFocus.focus();
+    }
+    document.querySelectorAll("[data-trailer-open]").forEach((btn) => btn.addEventListener("click", () => openTrailer(btn)));
+    closeBtn.addEventListener("click", closeTrailer);
+    tm.addEventListener("click", (e) => e.target === tm && closeTrailer());
+    document.addEventListener("keydown", (e) => e.key === "Escape" && closeTrailer());
+  }
+
+  // ---- Segmented toggle (Trending: Today / This Week) ----
+  document.querySelectorAll("[data-seg]").forEach((group) => {
+    const pill = group.querySelector(".pill");
+    const buttons = group.querySelectorAll("[data-period]");
+    const section = group.closest("section");
+    buttons.forEach((b, i) =>
+      b.addEventListener("click", () => {
+        buttons.forEach((x) => {
+          x.classList.toggle("on", x === b);
+          x.setAttribute("aria-pressed", x === b ? "true" : "false");
+        });
+        if (pill) pill.style.transform = "translateX(" + i * 100 + "%)";
+        section.querySelectorAll("[data-seg-panel]").forEach((p) => (p.hidden = p.dataset.segPanel !== b.dataset.period));
+      })
+    );
   });
 })();

@@ -420,3 +420,11 @@
 .home-page .tp-p{background:linear-gradient(172deg,#2a2a30,#121214)}
 .home-page .tp-p .sk{border-radius:6px}
 .home-page .motw-poster.sk,.home-page .motw-still .sk{border-radius:0}
+
+/* ===== HERO TRAILER MODAL (same look as the detail page's .tm) ===== */
+.home-page .tm{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:72px 32px 32px;background:rgba(5,5,6,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);animation:fade .25s}
+.home-page .tm[hidden]{display:none}
+.home-page .tm-in{position:relative;width:min(1120px,100%);aspect-ratio:16/9;max-height:calc(100vh - 140px);border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,.14);box-shadow:0 40px 100px rgba(0,0,0,.7),0 0 60px rgba(225,29,46,.12);animation:pop .3s var(--ease);background:#08080a}
+.home-page .tm-x{position:absolute;top:16px;right:20px;z-index:2}
+.home-page .tm-in iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+@media (max-width:640px){.home-page .tm{padding:64px 12px 24px}}

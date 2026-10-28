@@ -212,6 +212,9 @@ class HomeView(View):
         page = 1
         client = TMDBClient()
 
+        hero_movies = client.get_list_with_trailers("movie/popular", page, "movie")
+        trending_all_week = client.get_list("trending/all/week", page)
+        trending_all_day = client.get_list("trending/all/day", page)
         now_playings = client.get_list("movie/now_playing", page)  # Fetch data from TMDB
         upcoming = client.get_list("movie/upcoming", page)
         tv_serilas_popular = client.get_list("tv/popular", page)
@@ -227,6 +230,9 @@ class HomeView(View):
         actors = [a for a in actors if a.get("known_for_department") == "Acting"]
 
         context = {
+            "hero_movies": hero_movies,
+            "trending_all_week": trending_all_week["results"],
+            "trending_all_day": trending_all_day["results"],
             "now_popular": now_popular["results"],
             "tv_serials_popular": tv_serilas_popular["results"],
             "top_rated": top_rated["results"],

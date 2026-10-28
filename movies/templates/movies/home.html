@@ -1,15 +1,15 @@
 {% extends 'movies/base.html' %}
 {% load static catalog_tags %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/home.css' %}?v=2">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/home.css' %}?v=3">{% endblock %}
 {% block body_class %}mh-body home-page{% endblock %}
 {% block main_class %}mh-main{% endblock %}
 
 {% block content %}
-{# SECTION 1 — HERO SPOTLIGHT: first 5 of TMDB movie/popular (now_popular). Trailer keys aren't in this context, so "Watch Trailer" opens the detail page. #}
-{% if now_popular %}
+{# SECTION 1 — HERO SPOTLIGHT: TMDB trending/movie/day with trailers attached (hero_movies). "Watch Trailer" opens an in-page modal when HomeView attached item.trailer, else the detail page. #}
+{% if hero_movies %}
 <section class="hero" data-hero aria-roledescription="carousel" aria-label="Featured titles">
   <div class="hero-slides">
-    {% for item in now_popular|slice:":5" %}
+    {% for item in hero_movies|slice:":5" %}
       <div class="hero-bg{% if not item.backdrop_path %} noimg{% endif %}{% if forloop.first %} on kb{% endif %}" data-hero-bg
            {% if item.backdrop_path %}style="background-image:url('https://image.tmdb.org/t/p/w1280{{ item.backdrop_path }}')"{% endif %}
            role="img" aria-label="Backdrop: {{ item.title }}"></div>
@@ -21,7 +21,7 @@
 
   <div class="wrap hero-in">
     <div class="hero-copies">
-    {% for item in now_popular|slice:":5" %}
+    {% for item in hero_movies|slice:":5" %}
       <div class="hero-copy" data-hero-copy{% if not forloop.first %} hidden{% endif %}>
         <span class="pill-red fu d1"><i></i>Popular now</span>
         <h1 class="fu d2">{{ item.title }}</h1>
@@ -32,7 +32,12 @@
         </div>
         {% if item.overview %}<p class="hero-syn fu d4">{{ item.overview }}</p>{% endif %}
         <div class="hero-btns fu d5">
-          <a href="{% url 'movie-detail' item.id 'movie' %}#trailer" class="btn btn-red"><svg class="ic" style="width:18px;height:18px;fill:currentColor;stroke:none"><use href="#i-play"/></svg>Watch Trailer</a>
+          {# item.trailer is set in HomeView (get_credit); without it the button falls back to the detail page #}
+          {% if item.trailer.key %}
+            <button type="button" class="btn btn-red" data-trailer-open="{{ item.trailer.key }}" data-trailer-title="{{ item.trailer.name|default:item.title }}"><svg class="ic" style="width:18px;height:18px;fill:currentColor;stroke:none"><use href="#i-play"/></svg>Watch Trailer</button>
+          {% else %}
+            <a href="{% url 'movie-detail' item.id 'movie' %}#trailer" class="btn btn-red"><svg class="ic" style="width:18px;height:18px;fill:currentColor;stroke:none"><use href="#i-play"/></svg>Watch Trailer</a>
+          {% endif %}
           <a href="{% url 'movie-detail' item.id 'movie' %}" class="btn btn-ghost"><svg class="ic" style="width:18px;height:18px"><use href="#i-info"/></svg>More Info</a>
           {% if user.is_authenticated %}
             <form method="post" action="{% url 'add_watchlist' item.id 'movie' %}" class="watchlist-form" data-watchlist-form data-remove-url="">
@@ -52,11 +57,11 @@
   <div class="hero-ctrl">
     <div class="wrap">
       <div class="segs">
-        {% for item in now_popular|slice:":5" %}
+        {% for item in hero_movies|slice:":5" %}
           <button type="button" class="seg" data-hero-seg aria-label="Show featured title {{ forloop.counter }}: {{ item.title }}"{% if forloop.first %} aria-current="true"{% endif %}><span class="bar"><span class="seg-fill"></span></span></button>
         {% endfor %}
       </div>
-      <span class="counter" data-hero-counter aria-hidden="true">01 / {{ now_popular|slice:":5"|length|stringformat:"02d" }}</span>
+      <span class="counter" data-hero-counter aria-hidden="true">01 / {{ hero_movies|slice:":5"|length|stringformat:"02d" }}</span>
       <div class="hero-nav">
         <button type="button" class="btn-icon min" data-hero-prev aria-label="Previous title"><svg class="ic"><use href="#i-chl"/></svg></button>
         <button type="button" class="btn-icon min" data-hero-next aria-label="Next title"><svg class="ic"><use href="#i-chr"/></svg></button>
@@ -83,18 +88,25 @@
   <div class="wrap">
     <div class="sec-head">
       <div><div class="eyebrow">Right now</div><h2 id="h-trend">Trending</h2></div>
-      <div class="seg-toggle" role="group" aria-label="Trending period">
+      <div class="seg-toggle" role="group" aria-label="Trending period" data-seg>
         <span class="pill"></span>
-        <button type="button" class="on" aria-pressed="true" aria-disabled="true" tabindex="-1">Today</button>
-        <button type="button" aria-pressed="false" aria-disabled="true" tabindex="-1">This Week</button>
+        <button type="button" class="on" data-period="day" aria-pressed="true">Today</button>
+        <button type="button" data-period="week" aria-pressed="false">This Week</button>
       </div>
     </div>
-    {# PLACEHOLDER: needs TMDB trending/all/day and trending/all/week (w780 posters) #}
-    <div class="row-wrap" data-row>
-      <button type="button" class="arrow l" aria-label="Scroll trending left" aria-disabled="true" tabindex="-1"><svg class="ic"><use href="#i-chl"/></svg></button>
-      <button type="button" class="arrow r" aria-label="Scroll trending right" aria-disabled="true" tabindex="-1"><svg class="ic"><use href="#i-chr"/></svg></button>
-      <div class="track" aria-busy="true" aria-label="Trending titles (not loaded yet)">
-        {% include 'movies/components/skeleton_cards.html' with count=8 variant='tr' %}
+    {# Two rows, one per period; the toggle above (data-seg, home.js) shows one at a time #}
+    <div class="row-wrap" data-row data-seg-panel="day">
+      <button type="button" class="arrow l" data-row-prev aria-label="Scroll trending today left"><svg class="ic"><use href="#i-chl"/></svg></button>
+      <button type="button" class="arrow r" data-row-next aria-label="Scroll trending today right"><svg class="ic"><use href="#i-chr"/></svg></button>
+      <div class="track" tabindex="0" role="region" aria-label="Trending today, scrollable">
+        {% for item in trending_all_day|slice:":10" %}{% if item.media_type != 'person' %}{% include 'movies/partials/media_card.html' with media_type=item.media_type variant='tr' rank=forloop.counter %}{% endif %}{% endfor %}
+      </div>
+    </div>
+    <div class="row-wrap" data-row data-seg-panel="week" hidden>
+      <button type="button" class="arrow l" data-row-prev aria-label="Scroll trending this week left"><svg class="ic"><use href="#i-chl"/></svg></button>
+      <button type="button" class="arrow r" data-row-next aria-label="Scroll trending this week right"><svg class="ic"><use href="#i-chr"/></svg></button>
+      <div class="track" tabindex="0" role="region" aria-label="Trending this week, scrollable">
+        {% for item in trending_all_week|slice:":10" %}{% if item.media_type != 'person' %}{% include 'movies/partials/media_card.html' with media_type=item.media_type variant='tr' rank=forloop.counter %}{% endif %}{% endfor %}
       </div>
     </div>
   </div>
@@ -356,6 +368,12 @@
   </div>
 </section>
 {% endif %}
+
+{# Trailer modal for the hero (filled by home.js; styles in home.css) #}
+<div class="tm" data-tm hidden role="dialog" aria-modal="true" aria-label="Trailer">
+  <button type="button" class="btn-icon min tm-x" data-tm-close aria-label="Close trailer"><svg class="ic"><use href="#i-close"/></svg></button>
+  <div class="tm-in" data-tm-body></div>
+</div>
 {% endblock %}
 
-{% block page_js %}<script src="{% static 'movies/home.js' %}?v=2" defer></script>{% endblock %}
+{% block page_js %}<script src="{% static 'movies/home.js' %}?v=3" defer></script>{% endblock %}
