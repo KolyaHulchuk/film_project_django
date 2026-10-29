@@ -428,3 +428,12 @@
 .home-page .tm-x{position:absolute;top:16px;right:20px;z-index:2}
 .home-page .tm-in iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 @media (max-width:640px){.home-page .tm{padding:64px 12px 24px}}
+/* TMDB images inside blocks wired after the port (Movie of the Week, Topic of the Day); .noposter = neutral grey when the path is null */
+.home-page .motw-still .bg img,.home-page .motw-poster img,.home-page .tp-p img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.home-page .motw-still .bg.noposter,.home-page .motw-poster.noposter,.home-page .tp-p.noposter,.home-page .sc-feat .bg.noposter{background:linear-gradient(165deg,#34343a,#18181b 70%)}
+.home-page .tp-p{overflow:hidden}
+.home-page .av{position:relative;overflow:hidden;color:var(--text2)}
+.home-page .av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.home-page .motw-btns .watchlist-btn .wl-in{display:none}
+.home-page .motw-btns .watchlist-btn.in-watchlist .wl-in{display:inline}
+.home-page .motw-btns .watchlist-btn.in-watchlist .wl-add{display:none}

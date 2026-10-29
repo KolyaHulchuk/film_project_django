@@ -82,9 +82,10 @@
     });
   });
 
-  // ---- Tabs with the sliding red line (Popular Right Now) ----
+  // ---- Tabs with the sliding red line (Popular Right Now: filters cards in one panel; TV & Categories: one panel per tab) ----
   document.querySelectorAll("[data-tabs]").forEach((group) => {
-    const panel = document.querySelector('[data-tab-panel="' + group.dataset.tabs + '"]');
+    const panels = document.querySelectorAll('[data-tab-panel="' + group.dataset.tabs + '"]');
+    const viewAll = document.querySelector('[data-tabs-all="' + group.dataset.tabs + '"]');
     const line = group.querySelector(".ptab-line");
     const tabs = group.querySelectorAll("[data-tab]");
     function moveLine() {
@@ -98,10 +99,16 @@
         t.classList.toggle("on", on);
         t.setAttribute("aria-pressed", on ? "true" : "false");
       });
-      if (panel) {
+      panels.forEach((panel) => {
+        if (panel.dataset.kind) {
+          panel.hidden = panel.dataset.kind !== kind;
+          return;
+        }
         panel.querySelectorAll("[data-kind]").forEach((el) => (el.hidden = kind !== "all" && el.dataset.kind !== kind));
         panel.scrollTo({ left: 0 });
-      }
+      });
+      const tab = group.querySelector('[data-tab="' + kind + '"]');
+      if (viewAll && tab && tab.dataset.url) viewAll.href = tab.dataset.url;
       moveLine();
     }
     tabs.forEach((t) => t.addEventListener("click", () => select(t.dataset.tab)));
@@ -141,6 +148,33 @@
     closeBtn.addEventListener("click", closeTrailer);
     tm.addEventListener("click", (e) => e.target === tm && closeTrailer());
     document.addEventListener("keydown", (e) => e.key === "Escape" && closeTrailer());
+  }
+
+  // ---- Pick by Mood: chips are links into the catalog; with JS they switch the picks row in place ----
+  const moods = document.querySelector("[data-moods]");
+  if (moods) {
+    const section = moods.closest("section");
+    const viewAll = section.querySelector("[data-mood-all]");
+    moods.querySelectorAll("[data-mood]").forEach((chip) =>
+      chip.addEventListener("click", (e) => {
+        e.preventDefault();
+        moods.querySelectorAll("[data-mood]").forEach((c) => {
+          c.classList.toggle("on", c === chip);
+          c.setAttribute("aria-pressed", c === chip ? "true" : "false");
+        });
+        section.querySelectorAll("[data-mood-panel]").forEach((p) => {
+          p.hidden = p.dataset.moodPanel !== chip.dataset.mood;
+          if (!p.hidden) {
+            const track = p.querySelector(".track");
+            track.scrollTo({ left: 0 });
+            track.classList.remove("sw-a");
+            void track.offsetWidth; // restart the swap animation
+            if (!reduce) track.classList.add("sw-a");
+          }
+        });
+        if (viewAll) viewAll.href = chip.href;
+      })
+    );
   }
 
   // ---- Segmented toggle (Trending: Today / This Week) ----

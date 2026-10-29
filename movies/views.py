@@ -1,6 +1,6 @@
 import math
 import time
-from datetime import datetime
+from datetime import date, datetime
 from functools import wraps
 
 import requests
@@ -23,12 +23,65 @@ from users.models import Watchlist
 from .comments import COMMENTS_PER_PAGE, get_annotated_comment, movie_comments, normalize_sort, toggle_vote
 from .forms import CommentForm
 from .models import COMMENT_MAX_LENGTH, Comment, CommentVote, Genre, Movies
-from .redis_services import TMDBFetchError, cache_search_results
+from .redis_services import TTL_LIST, TMDBFetchError, cache_search_results
 from .throttling import AIRecommendationThrottle, CommentCreateThrottle, CommentVoteThrottle
 from .tmdb_service import (
     TMDBClient,
+    fetch_parallel,
 )
 from .utils import COUNTRY_CODES, normalize_countries
+
+# Home "Pick by Mood": mood -> (TMDB movie genre id, icon). Chip labels come from
+# genre/movie/list, the picks row from discover/movie?with_genres={id}.
+MOODS = {
+    "comedy": (35, "i-smile"),
+    "drama": (18, "i-masks"),
+    "thriller": (53, "i-eye"),
+    "horror": (27, "i-ghost"),
+    "romance": (10749, "i-heart"),
+    "scifi": (878, "i-planet"),
+    "action": (28, "i-bolt"),
+    "fantasy": (14, "i-spark"),
+    "documentary": (99, "i-camera"),
+    "mystery": (9648, "i-moon"),
+}
+# Popular titles only, so a mood row isn't filled with obscure, unrated films.
+MOOD_DISCOVER_FILTERS = {"sort_by": "popularity.desc", "vote_count.gte": 300}
+
+# Home "Topic of the Day": TMDB keyword ids, one per day in rotation (see
+# topic_of_the_day). Checked against search/keyword on 2026-10-29: time travel,
+# heist, dystopia, cyberpunk, road trip, survival, artificial intelligence (a.i.),
+# haunted house, whodunit, space travel.
+TOPIC_KEYWORDS = (4379, 10051, 4565, 12190, 7312, 10349, 310, 3358, 12570, 3801)
+
+# discover/tv base filters, shared by the catalog pages and the home TV showcase.
+DORAMA_TV_FILTERS = {"with_original_language": "ko", "without_genres": 16, "max_page": 100}
+ANIME_TV_FILTERS = {
+    "with_genres": 16,  # 16 = Animation in TMDB
+    "with_original_language": "ja",  # Japan language
+    "with_origin_country": "JP",  # Japanese production
+    "max_page": 100,
+}
+CARTOON_TV_FILTERS = {"with_genres": 16, "with_origin_country": "US|GB|FR|CA|AU", "max_page": 100}
+
+# Home "TV & Categories" tabs: (slug, label, catalog url name). "tv" uses tv/popular.
+TV_SHOWCASE_TABS = (
+    ("tv", "TV Shows", "popular-tv"),
+    ("dorama", "Doramas", "dorams-tv"),
+    ("anime", "Anime", "anime-tv"),
+    ("cartoon", "Cartoons", "cartoon-tv"),
+)
+TV_SHOWCASE = {
+    "dorama": ("discover/tv", DORAMA_TV_FILTERS),
+    "anime": ("discover/tv", ANIME_TV_FILTERS),
+    "cartoon": ("discover/tv", CARTOON_TV_FILTERS),
+}
+
+
+def topic_of_the_day(today=None):
+    """Rotate TOPIC_KEYWORDS by calendar day: same topic for everyone all day."""
+    today = today or date.today()
+    return TOPIC_KEYWORDS[today.toordinal() % len(TOPIC_KEYWORDS)]
 
 
 class AllMoviesView(View):
@@ -211,36 +264,102 @@ class HomeView(View):
     def get(self, request):
         page = 1
         client = TMDBClient()
+        topic_id = topic_of_the_day()
 
-        hero_movies = client.get_list_with_trailers("movie/popular", page, "movie")
-        trending_all_week = client.get_list("trending/all/week", page)
-        trending_all_day = client.get_list("trending/all/day", page)
-        now_playings = client.get_list("movie/now_playing", page)  # Fetch data from TMDB
-        upcoming = client.get_list("movie/upcoming", page)
-        tv_serilas_popular = client.get_list("tv/popular", page)
-        now_popular = client.get_list("movie/popular", page)
-        top_rated = client.get_list("movie/top_rated", page)
-        filtered_upcoming = [
-            m for m in upcoming["results"] if m["id"] not in {x["id"] for x in now_playings["results"]}
+        tasks = {
+            "hero_movies": lambda: client.get_list_with_trailers("movie/popular", page, "movie"),
+            "trending_all_week": lambda: client.get_trending("all", "week"),
+            "trending_all_day": lambda: client.get_trending("all", "day"),
+            "trending_movie_week": lambda: client.get_trending("movie", "week"),
+            "trending_people": lambda: client.get_trending("person", "week"),
+            "now_playings": lambda: client.get_list("movie/now_playing", page),
+            "upcoming": lambda: client.get_list("movie/upcoming", page),
+            "tv_serials_popular": lambda: client.get_list("tv/popular", page),
+            "now_popular": lambda: client.get_list("movie/popular", page),
+            "top_rated": lambda: client.get_list("movie/top_rated", page),
+            "movie_genres": lambda: client.get_genres("movie"),
+            "topic": lambda: client.get_keyword(topic_id),
+            "topic_movies": lambda: client.get_keyword_movies(topic_id),
+        }
+        for slug, (genre_id, _icon) in MOODS.items():
+            tasks[f"mood:{slug}"] = lambda genre_id=genre_id: client.get_list(
+                "discover/movie", page, ttl=TTL_LIST, with_genres=genre_id, **MOOD_DISCOVER_FILTERS
+            )
+        for slug, (endpoint, filters) in TV_SHOWCASE.items():
+            tasks[f"tv:{slug}"] = lambda endpoint=endpoint, filters=filters: client.get_list(
+                endpoint, page, ttl=TTL_LIST, **filters
+            )
+        data = fetch_parallel(tasks)
+
+        def results(name):
+            return (data.get(name) or {}).get("results", [])
+
+        now_playings = results("now_playings")
+        now_popular = results("now_popular")
+        now_playing_ids = {m["id"] for m in now_playings}
+        popular_ids = {m["id"] for m in now_popular}
+        filtered_upcoming = [m for m in results("upcoming") if m["id"] not in now_playing_ids]
+        filtered_now_playings = [m for m in now_playings if m["id"] not in popular_ids]
+
+        # Second round, depends on the lists above: trailers for the Coming Soon
+        # cards and the Movie of the Week details (credits) - both from the same
+        # cached get_details() request the detail page uses.
+        # Movie of the Week rule: the #1 movie of TMDB trending/movie/week.
+        coming_soon = filtered_upcoming[:8]
+        motw_item = next(iter(results("trending_movie_week")), None)
+        second = {"coming_soon": lambda: client.attach_trailers(coming_soon, "movie")}
+        if motw_item:
+            second["motw"] = lambda: client.get_details(motw_item["id"], "movie")
+        data.update(fetch_parallel(second))
+
+        motw = None
+        if motw_item and (data.get("motw") or {}).get("id"):
+            motw = data["motw"]
+
+        genre_names = {genre["id"]: genre["name"] for genre in data.get("movie_genres") or []}
+        moods = [
+            {
+                "slug": slug,
+                "genre_id": genre_id,
+                "icon": icon,
+                "name": genre_names.get(genre_id),
+                "items": results(f"mood:{slug}"),
+            }
+            for slug, (genre_id, icon) in MOODS.items()
+            if genre_id in genre_names
         ]
-        filtered_now_playings = [
-            m for m in now_playings["results"] if m["id"] not in {x["id"] for x in now_popular["results"]}
+
+        topic_movies = data.get("topic_movies") or {}
+        topic = None
+        if data.get("topic") and topic_movies.get("results"):
+            topic = {**data["topic"], "movies": topic_movies["results"], "total": topic_movies.get("total_results")}
+
+        tv_showcase = [
+            {
+                "slug": slug,
+                "label": label,
+                "url": reverse(url_name),
+                "items": results("tv_serials_popular") if slug == "tv" else results(f"tv:{slug}"),
+            }
+            for slug, label, url_name in TV_SHOWCASE_TABS
         ]
-        actors = client.get_person().get("results", [])
-        actors = [a for a in actors if a.get("known_for_department") == "Acting"]
 
         context = {
-            "hero_movies": hero_movies,
-            "trending_all_week": trending_all_week["results"],
-            "trending_all_day": trending_all_day["results"],
-            "now_popular": now_popular["results"],
-            "tv_serials_popular": tv_serilas_popular["results"],
-            "top_rated": top_rated["results"],
-            "now_playings": now_playings["results"],
-            "upcoming": upcoming["results"],
-            "filtered_upcoming": filtered_upcoming,
+            "hero_movies": data.get("hero_movies") or [],
+            "trending_all_week": results("trending_all_week"),
+            "trending_all_day": results("trending_all_day"),
+            "now_popular": now_popular,
+            "tv_serials_popular": results("tv_serials_popular"),
+            "top_rated": results("top_rated"),
+            "now_playings": now_playings,
+            "upcoming": results("upcoming"),
+            "filtered_upcoming": data.get("coming_soon") or coming_soon,
             "filtered_now_playings": filtered_now_playings,
-            "actors": actors,
+            "actors": [a for a in results("trending_people") if a.get("known_for_department") == "Acting"],
+            "motw": motw,
+            "moods": moods,
+            "topic": topic,
+            "tv_showcase": tv_showcase,
         }
 
         return render(request, "movies/home.html", context)
@@ -483,12 +602,7 @@ class AnimeTVView(AllMoviesView):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.base_filters = {  # # Base TMDB query parameters
-            "with_genres": 16,  # 16 = Animation in TMDB
-            "with_original_language": "ja",  # Japan language
-            "with_origin_country": "JP",  # Japanese production
-            "max_page": 100,
-        }
+        self.base_filters = ANIME_TV_FILTERS  # Base TMDB query parameters
 
         self.media_type = "tv"
 
@@ -505,7 +619,7 @@ class DoramTVView(AllMoviesView):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.base_filters = {"with_original_language": "ko", "without_genres": 16, "max_page": 100}
+        self.base_filters = DORAMA_TV_FILTERS
         self.media_type = "tv"
 
     def get(self, request):
@@ -521,7 +635,7 @@ class CartoonTVView(AllMoviesView):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.base_filters = {"with_genres": 16, "with_origin_country": "US|GB|FR|CA|AU", "max_page": 100}
+        self.base_filters = CARTOON_TV_FILTERS
         self.media_type = "tv"
 
     def get(self, request):

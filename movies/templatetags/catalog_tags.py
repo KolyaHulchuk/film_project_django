@@ -91,3 +91,16 @@ def times(n):
         return range(int(n))
     except (TypeError, ValueError):
         return range(0)
+
+
+@register.filter
+def runtime(minutes):
+    """152 -> '2h 32m', 45 -> '45m'; '' for a missing/zero runtime."""
+    try:
+        minutes = int(minutes)
+    except (TypeError, ValueError):
+        return ""
+    if minutes <= 0:
+        return ""
+    hours, rest = divmod(minutes, 60)
+    return f"{hours}h {rest}m" if hours else f"{rest}m"

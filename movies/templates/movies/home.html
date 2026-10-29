@@ -1,6 +1,6 @@
 {% extends 'movies/base.html' %}
 {% load static catalog_tags %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/home.css' %}?v=3">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/home.css' %}?v=4">{% endblock %}
 {% block body_class %}mh-body home-page{% endblock %}
 {% block main_class %}mh-main{% endblock %}
 
@@ -70,7 +70,7 @@
   </div>
 </section>
 {% else %}
-{# PLACEHOLDER: needs TMDB movie/popular (or trending/movie/day + videos) in the home context; the hero shows grey blocks until then #}
+{# PLACEHOLDER: shown only when TMDB movie/popular failed; the hero shows grey blocks then #}
 <section class="hero" aria-label="Featured titles" aria-busy="true">
   <div class="hero-bg on noimg"></div><div class="hero-shade"></div><div class="hero-vig"></div>
   <div class="wrap hero-in"><div class="hero-copies"><div class="hero-copy">
@@ -139,8 +139,12 @@
               {% with d=item.release_date|pretty_date %}{% if d %}<div class="cs-date"><svg class="ic sm"><use href="#i-cal"/></svg>{{ d }}</div>{% endif %}{% endwith %}
               <div class="cs-foot">
                 <div class="chips">{% for name in item.genre_ids|genre_names:2 %}<span class="chip">{{ name }}</span>{% endfor %}</div>
-                {# PLACEHOLDER: needs movie/{id}/videos for an in-place trailer; opens the detail page (where the trailer plays) #}
-                <a href="{% url 'movie-detail' item.id 'movie' %}#trailer" class="btn btn-ghost sm"><svg class="ic sm fill"><use href="#i-play"/></svg>Trailer</a>
+                {# item.trailer comes from get_details (HomeView attach_trailers); without one the button opens the detail page #}
+                {% if item.trailer.key %}
+                  <button type="button" class="btn btn-ghost sm" data-trailer-open="{{ item.trailer.key }}" data-trailer-title="{{ item.trailer.name|default:item.title }}" style="position:relative;z-index:2"><svg class="ic sm fill"><use href="#i-play"/></svg>Trailer</button>
+                {% else %}
+                  <a href="{% url 'movie-detail' item.id 'movie' %}#trailer" class="btn btn-ghost sm" style="position:relative;z-index:2"><svg class="ic sm fill"><use href="#i-play"/></svg>Trailer</a>
+                {% endif %}
               </div>
             </div>
             <a class="pc-link" href="{% url 'movie-detail' item.id 'movie' %}" aria-label="{{ item.title }} details" style="z-index:1"></a>
@@ -151,7 +155,7 @@
   </div>
 </section>
 {% else %}
-{# PLACEHOLDER: needs TMDB movie/upcoming in the home context #}
+{# PLACEHOLDER: shown only when TMDB movie/upcoming failed #}
 <section class="sec reveal" style="--sg:68px" aria-labelledby="h-soon">
   <div class="wrap">
     <div class="sec-head"><div><div class="eyebrow">In theaters soon</div><h2 id="h-soon">Coming Soon</h2></div><a href="{% url 'upcoming' %}" class="viewall">Release calendar <svg class="ic sm"><use href="#i-chr"/></svg></a></div>
@@ -160,8 +164,55 @@
 </section>
 {% endif %}
 
-{# SECTION 4 — MOVIE OF THE WEEK #}
-{# PLACEHOLDER: needs a curated tmdb id (DB/setting) + TMDB movie/{id} and credits (top 4 cast); no invented editor's pick/week number #}
+{# SECTION 4 — MOVIE OF THE WEEK: #1 of TMDB trending/movie/week + movie/{id}?append_to_response=credits,... (motw, see HomeView) #}
+{% if motw %}
+<section class="sec reveal" style="--sg:104px" aria-labelledby="h-motw">
+  <div class="wrap">
+    <div class="motw-wrap">
+      <article class="motw">
+        <div class="motw-still">
+          <div class="bg{% if not motw.backdrop_path %} noposter{% endif %}" role="img" aria-label="Backdrop: {{ motw.title }}">{% if motw.backdrop_path %}<img src="https://image.tmdb.org/t/p/w1280{{ motw.backdrop_path }}" alt="" loading="lazy">{% endif %}</div>
+          <div class="shade"></div><div class="film" aria-hidden="true"></div>
+          <div class="cap-in"><span class="stamp">#1 trending this week</span>{% if motw.vote_average %}<span class="badge"><svg class="ic fill"><use href="#i-star"/></svg>{{ motw.vote_average|floatformat:1 }} · {{ motw.vote_count|compact_votes }}</span>{% endif %}</div>
+        </div>
+        <div class="motw-body">
+          <div class="motw-label" id="h-motw">Movie of the Week</div>
+          <div class="motw-head">
+            <div class="motw-poster{% if not motw.poster_path %} noposter{% endif %}">{% if motw.poster_path %}<img src="https://image.tmdb.org/t/p/w342{{ motw.poster_path }}" alt="Poster: {{ motw.title }}" loading="lazy" width="128" height="192">{% else %}<span class="pc-ptitle" style="font-size:14px">{{ motw.title }}</span>{% endif %}</div>
+            <div>
+              <h3>{{ motw.title }}</h3>
+              {% if motw.tagline %}<p class="tagline">“{{ motw.tagline }}”</p>{% endif %}
+              {% if motw.genres %}<div class="chips" style="margin-top:14px">{% for g in motw.genres|slice:":3" %}<span class="chip">{{ g.name }}</span>{% endfor %}</div>{% endif %}
+            </div>
+          </div>
+          {% if motw.vote_average %}<div class="bigrate"><b>{{ motw.vote_average|floatformat:1 }}</b><span>/ 10</span><small>{{ motw.release_date|year_of }}{% if motw.runtime %} · {{ motw.runtime|runtime }}{% endif %}</small></div>{% endif %}
+          {% if motw.overview %}<p class="desc">{{ motw.overview }}</p>{% endif %}
+          {% if motw.cast %}
+          <div class="cast" role="list" aria-label="Top cast">
+            {% for p in motw.cast|slice:":4" %}
+              <div class="cast-i" role="listitem"><span class="av" style="background:linear-gradient(160deg,#34343a,#18181b)"><span aria-hidden="true">{{ p.name|slice:":1" }}</span>{% if p.profile_path %}<img src="https://image.tmdb.org/t/p/w185{{ p.profile_path }}" alt="Photo of {{ p.name }}" loading="lazy" onerror="this.remove()">{% endif %}</span><span><b>{{ p.name }}</b>{% if p.character %}<span class="r">{{ p.character }}</span>{% endif %}</span></div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <div class="motw-btns">
+            <a href="{% url 'movie-detail' motw.id 'movie' %}" class="btn btn-red">Details</a>
+            {% if user.is_authenticated %}
+              <form method="post" action="{% url 'add_watchlist' motw.id 'movie' %}" class="watchlist-form" data-watchlist-form data-remove-url="">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="btn btn-ghost watchlist-btn" aria-pressed="false"><svg class="ic sm"><use href="#i-plus"/></svg><span class="wl-add">Add to Watchlist</span><span class="wl-in">In Watchlist</span></button>
+              </form>
+            {% else %}
+              <a href="{% url 'login' %}?next={{ request.path|urlencode }}" class="btn btn-ghost"><svg class="ic sm"><use href="#i-plus"/></svg>Add to Watchlist</a>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+{% else %}
+{# PLACEHOLDER: shown only when TMDB trending/movie/week or movie/{id} failed #}
 <section class="sec reveal" style="--sg:104px" aria-labelledby="h-motw">
   <div class="wrap">
     <div class="sk" style="border-radius:28px;min-height:560px;display:grid;grid-template-columns:1.32fr 1fr" aria-busy="true" aria-label="Movie of the Week (not loaded yet)">
@@ -177,6 +228,7 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 {# SECTION 5 — POPULAR RIGHT NOW: movie/popular (Movies) + tv/popular (TV) + now_playing minus popular (In Theaters), filtered client-side by tab #}
 <section class="sec sec-pop reveal" aria-labelledby="h-pop">
@@ -202,7 +254,7 @@
         {% for item in filtered_now_playings|slice:":10" %}{% include 'movies/partials/media_card.html' with data_kind="theater" media_type='movie' variant='pp' kind_label='Movie' %}{% endfor %}
         {% for item in tv_serials_popular|slice:":10" %}{% include 'movies/partials/media_card.html' with data_kind="tv" media_type='tv' variant='pp' kind_label='TV' %}{% endfor %}
         {% if not now_popular and not filtered_now_playings and not tv_serials_popular %}
-          {# PLACEHOLDER: needs TMDB movie/popular, movie/now_playing and tv/popular in the home context #}
+          {# PLACEHOLDER: shown only when TMDB movie/popular, movie/now_playing and tv/popular all failed #}
           {% include 'movies/components/skeleton_cards.html' with count=7 variant='pp' %}
         {% endif %}
       </div>
@@ -210,29 +262,37 @@
   </div>
 </section>
 
-{# SECTION 6 — PICK BY MOOD: mood chips link into the catalog filtered by genre (no extra TMDB calls) #}
+{# SECTION 6 — PICK BY MOOD: chips = TMDB genre/movie/list names for HomeView.MOODS, one row per mood from discover/movie?with_genres={id}; home.js switches rows #}
 {% url 'movie' as mood_url %}
 <section class="sec sec-mood hov reveal" style="--sg:64px;--at:91px" aria-labelledby="h-mood">
   <div class="wrap">
+    {% if moods %}
+    {% with first=moods.0 %}
+    <div class="pop-head">
+      <div class="pop-title"><div class="eyebrow">Not sure what to watch?</div><h2 id="h-mood">Pick by Mood</h2></div>
+      <div class="pop-tools"><a href="{{ mood_url }}?genre_search={{ first.genre_id }}" class="viewall" data-mood-all>View all <svg class="ic sm"><use href="#i-chr"/></svg></a></div>
+    </div>
+    {% endwith %}
+    <div class="moods" role="group" aria-label="Pick a mood" data-moods>
+      {% for m in moods %}
+        <a class="mood{% if forloop.first %} on{% endif %}" href="{{ mood_url }}?genre_search={{ m.genre_id }}" data-mood="{{ m.slug }}" role="button" aria-pressed="{% if forloop.first %}true{% else %}false{% endif %}"><svg class="ic"><use href="#{{ m.icon }}"/></svg>{{ m.name }}</a>
+      {% endfor %}
+    </div>
+    {% for m in moods %}
+    <div class="row-wrap" data-row data-mood-panel="{{ m.slug }}"{% if not forloop.first %} hidden{% endif %}>
+      <button type="button" class="arrow l" data-row-prev aria-label="Scroll {{ m.name }} picks left"><svg class="ic"><use href="#i-chl"/></svg></button>
+      <button type="button" class="arrow r" data-row-next aria-label="Scroll {{ m.name }} picks right"><svg class="ic"><use href="#i-chr"/></svg></button>
+      <div class="track swap" tabindex="0" role="region" aria-label="{{ m.name }} movies, scrollable">
+        {% for item in m.items|slice:":14" %}{% include 'movies/partials/media_card.html' with media_type='movie' variant='md' %}{% empty %}{% include 'movies/components/skeleton_cards.html' with count=7 variant='md' %}{% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    {# PLACEHOLDER: shown only when TMDB genre/movie/list failed; the chips need its genre names #}
     {% include 'movies/partials/section_header.html' with eyebrow="Not sure what to watch?" title="Pick by Mood" title_id="h-mood" link_url=mood_url %}
-    <div class="moods" role="group" aria-label="Pick a mood">
-      <a class="mood" href="{% url 'movie' %}?genre_search=35"><svg class="ic"><use href="#i-smile"/></svg>Comedy</a>
-      <a class="mood" href="{% url 'movie' %}?genre_search=18"><svg class="ic"><use href="#i-masks"/></svg>Drama</a>
-      <a class="mood" href="{% url 'movie' %}?genre_search=53"><svg class="ic"><use href="#i-eye"/></svg>Thriller</a>
-      <a class="mood" href="{% url 'movie' %}?genre_search=27"><svg class="ic"><use href="#i-ghost"/></svg>Horror</a>
-      <a class="mood" href="{% url 'movie' %}?genre_search=10749"><svg class="ic"><use href="#i-heart"/></svg>Romance</a>
-      <a class="mood" href="{% url 'movie' %}?genre_search=878"><svg class="ic"><use href="#i-planet"/></svg>Sci-Fi</a>
-      <a class="mood" href="{% url 'movie' %}?genre_search=28"><svg class="ic"><use href="#i-bolt"/></svg>Action</a>
-      <a class="mood" href="{% url 'movie' %}?genre_search=14"><svg class="ic"><use href="#i-spark"/></svg>Fantasy</a>
-      <a class="mood" href="{% url 'movie' %}?genre_search=99"><svg class="ic"><use href="#i-camera"/></svg>Documentary</a>
-      <a class="mood" href="{% url 'movie' %}?genre_search=9648"><svg class="ic"><use href="#i-moon"/></svg>Mystery</a>
-    </div>
-    {# PLACEHOLDER: needs TMDB discover/movie?with_genres={mood id} for the picks row; the chips already link into the catalog #}
-    <div class="row-wrap" data-row>
-      <button type="button" class="arrow l" aria-label="Scroll picks left" aria-disabled="true" tabindex="-1"><svg class="ic"><use href="#i-chl"/></svg></button>
-      <button type="button" class="arrow r" aria-label="Scroll picks right" aria-disabled="true" tabindex="-1"><svg class="ic"><use href="#i-chr"/></svg></button>
-      <div class="track" aria-busy="true" aria-label="Picks for your mood (not loaded yet)">{% include 'movies/components/skeleton_cards.html' with count=7 variant='md' %}</div>
-    </div>
+    <div class="moods" aria-busy="true">{% for i in 6|times %}<div class="sk pulse" style="flex:none;width:112px;height:40px;border-radius:999px"></div>{% endfor %}</div>
+    <div class="track" aria-busy="true" aria-label="Picks for your mood (not loaded yet)">{% include 'movies/components/skeleton_cards.html' with count=7 variant='md' %}</div>
+    {% endif %}
   </div>
 </section>
 
@@ -259,7 +319,7 @@
   </div>
 </section>
 {% else %}
-{# PLACEHOLDER: needs TMDB movie/top_rated in the home context #}
+{# PLACEHOLDER: shown only when TMDB movie/top_rated failed #}
 <section class="sec reveal" style="--sg:64px" aria-labelledby="h-greats">
   <div class="wrap">
     {% url 'top-rated' as top_url %}
@@ -269,8 +329,7 @@
 </section>
 {% endif %}
 
-{# SECTION 8 — STARS OF THE WEEK. Real data = TMDB person/popular (acting only) from HomeView; not "trending this week" yet #}
-{# PLACEHOLDER: needs TMDB trending/person/week for a true weekly list; person detail pages for the card links #}
+{# SECTION 8 — STARS OF THE WEEK: TMDB trending/person/week, actors only (actors). Cards are not links: no person page yet #}
 <section class="sec hov reveal" style="--sg:60px;--at:41px" aria-labelledby="h-stars">
   <div class="wrap">
     {% url 'popular-actors' as actors_url %}
@@ -285,10 +344,26 @@
   </div>
 </section>
 
-{# SECTION 9 — TOPIC OF THE DAY #}
-{# PLACEHOLDER: needs TMDB keyword/{id}/movies (+ keywords of a featured movie); no invented topic name or counts #}
+{# SECTION 9 — TOPIC OF THE DAY: keyword of the day (HomeView.TOPIC_KEYWORDS) -> keyword/{id} name + keyword/{id}/movies #}
 <section class="sec reveal" style="--sg:84px" aria-labelledby="h-topic">
   <div class="wrap">
+    {% if topic %}
+    <article class="tp">
+      <div class="tp-collage" aria-hidden="true">
+        {% for m in topic.movies|slice:":4" %}<div class="tp-p{% if not m.poster_url %} noposter{% endif %}">{% if m.poster_url %}<img src="{{ m.poster_url }}" alt="" loading="lazy">{% else %}<svg class="ic"><use href="#i-film"/></svg><span class="tp-t">{{ m.title }}</span>{% endif %}</div>{% endfor %}
+      </div>
+      <div class="tp-fade"></div>
+      <div class="tp-in">
+        <div class="eyebrow" style="margin:0">Topic of the day</div>
+        <h2 id="h-topic">{{ topic.name|capfirst }}</h2>
+        <p class="tease">{% for m in topic.movies|slice:":3" %}{{ m.title }}{% if not forloop.last %}, {% endif %}{% endfor %} and more films tagged “{{ topic.name }}” on TMDB.</p>
+        <div class="tp-meta"><span class="chip">#{{ topic.name|slugify }}</span>{% if topic.total %}<span>{{ topic.total }} films</span>{% endif %}</div>
+        {# PLACEHOLDER: needs a keyword collection page; the CTA opens the top film of the topic until then #}
+        {% with top=topic.movies.0 %}<a href="{% url 'movie-detail' top.id 'movie' %}" class="btn btn-red" style="margin-top:6px">Explore collection <svg class="ic sm"><use href="#i-chr"/></svg></a>{% endwith %}
+      </div>
+    </article>
+    {% else %}
+    {# PLACEHOLDER: shown only when TMDB keyword/{id} or keyword/{id}/movies failed #}
     <article class="tp" aria-busy="true">
       <div class="tp-collage" aria-hidden="true">{% for i in 4|times %}<div class="tp-p sk pulse"></div>{% endfor %}</div>
       <div class="tp-fade"></div>
@@ -301,33 +376,33 @@
         <a href="#" class="btn btn-red sk-off" aria-disabled="true" tabindex="-1" style="margin-top:6px">Explore collection <svg class="ic sm"><use href="#i-chr"/></svg></a>
       </div>
     </article>
+    {% endif %}
   </div>
 </section>
 
-{# SECTION 10 — TV & CATEGORIES: featured + 6 minis from tv/popular; category tabs are links to the existing catalog pages #}
-{% if tv_serials_popular %}
+{# SECTION 10 — TV & CATEGORIES: one panel per tab (tv_showcase): TV Shows = tv/popular, Doramas / Anime / Cartoons = discover/tv with the catalog pages' base filters. home.js switches panels #}
 <section class="sec reveal" style="--sg:68px" aria-labelledby="h-cats">
   <div class="wrap">
     <div class="pop-head">
       <div class="pop-title"><div class="eyebrow">Beyond movies</div><h2 id="h-cats">TV &amp; Categories</h2></div>
       <div class="pop-tools">
-        <nav class="ctabs" aria-label="Choose a category">
-          <a class="ptab on" href="{% url 'tv' %}" aria-current="true">TV Shows</a>
-          <a class="ptab" href="{% url 'dorams-tv' %}">Doramas</a>
-          <a class="ptab" href="{% url 'anime-tv' %}">Anime</a>
-          <a class="ptab" href="{% url 'cartoon-tv' %}">Cartoons</a>
-        </nav>
-        <a href="{% url 'popular-tv' %}" class="viewall">View all <svg class="ic sm"><use href="#i-chr"/></svg></a>
+        <div class="ctabs" role="group" aria-label="Choose a category" data-tabs="cats">
+          {% for cat in tv_showcase %}<button type="button" class="ptab{% if forloop.first %} on{% endif %}" data-tab="{{ cat.slug }}" data-url="{{ cat.url }}" aria-pressed="{% if forloop.first %}true{% else %}false{% endif %}">{{ cat.label }}</button>{% endfor %}
+          <span class="ptab-line" aria-hidden="true"></span>
+        </div>
+        <a href="{{ tv_showcase.0.url }}" class="viewall" data-tabs-all="cats">View all <svg class="ic sm"><use href="#i-chr"/></svg></a>
       </div>
     </div>
-    <div class="sc">
-      {% with feat=tv_serials_popular.0 %}
+    {% for cat in tv_showcase %}
+    <div class="sc" data-tab-panel="cats" data-kind="{{ cat.slug }}"{% if not forloop.first %} hidden{% endif %}>
+      {% if cat.items %}
+      {% with feat=cat.items.0 %}
       <article class="sc-feat">
-        <div class="bg" role="img" aria-label="Backdrop: {{ feat.name }}">
+        <div class="bg{% if not feat.backdrop_path and not feat.poster_url %} noposter{% endif %}" role="img" aria-label="Backdrop: {{ feat.name }}">
           {% if feat.backdrop_path %}<img src="https://image.tmdb.org/t/p/w780{{ feat.backdrop_path }}" alt="" loading="lazy">{% elif feat.poster_url %}<img src="{{ feat.poster_url }}" alt="" loading="lazy">{% endif %}
         </div>
         <div class="shade"></div>
-        <div class="top"><span class="chip type">TV Shows</span>{% if feat.vote_average %}<span class="badge"><svg class="ic fill"><use href="#i-star"/></svg>{{ feat.vote_average|floatformat:1 }}</span>{% endif %}</div>
+        <div class="top"><span class="chip type">{{ cat.label }}</span>{% if feat.vote_average %}<span class="badge"><svg class="ic fill"><use href="#i-star"/></svg>{{ feat.vote_average|floatformat:1 }}</span>{% endif %}</div>
         <div class="body">
           <h3>{{ feat.name }}</h3>
           <div class="m">{{ feat.first_air_date|year_of }}{% with g=feat.genre_ids|genre_names:1 %}{% if g %} · {{ g.0 }}{% endif %}{% endwith %}</div>
@@ -337,25 +412,21 @@
       </article>
       {% endwith %}
       <div class="sc-grid">
-        {% for item in tv_serials_popular|slice:"1:7" %}
+        {% for item in cat.items|slice:"1:7" %}
           <a href="{% url 'movie-detail' item.id 'tv' %}" class="mc" aria-label="{{ item.name }}{% if item.first_air_date %} ({{ item.first_air_date|year_of }}){% endif %}{% if item.vote_average %}, rated {{ item.vote_average|floatformat:1 }}{% endif %}">
             <span class="mc-th{% if not item.poster_url %} noposter{% endif %}">{% if item.poster_url %}<img src="{{ item.poster_url }}" alt="" loading="lazy" width="74" height="111">{% endif %}</span>
             <span class="mc-b"><span class="mc-t">{{ item.name }}</span><span class="mc-m">{{ item.first_air_date|year_of }}{% with g=item.genre_ids|genre_names:1 %}{% if g %} · {{ g.0 }}{% endif %}{% endwith %}</span>{% if item.vote_average %}<span class="badge"><svg class="ic fill"><use href="#i-star"/></svg>{{ item.vote_average|floatformat:1 }}</span>{% endif %}</span>
           </a>
         {% endfor %}
       </div>
+      {% else %}
+      {# PLACEHOLDER: shown only when this category's TMDB list (tv/popular or discover/tv) failed #}
+      <div class="sk" style="min-height:304px;border-radius:22px" aria-busy="true"></div><div class="sc-grid">{% for i in 6|times %}<div class="mc"><div class="sk pulse mc-th"></div><div class="mc-b" style="flex:1"><div class="sk pulse sk-line" style="width:90%;margin:0"></div><div class="sk pulse sk-line" style="width:50%;height:9px;margin:0"></div></div></div>{% endfor %}</div>
+      {% endif %}
     </div>
+    {% endfor %}
   </div>
 </section>
-{% else %}
-{# PLACEHOLDER: needs TMDB tv/popular (+ discover/tv per category) in the home context #}
-<section class="sec reveal" style="--sg:68px" aria-labelledby="h-cats">
-  <div class="wrap">
-    <div class="pop-head"><div class="pop-title"><div class="eyebrow">Beyond movies</div><h2 id="h-cats">TV &amp; Categories</h2></div></div>
-    <div class="sc" aria-busy="true"><div class="sk" style="min-height:304px;border-radius:22px"></div><div class="sc-grid">{% for i in 6|times %}<div class="mc"><div class="sk pulse mc-th"></div><div class="mc-b" style="flex:1"><div class="sk pulse sk-line" style="width:90%;margin:0"></div><div class="sk pulse sk-line" style="width:50%;height:9px;margin:0"></div></div></div>{% endfor %}</div></div>
-  </div>
-</section>
-{% endif %}
 
 {# SECTION 11 — CALL TO ACTION (guests only) #}
 {% if not user.is_authenticated %}
@@ -376,4 +447,4 @@
 </div>
 {% endblock %}
 
-{% block page_js %}<script src="{% static 'movies/home.js' %}?v=3" defer></script>{% endblock %}
+{% block page_js %}<script src="{% static 'movies/home.js' %}?v=4" defer></script>{% endblock %}

@@ -1,9 +1,9 @@
 {% load catalog_tags %}
-{# Home poster card (design: .pc). Params: data_kind (optional, tab filter key), item, media_type ("movie"|"tv"), variant ("tr" wide with rank | "pp" compact), rank (optional). #}
+{# Home poster card (design: .pc). Params: data_kind (optional, tab filter key), item, media_type ("movie"|"tv"), variant ("tr" wide with rank | "pp" compact | "md" mood row), rank (optional). #}
 {% firstof item.title item.name as title %}
 {% firstof item.id item.tmdb_id as tid %}
 {% firstof item.release_date item.first_air_date as date %}
-<article class="pc {% if variant == 'tr' %}tr-card{% else %}pp-card{% endif %}"{% if data_kind %} data-kind="{{ data_kind }}"{% endif %}>
+<article class="pc {% if variant == 'tr' %}tr-card{% elif variant == 'md' %}md-card{% else %}pp-card{% endif %}"{% if data_kind %} data-kind="{{ data_kind }}"{% endif %}>
   <div class="pc-frame">
     <div class="pc-art">
       {% if item.poster_url %}<img src="{{ item.poster_url }}" alt="Poster: {{ title }}" loading="lazy" width="342" height="513">

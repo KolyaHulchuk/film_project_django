@@ -4,6 +4,7 @@ import os
 import time
 
 import redis
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
@@ -53,11 +54,60 @@ def _cache_aside(cache_key, fetch_function, ttl):
     return result
 
 
-def cache_data_movie(endpoint, page, fetch_function, **kwargs):
+# TTLs for TMDB responses. Curated TMDB lists (trending, popular, ...) only
+# reshuffle a few times a day; filtered discover pages keep the short default
+# so every filter combination doesn't sit in Redis for half a day.
+TTL_LIST_DEFAULT = 900
+TTL_LIST = 43200  # 12h
+TTL_DETAIL = 86400  # 24h: movie/tv details (+ append_to_response), collection, season
+TTL_GENRES = 129600  # 36h
+
+LONG_TTL_LIST_ENDPOINTS = (
+    "trending/",
+    "movie/upcoming",
+    "movie/top_rated",
+    "movie/popular",
+    "movie/now_playing",
+    "tv/popular",
+    "tv/top_rated",
+    "tv/airing_today",
+    "tv/on_the_air",
+)
+
+
+def cache_data_movie(endpoint, page, fetch_function, ttl=None, **kwargs):
     cache_kwargs = {k: v for k, v in kwargs.items() if k != "max_page"}
     params_str = "&".join(f"{k}={v}" for k, v in sorted(cache_kwargs.items()))
-    cache_key = f"movies:list:v1:{endpoint}:{page}:{params_str}"
-    return _cache_aside(cache_key, fetch_function, ttl=900)
+    cache_key = f"movies:list:v2:{endpoint}:{page}:{params_str}"
+    if ttl is None:
+        ttl = TTL_LIST if endpoint.startswith(LONG_TTL_LIST_ENDPOINTS) else TTL_LIST_DEFAULT
+    return _cache_aside(cache_key, fetch_function, ttl=ttl)
+
+
+def cache_tmdb(cache_key, fetch_function, ttl):
+    """Cache-aside through Django's cache framework (CACHES["default"], the same Redis).
+
+    Same contract as _cache_aside(): a TMDBFetchError from fetch_function hands its
+    fallback back uncached, and a cache outage only means an uncached fetch.
+    """
+    try:
+        cached = cache.get(cache_key)
+    except Exception as exc:  # the Redis backend raises redis-py errors, not a Django one
+        logger.warning("Cache unavailable, skipping lookup for %s: %r", cache_key, exc)
+        cached = None
+    if cached is not None:
+        return cached
+
+    try:
+        result = fetch_function()
+    except TMDBFetchError as exc:
+        return exc.fallback
+
+    try:
+        cache.set(cache_key, result, ttl)
+    except Exception as exc:
+        logger.warning("Cache unavailable, skipping store for %s: %r", cache_key, exc)
+    return result
 
 
 def cache_item_detail(kind, media_type, tmdb_id, fetch_function):
@@ -149,4 +199,4 @@ def cache_genres(media_type, fetch_function):
     cache_key = f"movies:genres:v1:{media_type}"
     # TTL is much longer than even cache_item_detail's: TMDB's genre list is
     # effectively static, unlike per-item ratings/details.
-    return _cache_aside(cache_key, fetch_function, ttl=86400)
+    return _cache_aside(cache_key, fetch_function, ttl=TTL_GENRES)
