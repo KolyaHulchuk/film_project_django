@@ -20,6 +20,10 @@
     {% endif %}
     <a class="clr" href="{% qs_without 'genre_search' 'years_search' 'country_search' 'rating_search' %}"><svg class="ic"><use href="#i-close"/></svg>Clear all</a>{% endif %}
   </div>
-  {# PLACEHOLDER: needs TMDB total_results for the "N results" counter #}
+  {% if total_results is not None %}
+  <div class="res">{{ total_results|floatformat:"0g" }} result{{ total_results|pluralize }}</div>
+  {% else %}
+  {# PLACEHOLDER: shown only when the TMDB list request failed (total_results) #}
   <div class="res" aria-hidden="true"><span class="sk pulse sk-inline" style="width:70px;height:14px"></span> results</div>
+  {% endif %}
 </div>

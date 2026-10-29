@@ -32,6 +32,8 @@
     layer.classList.toggle("sheet", sheet);
     layer.className = layer.className.replace(/\bw-\S+/g, "").trim();
     if (!sheet) layer.classList.add("w-" + key);
+    layer.classList.toggle("r", !sheet && key === "sort"); // the sort chip sits on the right edge
+    if (layer.classList.contains("r")) layer.style.left = "";
     panels.forEach((p) => (p.hidden = key !== "all" && p.dataset.panel !== key));
     layer.hidden = false;
     scrim.hidden = false;
@@ -39,7 +41,7 @@
     root.classList.toggle("sheetopen", sheet);
     trigger.classList.add("open");
     trigger.setAttribute("aria-expanded", "true");
-    if (!sheet) {
+    if (!sheet && key !== "sort") {
       layer.style.left = trigger.offsetLeft + "px";
       const overflow = layer.getBoundingClientRect().right - (window.innerWidth - 16);
       if (overflow > 0) layer.style.left = Math.max(0, trigger.offsetLeft - overflow) + "px";
@@ -61,7 +63,7 @@
   function refresh() {
     triggers.forEach((t) => {
       const panel = layer.querySelector('[data-panel="' + t.dataset.pop + '"]');
-      if (!panel) return;
+      if (!panel || t.dataset.pop === "sort") return; // the sort chip shows its label, not a count
       const active = Array.from(panel.querySelectorAll("input[name]")).filter((el) =>
         el.type === "radio" ? el.checked : el.type === "range" ? Number(el.value) > 0 : el.value.trim() !== ""
       ).length;
@@ -74,7 +76,7 @@
       }
       if (n) active ? (n.textContent = active) : n.remove();
     });
-    form.querySelectorAll("label.gchip, label.cs-row").forEach((l) => {
+    form.querySelectorAll("label.gchip, label.cs-row, label.so-row").forEach((l) => {
       const r = l.querySelector('input[type="radio"]');
       if (r) l.classList.toggle("on", r.checked);
     });
@@ -125,6 +127,8 @@
     form.querySelectorAll('input[type="number"], input[type="range"]').forEach((el) => {
       if (el.value === "" || (el.type === "range" && Number(el.value) === 0)) el.disabled = true;
     });
+    const sort = form.querySelector('input[name="sort"][value="popularity"]');
+    if (sort && sort.checked) sort.disabled = true; // the default sort stays out of the URL
   });
 
   if (htmx) {

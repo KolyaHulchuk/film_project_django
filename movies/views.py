@@ -78,6 +78,17 @@ TV_SHOWCASE = {
 }
 
 
+# Catalog "Sort" chip (discover pages only): ?sort=<key> -> (label, movie sort_by, tv sort_by).
+CATALOG_SORTS = {
+    "popularity": ("Popularity", "popularity.desc", "popularity.desc"),
+    "rating": ("Rating", "vote_average.desc", "vote_average.desc"),
+    "newest": ("Release date", "primary_release_date.desc", "first_air_date.desc"),
+    "title": ("A–Z", "title.asc", "name.asc"),
+}
+# Rating / A-Z sorts and the min-rating filter would otherwise surface titles with a handful of votes.
+MIN_VOTES = 100
+
+
 def topic_of_the_day(today=None):
     """Rotate TOPIC_KEYWORDS by calendar day: same topic for everyone all day."""
     today = today or date.today()
@@ -95,6 +106,7 @@ class AllMoviesView(View):
     parials_name = "movies/partials/movie_list.html"  # class attribute, overriden in subclasses
     item_func = None
     media_type = "movie"
+    sortable = False  # True on the discover-based pages, where search_filter_movie() sends sort_by
 
     def get(self, request):
         view_start = time.perf_counter()
@@ -152,6 +164,10 @@ class AllMoviesView(View):
             "countries": COUNTRY_CODES,
             "genres": genres,
             "current_filters": current_filters,
+            "total_results": data.get("total_results"),
+            "sortable": self.sortable,
+            "sort_options": [(key, label) for key, (label, _, _) in CATALOG_SORTS.items()],
+            "current_sort": self.current_sort(request),
         }
 
         # # If the request comes from HTMX, render only the partial template
@@ -194,7 +210,23 @@ class AllMoviesView(View):
         if country:
             extra_filters["with_origin_country"] = country
 
+        sort = self.current_sort(request)
+        _label, movie_sort, tv_sort = CATALOG_SORTS[sort]
+        if sort != "popularity":
+            extra_filters["sort_by"] = tv_sort if self.media_type == "tv" else movie_sort
+        if sort == "newest":
+            # without an upper bound "newest" is all announced, unreleased titles
+            today = date.today().isoformat()
+            extra_filters["first_air_date.lte" if self.media_type == "tv" else "primary_release_date.lte"] = today
+        if sort in ("rating", "title") or "vote_average.gte" in extra_filters:
+            extra_filters["vote_count.gte"] = MIN_VOTES
+
         return extra_filters
+
+    @staticmethod
+    def current_sort(request):
+        sort = request.GET.get("sort", "popularity")
+        return sort if sort in CATALOG_SORTS else "popularity"
 
 
 class PopularMoviesView(AllMoviesView):
@@ -628,6 +660,7 @@ class MoviesDetailView(View):
 class TVViews(AllMoviesView):
     title = "TV"
     template_name = "movies/type/tv.html"
+    sortable = True
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -647,6 +680,7 @@ class TVViews(AllMoviesView):
 class AnimeTVView(AllMoviesView):
     title = "Anime TV"
     template_name = "movies/type/anime.html"
+    sortable = True
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -664,6 +698,7 @@ class AnimeTVView(AllMoviesView):
 class DoramTVView(AllMoviesView):
     title = "Dorams TV"
     template_name = "movies/type/dorams.html"
+    sortable = True
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -680,6 +715,7 @@ class DoramTVView(AllMoviesView):
 class CartoonTVView(AllMoviesView):
     title = "Cartoon TV"
     template_name = "movies/type/cartoons.html"
+    sortable = True
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -696,6 +732,7 @@ class CartoonTVView(AllMoviesView):
 class MovieView(AllMoviesView):
     title = "Movie"
     template_name = "movies/type/movie.html"
+    sortable = True
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

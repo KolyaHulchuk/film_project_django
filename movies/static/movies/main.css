@@ -465,3 +465,8 @@ html { scroll-padding-top: 76px; }
 .tb .count .sk { display: inline-block; }
 .fchip[aria-disabled="true"] { pointer-events: none; }
 .res .sk-inline { margin-right: 4px; }
+/* Catalog sort popover: radio rows (.so-row) inside the filter form */
+.so-row{cursor:pointer}
+.so-row .ic{visibility:hidden}
+.so-row.on .ic{visibility:visible}
+.layer.w-sort .panel-h.sort-h{display:none}

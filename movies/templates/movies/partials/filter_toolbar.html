@@ -1,4 +1,4 @@
-{# Filter toolbar (design: .tbar). Plain GET form with the existing params: genre_search, years_search, country_search, rating_search. #}
+{# Filter toolbar (design: .tbar). Plain GET form with the existing params: genre_search, years_search, country_search, rating_search, sort. #}
 <div class="tbar" data-filters{% if inert %} data-inert{% endif %}>
   <div class="wrap">
     {# inert=True on list pages whose views ignore filters (popular, top rated, ...): controls are visible but disabled #}
@@ -11,8 +11,12 @@
       </div>
       <button type="button" class="fchip fbtn-m" data-pop="all"{% if inert %} aria-disabled="true"{% endif %} aria-haspopup="dialog" aria-expanded="false"><svg class="ic" style="width:16px;height:16px"><use href="#i-sliders"/></svg>Filters</button>
 
-      {# PLACEHOLDER: needs a sort param (sort_by) in AllMoviesView.search_filter_movie; the chip is visible but inert #}
-      <button type="button" class="fchip sort" aria-disabled="true" aria-haspopup="listbox" tabindex="-1">Sort: <b>Popularity</b><svg class="ic chev"><use href="#i-down"/></svg></button>
+      {% if sortable %}
+        {% for key, label in sort_options %}{% if key == current_sort %}<button type="button" class="fchip sort" data-pop="sort" aria-haspopup="listbox" aria-expanded="false">Sort: <b>{{ label }}</b><svg class="ic chev"><use href="#i-down"/></svg></button>{% endif %}{% endfor %}
+      {% else %}
+        {# PLACEHOLDER: TMDB's fixed lists (movie/popular, top_rated, ...) take no sort_by; only the discover pages sort #}
+        <button type="button" class="fchip sort" aria-disabled="true" aria-haspopup="listbox" tabindex="-1">Sort: <b>Popularity</b><svg class="ic chev"><use href="#i-down"/></svg></button>
+      {% endif %}
 
       <div class="scrim" data-scrim hidden></div>
       <div class="layer" data-layer role="dialog" aria-label="Filters" hidden>
@@ -41,6 +45,16 @@
               <div class="s-empty" data-country-none hidden>No country matches your search.</div>
             </div>
           </section>
+          {% if sortable %}
+          <section class="panel" data-panel="sort" aria-label="Sort by">
+            <div class="panel-h sort-h"><h3>Sort by</h3></div>
+            <div role="radiogroup" aria-label="Sort by">
+              {% for key, label in sort_options %}
+                <label class="so-row{% if key == current_sort %} on{% endif %}"><input class="sr" type="radio" name="sort" value="{{ key }}"{% if key == current_sort %} checked{% endif %}>{{ label }}<svg class="ic"><use href="#i-check"/></svg></label>
+              {% endfor %}
+            </div>
+          </section>
+          {% endif %}
           <section class="panel" data-panel="rating" aria-label="Rating">
             <div class="panel-h"><h3>Rating</h3><button type="button" class="lnk" data-clear="rating_search">Reset</button></div>
             <div class="rt-read"><b data-rating-out>{% if request.GET.rating_search %}{{ request.GET.rating_search }}+{% else %}Any{% endif %}</b><span>minimum score</span></div>

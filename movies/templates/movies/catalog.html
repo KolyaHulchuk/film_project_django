@@ -8,8 +8,12 @@
   <span class="tb-tile" aria-hidden="true"></span><span class="tb-tile" aria-hidden="true"></span><span class="tb-tile" aria-hidden="true"></span><span class="tb-tile" aria-hidden="true"></span>
   <div class="wrap tb-in">
     <div class="eyebrow">Browse</div>
-    {# PLACEHOLDER: needs TMDB total_results in the view context for the "N titles" counter #}
+    {% if total_results %}
+    <h1 id="h-title">{{ title }} <span class="count">{{ total_results|floatformat:"0g" }} title{{ total_results|pluralize }}</span></h1>
+    {% else %}
+    {# PLACEHOLDER: shown only when the TMDB list request failed (total_results) #}
     <h1 id="h-title">{{ title }} <span class="count" aria-hidden="true"><span class="sk pulse sk-inline" style="width:92px;height:16px"></span></span></h1>
+    {% endif %}
   </div>
 </section>
 {% block filters %}{% endblock %}
@@ -17,4 +21,4 @@
   {% include 'movies/partials/movie_list.html' %}
 </div>
 {% endblock %}
-{% block page_js %}<script src="{% static 'movies/catalog.js' %}?v=3" defer></script>{% endblock %}
+{% block page_js %}<script src="{% static 'movies/catalog.js' %}?v=4" defer></script>{% endblock %}
