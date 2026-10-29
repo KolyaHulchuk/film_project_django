@@ -73,3 +73,42 @@ Everything below was hidden or reduced in the first pass and is now present as i
 | Profile/Settings | Disconnect Google, Delete account | routes |
 | Search | People tab + section + "View all people", Sort chip, Showing x–y line (real), pagination (static) | people search, sort, total_results/paging |
 | Auth | Terms/Privacy checkbox (register), Resend (reset sent), legal links in e-mail | pages, resend endpoint |
+
+## TMDB wiring (2026-10-29)
+Every TMDB call goes through `TMDBClient._request` (timeout `(3.05, 10)`, request/JSON errors → empty dict → the block's skeleton,
+never a 500). New responses are cached with Django's cache framework (`redis_services.cache_tmdb`, same Redis); the existing list
+cache (`cache_data_movie`) got endpoint-based TTLs. TTLs: curated lists (trending / popular / top_rated / now_playing / upcoming /
+tv lists) 12h, detail + season + collection + keyword 24h, genre lists 36h, filtered `discover/*` 15 min (home rows that use discover
+pass 12h). Home runs its ~30 calls in parallel (`fetch_parallel`, ThreadPoolExecutor): measured ~3.6s cold, ~40ms warm locally.
+Detail is one `movie|tv/{id}` request with `append_to_response` (+ one season or collection request); the local `Movies` row is
+created from that same response.
+
+| Block | Endpoint used | Page | Status |
+|---|---|---|---|
+| Hero slides + trailers | `movie/popular` + `get_details` per slide (5, parallel) | Home | wired (before this pass) |
+| Trending Today / This Week | `trending/all/day`, `trending/all/week` via `get_trending()` | Home | wired |
+| Coming Soon (+ Trailer buttons) | `movie/upcoming` minus `movie/now_playing`; trailers from `get_details` (8, parallel) | Home | wired |
+| Movie of the Week | #1 of `trending/movie/week` → `movie/{id}` + credits (`get_details`) | Home | wired |
+| Popular Right Now | `movie/popular`, `movie/now_playing`, `tv/popular` | Home | wired |
+| Pick by Mood | `genre/movie/list` (chip labels) + `discover/movie?with_genres={id}&sort_by=popularity.desc&vote_count.gte=300` per mood (`views.MOODS`) | Home | wired |
+| All-Time Greats | `movie/top_rated` | Home | wired |
+| Stars of the Week | `trending/person/week` (actors only) | Home | wired (cards not links: no person page) |
+| Topic of the Day | `keyword/{id}` + `keyword/{id}/movies`, id rotated daily from `views.TOPIC_KEYWORDS` | Home | wired (CTA → top film; no keyword page) |
+| TV & Categories | `tv/popular`; `discover/tv` with the Doramas / Anime / Cartoons catalog filters | Home | wired |
+| Tagline, runtime / seasons, status, vote count, genres | `movie|tv/{id}` | Detail | wired |
+| Keywords, writer / producer / music / creator | `keywords`, `credits` (appended) | Detail | wired |
+| Original title, language, certification | `movie|tv/{id}` + `release_dates` / `content_ratings` (US) | Detail | wired |
+| Stills / Posters tabs | `images` (appended, `include_image_language=en,null`) | Detail | wired |
+| Trailer | `videos` (appended) | Detail | wired; duration still skeleton (not in TMDB) |
+| Cast & Crew | `credits` (appended) | Detail | wired |
+| Seasons + episodes | `tv/{id}` seasons + `tv/{id}/season/{n}` for the selected season only (`?season=N`) | Detail | wired |
+| Collection | `belongs_to_collection` + `collection/{id}` | Detail | wired; no block when the movie has no collection |
+| You may also like | `recommendations` (appended) | Detail | wired ("View all" still inert) |
+| Community count, watched eye | local `Rating` count, `Watchlist.watched` | Detail | wired (eye only for titles in the watchlist) |
+| Your rating | — (needs a session "rate" view) | Detail | still skeleton / inert |
+| "N titles" / "N results" | `total_results` of the page's list | Catalog | wired |
+| Sort chip | `discover/movie|tv` `sort_by` (+ `vote_count.gte`, release-date upper bound) | Catalog (type pages) | wired; inert on the fixed-list pages |
+| Filters (genre / year / country / min rating) | `with_genres`, `primary_release_year` / `first_air_date_year`, `with_origin_country`, `vote_average.gte` | Catalog (type pages) | wired (before this pass; min rating now adds `vote_count.gte=100`) |
+
+`get_credit()` was replaced by `get_details()` (same caller contract plus the extra fields); `test_comments.py` mocks it accordingly.
+Tests in Docker: 143 passed; the 2 known `test_tmdb_service.py` failures (shared dev Redis, see above) are unchanged.
