@@ -484,21 +484,21 @@ def get_country(data, media_type):
         return [country["iso_3166_1"] for country in production_countries]
 
 
-def get_or_create_media(tmdb_id, media_type="movie"):
+def get_or_create_media(tmdb_id, media_type="movie", data=None):
+    # `data`: an already fetched movie/{id} or tv/{id} response (the detail page
+    # passes get_details()), so creating the local row costs no extra TMDB call.
     client = TMDBClient()
 
     if media_type == "movie":
-        data = client.get_movie_by_tmdb_id(tmdb_id)
-        print("Data", data)
+        if data is None:
+            data = client.get_movie_by_tmdb_id(tmdb_id)
         title = data.get("title") if data else None
         raw_date = data.get("release_date") if data else None
     else:
-        data = client.get_tv_by_tmdb_id(tmdb_id)
+        if data is None:
+            data = client.get_tv_by_tmdb_id(tmdb_id)
         title = data.get("name") if data else None
         raw_date = data.get("first_air_date") if data else None
-
-    print("tmdb_id:", tmdb_id, "media_type:", media_type)
-    print("data:", data)
 
     if not data:
         return None
@@ -546,35 +546,83 @@ def get_or_create_media(tmdb_id, media_type="movie"):
 
 class MoviesDetailView(View):
     def get(self, request, pk, media_type="movie"):
+        client = TMDBClient()
+        # One cached TMDB request: details + videos, credits, images, keywords,
+        # recommendations and release dates / content ratings (get_details).
+        details = client.get_details(pk, media_type)
+        has_details = bool(details.get("id"))
+
         data = Movies.objects.filter(tmdb_id=pk).first()
         if not data:
-            data = get_or_create_media(pk, media_type)
+            data = get_or_create_media(pk, media_type, details if has_details else None)
 
-        client = TMDBClient()
-        credits = client.get_credit(pk, media_type)
-
-        director = next((p for p in credits.get("crew", []) if p["job"] == "Director"), None)
-
-        cast = credits.get("cast", [])[:12]
-        trailer = credits.get("trailer")
-        gallery = credits.get("backdrops", [])
+        crew = details.get("crew", {})
+        director = {"name": crew["director"][0]} if crew.get("director") else None
+        gallery = details.get("backdrops", [])
 
         context = {
             "data": data,
+            "details": details if has_details else None,
             "director": director,
-            "cast": cast,
-            "trailer": trailer,
+            "crew": crew,
+            "cast": details.get("cast", [])[:12],
+            "trailer": details.get("trailer"),
             "gallery": gallery,
+            "posters": details.get("posters", []),
+            "recommendations": details.get("recommendations", []),
         }
+        if media_type == "tv":
+            context.update(self._seasons_context(request, client, pk, details))
+        elif has_details:
+            context.update(self._collection_context(client, details))
+
         if data:
             context.update(_comments_context(request, data))
+            context["ratings_count"] = data.ratings.count()
             if request.user.is_authenticated:
-                # initial state of the watchlist toggle, rendered server-side (no flicker)
-                context["watchlist_id"] = (
-                    Watchlist.objects.filter(user=request.user, movie=data).values_list("id", flat=True).first()
-                )
+                # initial state of the watchlist toggle and the watched (eye) button, rendered server-side (no flicker)
+                entry = Watchlist.objects.filter(user=request.user, movie=data).values("id", "watched").first()
+                context["watchlist_id"] = entry["id"] if entry else None
+                context["is_watched"] = bool(entry and entry["watched"])
 
         return render(request, "movies/movies_detail.html", context)
+
+    @staticmethod
+    def _seasons_context(request, client, pk, details):
+        """Season chips from the details response; episodes only for the selected season (?season=N).
+
+        Default season: the latest one that has already started airing (skips
+        specials = season 0 and announced seasons with no episodes yet).
+        """
+        seasons = [s for s in details.get("seasons", []) if s.get("season_number") and s.get("episode_count")]
+        if not seasons:
+            return {"seasons": [], "season": None}
+        numbers = [s["season_number"] for s in seasons]
+        try:
+            selected = int(request.GET.get("season", ""))
+        except ValueError:
+            selected = None
+        if selected not in numbers:
+            today = date.today().isoformat()
+            aired = [s["season_number"] for s in seasons if s.get("air_date") and s["air_date"] <= today]
+            selected = aired[-1] if aired else numbers[0]
+        return {
+            "seasons": seasons,
+            "selected_season": selected,
+            "season": client.get_season(pk, selected),
+        }
+
+    @staticmethod
+    def _collection_context(client, details):
+        info = details.get("belongs_to_collection")
+        if not info:
+            return {"no_collection": True}  # nothing to show, not a failure
+        collection = client.get_collection(info["id"])
+        if collection:
+            rated = [p["vote_average"] for p in collection["parts"] if p.get("vote_count")]
+            collection["rating_range"] = (min(rated), max(rated)) if rated else None
+            collection["released"] = [p for p in collection["parts"] if p.get("release_date")]
+        return {"collection": collection}
 
 
 class TVViews(AllMoviesView):

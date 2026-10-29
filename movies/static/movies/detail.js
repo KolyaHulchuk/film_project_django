@@ -134,28 +134,30 @@
     tm.addEventListener("click", (e) => e.target === tm && closeTrailer());
   }
 
-  // ---- Stills lightbox ----
+  // ---- Lightbox for the Stills and Posters grids (prev/next stay inside the grid that was clicked) ----
   const lb = $("[data-lb-root]");
   const thumbs = $$("[data-lb]");
   if (lb && thumbs.length) {
     const img = $("[data-lb-img]", lb);
     const count = $("[data-lb-count]", lb);
+    let group = [];
     let idx = 0;
     const show = (i) => {
-      idx = (i + thumbs.length) % thumbs.length;
-      img.src = thumbs[idx].href;
-      img.alt = $("img", thumbs[idx]).alt;
-      count.textContent = idx + 1 + " / " + thumbs.length;
+      idx = (i + group.length) % group.length;
+      img.src = group[idx].href;
+      img.alt = $("img", group[idx]).alt;
+      count.textContent = idx + 1 + " / " + group.length;
     };
     const close = () => {
       lb.hidden = true;
       document.body.style.overflow = "";
     };
-    thumbs.forEach((a, i) =>
+    thumbs.forEach((a) =>
       a.addEventListener("click", (e) => {
         e.preventDefault();
         lastFocus = a;
-        show(i);
+        group = $$("[data-lb]", a.closest("[data-media-panel]") || document);
+        show(group.indexOf(a));
         lb.hidden = false;
         document.body.style.overflow = "hidden";
         $("[data-lb-close]", lb).focus();
@@ -182,7 +184,7 @@
     }
   });
 
-  // ---- Media tabs (Stills real, Posters is a skeleton until TMDB posters are wired) ----
+  // ---- Media tabs (Stills / Posters) ----
   document.querySelectorAll("[data-media-tabs]").forEach((group) => {
     group.querySelectorAll("[data-media-tab]").forEach((tab) =>
       tab.addEventListener("click", () => {
@@ -196,6 +198,51 @@
       })
     );
   });
+
+  // ---- Watched (eye) toggle: POSTs to users' toggle_watched for a title already in the watchlist ----
+  const eye = $("[data-watched-url]");
+  if (eye) {
+    eye.addEventListener("click", async () => {
+      const token = $("input[name=csrfmiddlewaretoken]");
+      eye.disabled = true;
+      try {
+        const res = await fetch(eye.dataset.watchedUrl, {
+          method: "POST",
+          headers: { "X-CSRFToken": token ? token.value : "" },
+          credentials: "same-origin",
+        });
+        if (res.ok) {
+          const on = !eye.classList.contains("on");
+          eye.classList.toggle("on", on);
+          eye.setAttribute("aria-pressed", on ? "true" : "false");
+        }
+      } finally {
+        eye.disabled = false;
+      }
+    });
+  }
+
+  // ---- Seasons: hide/show the episode list, "Show all N episodes" ----
+  const eps = $("[data-eps]");
+  if (eps) {
+    const toggle = $("[data-eps-toggle]");
+    toggle.addEventListener("click", () => {
+      const open = eps.hidden;
+      eps.hidden = !open;
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      toggle.firstChild.textContent = open ? "Hide episodes" : "Show episodes";
+    });
+    const more = $("[data-eps-more]", eps);
+    if (more) {
+      const label = more.firstChild.textContent;
+      more.addEventListener("click", () => {
+        const expand = more.getAttribute("aria-expanded") !== "true";
+        $$("[data-ep-more]", eps).forEach((el) => (el.hidden = !expand));
+        more.setAttribute("aria-expanded", expand ? "true" : "false");
+        more.firstChild.textContent = expand ? "Show fewer episodes" : label;
+      });
+    }
+  }
 
   // ---- Cast arrows ----
   const track = $("[data-cast-track]");

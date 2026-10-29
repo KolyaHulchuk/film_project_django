@@ -57,7 +57,7 @@ def vote(client, comment, value):
 
 @pytest.mark.django_db
 def test_detail_page_shows_login_prompt_and_locked_votes_to_anonymous(client, mocker, movie, alice):
-    mocker.patch("movies.views.TMDBClient").return_value.get_credit.return_value = {}
+    mocker.patch("movies.views.TMDBClient").return_value.get_details.return_value = {}
     comment = Comment.objects.create(movie=movie, user=alice, text="Great film")
 
     response = client.get(reverse("movie-detail", args=[movie.tmdb_id, movie.media_type]))

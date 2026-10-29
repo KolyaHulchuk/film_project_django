@@ -472,3 +472,10 @@ html{scroll-padding-top:130px}
 .detail-page .ep-th.sk{width:184px}
 .detail-page .sim .track .sk-card{flex:none;width:calc((100% - 108px)/7);scroll-snap-align:start}
 @media (min-width:768px){.detail-page .ov-m{display:none}}
+/* TMDB images in blocks wired after the port (episodes, collection); .noimg/.noposter = neutral grey when the path is null */
+.detail-page .ep-th{position:relative;overflow:hidden;background:linear-gradient(165deg,#34343a,#18181b 70%)}
+.detail-page .ep-th img,.detail-page .coll-p a img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.detail-page .coll-p a{overflow:hidden;background:linear-gradient(165deg,#34343a,#18181b 70%)}
+.detail-page .coll-p a em{z-index:1}
+.detail-page .schip{display:inline-flex;align-items:center}
+.detail-page .kwc{cursor:default}

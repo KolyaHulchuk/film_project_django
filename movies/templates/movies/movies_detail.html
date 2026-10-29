@@ -1,10 +1,10 @@
 {% extends "movies/base.html" %}
 {% load static catalog_tags %}
 
-{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/detail.css' %}?v=2">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/detail.css' %}?v=3">{% endblock %}
 {% block body_class %}mh-body detail-page{% endblock %}
 {% block main_class %}mh-main{% endblock %}
-{% block page_js %}<script src="{% static 'movies/detail.js' %}?v=3" defer></script>{% endblock %}
+{% block page_js %}<script src="{% static 'movies/detail.js' %}?v=4" defer></script>{% endblock %}
 
 {% block content %}
 {# HERO — data: Movies row (title, poster, rating, genres, description...), first backdrop from the TMDB gallery #}
@@ -18,15 +18,26 @@
     <div class="hero-c">
       <span class="tchip fu" style="animation-delay:.05s"><svg class="ic"><use href="#{% if data.media_type == 'movie' %}i-film{% else %}i-tv{% endif %}"/></svg>{% if data.media_type == "movie" %}Movie{% else %}TV Series{% endif %}</span>
       <h1 id="h-title" class="fu" style="animation-delay:.12s">{{ data.title }}</h1>
-      {# PLACEHOLDER: needs TMDB tagline (movie/{id} or tv/{id}) #}
+      {% if details %}
+        {% if details.tagline %}<p class="tag fu" style="animation-delay:.18s">{{ details.tagline }}</p>{% endif %}
+      {% else %}
+      {# PLACEHOLDER: shown only when the TMDB details request failed (tagline) #}
       <p class="tag fu" style="animation-delay:.18s" aria-hidden="true"><span class="sk pulse sk-inline" style="width:min(320px,70%);height:18px"></span></p>
+      {% endif %}
       <div class="meta-row fu" style="animation-delay:.24s">
         {% if data.release_date %}<span class="mi"><svg class="ic"><use href="#i-cal"/></svg>{{ data.release_date|date:"Y" }}</span>{% endif %}
         {% if data.country %}<span class="mi"><svg class="ic"><use href="#i-globe"/></svg>{{ data.country }}</span>{% endif %}
         {% if data.author %}<span class="mi"><svg class="ic"><use href="#i-studio"/></svg>{{ data.author }}</span>{% endif %}
-        {# PLACEHOLDER: needs runtime and status (movie/{id}, tv/{id}) #}
+        {% if details %}
+          {% if data.media_type == "tv" %}
+            {% if details.number_of_seasons %}<span class="mi"><svg class="ic"><use href="#i-clock"/></svg>{{ details.number_of_seasons }} season{{ details.number_of_seasons|pluralize }} · {{ details.number_of_episodes }} episodes</span>{% endif %}
+          {% elif details.runtime %}<span class="mi"><svg class="ic"><use href="#i-clock"/></svg>{{ details.runtime|runtime }}</span>{% endif %}
+          {% if details.status %}<span class="stbadge{% if details.status != 'Returning Series' and details.status != 'In Production' and details.status != 'Post Production' and details.status != 'Planned' %} end{% endif %}"><i></i>{{ details.status }}</span>{% endif %}
+        {% else %}
+        {# PLACEHOLDER: shown only when the TMDB details request failed (runtime, status) #}
         <span class="mi" aria-hidden="true"><svg class="ic"><use href="#i-clock"/></svg><span class="sk pulse sk-inline" style="width:56px"></span></span>
         <span class="stbadge" aria-hidden="true"><span class="sk pulse sk-inline" style="width:64px;height:10px"></span></span>
+        {% endif %}
       </div>
       {% if data.genres.all %}
       <div class="chips fu" style="animation-delay:.3s">
@@ -34,15 +45,19 @@
           {% if genre.tmdb_id %}<a href="{% if data.media_type == 'movie' %}{% url 'movie' %}{% else %}{% url 'tv' %}{% endif %}?genre_search={{ genre.tmdb_id }}" class="chip">{{ genre.name }}</a>{% else %}<span class="chip">{{ genre.name }}</span>{% endif %}
         {% endfor %}
       </div>
+      {% elif details.genres %}
+      <div class="chips fu" style="animation-delay:.3s">
+        {% for genre in details.genres %}<a href="{% if data.media_type == 'movie' %}{% url 'movie' %}{% else %}{% url 'tv' %}{% endif %}?genre_search={{ genre.id }}" class="chip">{{ genre.name }}</a>{% endfor %}
+      </div>
       {% else %}
-      {# PLACEHOLDER: needs genres for this title #}
+      {# PLACEHOLDER: shown only when the title has no genres anywhere (local row and TMDB) #}
       <div class="chips fu" aria-hidden="true" style="animation-delay:.3s"><span class="sk pulse sk-pill" style="width:86px;height:26px"></span><span class="sk pulse sk-pill" style="width:96px;height:26px"></span><span class="sk pulse sk-pill" style="width:76px;height:26px"></span></div>
       {% endif %}
       {% with community=data.average_user_ratings %}
       <div class="rate-row fu" style="animation-delay:.36s">
-        {% if data.tmdb_rating %}<div class="rbadge" title="TMDB user score"><svg class="ic"><use href="#i-star"/></svg><b>{{ data.tmdb_rating|floatformat:1 }}<small>/10</small></b><span><em>TMDB</em>{# PLACEHOLDER: needs vote_count #}<span class="sk pulse sk-inline" style="width:56px;height:10px"></span></span></div>
+        {% if data.tmdb_rating %}<div class="rbadge" title="TMDB user score"><svg class="ic"><use href="#i-star"/></svg><b>{{ data.tmdb_rating|floatformat:1 }}<small>/10</small></b><span><em>TMDB</em>{% if details %}{{ details.vote_count|compact_votes }}{% else %}{# PLACEHOLDER: vote_count, shown only when the TMDB details request failed #}<span class="sk pulse sk-inline" style="width:56px;height:10px"></span>{% endif %}</span></div>
         {% else %}<div class="rbadge" aria-hidden="true"><svg class="ic"><use href="#i-star"/></svg><span class="sk pulse sk-pill" style="width:54px;height:20px"></span><span><em>TMDB</em><span class="sk pulse sk-inline" style="width:56px;height:10px"></span></span></div>{% endif %}
-        {% if community %}<div class="rbadge" title="Movies.hub community score"><svg class="ic"><use href="#i-users"/></svg><b>{{ community }}<small>/10</small></b><span><em>Community</em>{# PLACEHOLDER: needs the number of ratings #}<span class="sk pulse sk-inline" style="width:56px;height:10px"></span></span></div>
+        {% if community %}<div class="rbadge" title="Movies.hub community score"><svg class="ic"><use href="#i-users"/></svg><b>{{ community }}<small>/10</small></b><span><em>Community</em>{{ ratings_count }} rating{{ ratings_count|pluralize }}</span></div>
         {% else %}{# PLACEHOLDER: needs community ratings (no ratings stored for this title yet) #}<div class="rbadge" aria-hidden="true"><svg class="ic"><use href="#i-users"/></svg><span class="sk pulse sk-pill" style="width:54px;height:20px"></span><span><em>Community</em><span class="sk pulse sk-inline" style="width:56px;height:10px"></span></span></div>{% endif %}
         {# PLACEHOLDER: needs a session-authenticated "rate" endpoint (ratings exist only in the JWT API) #}
         <span class="rwrap d-only"><button type="button" class="rbadge rbtn" aria-disabled="true" tabindex="-1" title="Rating from the page is coming soon"><svg class="ic"><use href="#i-star"/></svg><b class="cta">Rate</b><span><em>Your rating</em>Not rated</span></button></span>
@@ -74,8 +89,12 @@
         {% else %}
           <a href="{% url 'login' %}?next={{ request.path|urlencode }}" class="btn btn-ghost lg"><svg class="ic" style="width:18px;height:18px"><use href="#i-plus"/></svg>Add to Watchlist</a>
         {% endif %}
-        {# PLACEHOLDER: needs Watchlist.watched for this title in the context + a watched toggle for titles not yet saved #}
-        <button type="button" class="btn-icon lg eye" aria-disabled="true" tabindex="-1" aria-label="Mark as watched (coming soon)" title="Mark as watched (coming soon)"><svg class="ic"><use href="#i-eye"/></svg><span class="eye-ck"><svg class="ic"><use href="#i-check"/></svg></span></button>
+        {% if watchlist_id %}
+          <button type="button" class="btn-icon lg eye{% if is_watched %} on{% endif %}" data-watched-url="{% url 'toggle-watchlist' watchlist_id %}" aria-pressed="{% if is_watched %}true{% else %}false{% endif %}" aria-label="Mark as watched" title="Mark as watched"><svg class="ic"><use href="#i-eye"/></svg><span class="eye-ck"><svg class="ic"><use href="#i-check"/></svg></span></button>
+        {% else %}
+          {# PLACEHOLDER: needs a watched toggle for titles not in the watchlist (Watchlist.watched lives on the watchlist row) #}
+          <button type="button" class="btn-icon lg eye" aria-disabled="true" tabindex="-1" aria-label="Add to your watchlist to mark as watched" title="Add to your watchlist to mark as watched"><svg class="ic"><use href="#i-eye"/></svg><span class="eye-ck"><svg class="ic"><use href="#i-check"/></svg></span></button>
+        {% endif %}
         <button type="button" class="btn-icon lg" data-copy-link aria-label="Copy link" title="Copy link"><svg class="ic"><use href="#i-share"/></svg></button>
       </div>
     </div>
@@ -95,7 +114,7 @@
         <a class="stab on" role="tab" href="#overview" data-target="overview">Overview</a>
         <a class="stab" role="tab" href="#media" data-target="media">Trailer &amp; Media</a>
         <a class="stab" role="tab" href="#cast" data-target="cast">Cast &amp; Crew</a>
-        <a class="stab" role="tab" href="#seasons" data-target="seasons">{% if data.media_type == "movie" %}Collection{% else %}Seasons{% endif %}</a>
+        {% if not no_collection %}<a class="stab" role="tab" href="#seasons" data-target="seasons">{% if data.media_type == "movie" %}Collection{% else %}Seasons{% endif %}</a>{% endif %}
         <a class="stab" role="tab" href="#similar" data-target="similar">Similar</a>
         <a class="stab" role="tab" href="#comments" data-target="comments">Comments <span class="sn">{{ total|default:0 }}</span></a>
         <span class="sline" aria-hidden="true"></span>
@@ -115,14 +134,27 @@
     <div class="ov">
       <div class="ov-l">
         <div class="ov-text">{% if data.description %}{{ data.description|linebreaks }}{% else %}<p>No description available yet.</p>{% endif %}</div>
-        {# PLACEHOLDER: needs TMDB keywords (movie/{id}/keywords) #}
+        {% if details %}
+        {% if details.keywords %}<div class="kw" aria-label="Keywords">{% for k in details.keywords %}<span class="kwc">{{ k.name }}</span>{% endfor %}</div>{% endif %}
+        {% else %}
+        {# PLACEHOLDER: shown only when the TMDB details request failed (keywords) #}
         <div class="kw" aria-label="Keywords" aria-hidden="true">{% for w in "9090708"|make_list %}<span class="sk pulse sk-pill" style="width:{% if w == '9' %}92{% elif w == '0' %}76{% else %}64{% endif %}px;height:36px"></span>{% endfor %}</div>
-        {# PLACEHOLDER: needs writer / producer from credits.crew (the view passes only the director) #}
+        {% endif %}
+        {% if crew.director or crew.creator or crew.writer or crew.producer %}
         <div class="credits">
-          <div><div class="cr-k">Director</div>{% if director %}<div class="cr-v">{{ director.name }}</div>{% else %}<div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div>{% endif %}</div>
-          <div aria-hidden="true"><div class="cr-k">Writer</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
-          <div aria-hidden="true"><div class="cr-k">Producer</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
+          {% if crew.creator %}<div><div class="cr-k">Created by</div><div class="cr-v">{{ crew.creator|slice:":2"|join:", " }}</div></div>{% endif %}
+          {% if crew.director %}<div><div class="cr-k">Director</div><div class="cr-v">{{ crew.director|slice:":2"|join:", " }}</div></div>{% endif %}
+          {% if crew.writer %}<div><div class="cr-k">Writer</div><div class="cr-v">{{ crew.writer|slice:":2"|join:", " }}</div></div>{% endif %}
+          {% if crew.producer %}<div><div class="cr-k">Producer</div><div class="cr-v">{{ crew.producer|slice:":2"|join:", " }}</div></div>{% endif %}
         </div>
+        {% elif not details %}
+        {# PLACEHOLDER: shown only when the TMDB details request failed (credits.crew) #}
+        <div class="credits" aria-hidden="true">
+          <div><div class="cr-k">Director</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
+          <div><div class="cr-k">Writer</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
+          <div><div class="cr-k">Producer</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
+        </div>
+        {% endif %}
       </div>
       <aside class="ov-d">
         <div class="card"><h3>Details</h3>
@@ -133,10 +165,17 @@
             {% if data.author %}<div class="dl-row"><dt>Studio</dt><dd>{{ data.author }}</dd></div>{% endif %}
             {% if director %}<div class="dl-row"><dt>Director</dt><dd>{{ director.name }}</dd></div>{% endif %}
             {% if data.tmdb_rating %}<div class="dl-row"><dt>TMDB score</dt><dd>{{ data.tmdb_rating|floatformat:1 }} / 10</dd></div>{% endif %}
-            {# PLACEHOLDER: needs original title, language, certification (movie/{id}) #}
+            {% if details %}
+              {% firstof details.original_title details.original_name as original %}{% if original %}<div class="dl-row"><dt>Original title</dt><dd>{{ original }}</dd></div>{% endif %}
+              {% if details.language %}<div class="dl-row"><dt>Language</dt><dd>{{ details.language }}</dd></div>{% endif %}
+              {% if details.certification %}<div class="dl-row"><dt>Certification</dt><dd>{{ details.certification }} (US)</dd></div>{% endif %}
+              {% if details.networks %}<div class="dl-row"><dt>Network</dt><dd>{{ details.networks.0.name }}</dd></div>{% endif %}
+            {% else %}
+            {# PLACEHOLDER: shown only when the TMDB details request failed (original title, language, certification) #}
             <div class="dl-row" aria-hidden="true"><dt>Original title</dt><dd><span class="sk pulse sk-inline" style="width:110px"></span></dd></div>
             <div class="dl-row" aria-hidden="true"><dt>Language</dt><dd><span class="sk pulse sk-inline" style="width:70px"></span></dd></div>
             <div class="dl-row" aria-hidden="true"><dt>Certification</dt><dd><span class="sk pulse sk-inline" style="width:50px"></span></dd></div>
+            {% endif %}
           </dl>
         </div>
       </aside>
@@ -157,8 +196,7 @@
     <div class="sec-head"><h2 id="h-media">Trailer &amp; Media</h2>
       <div class="mtabs hd" role="tablist" aria-label="Media" data-media-tabs>
         <button type="button" class="mtab on" role="tab" aria-selected="true" data-media-tab="stills">Stills <span>{{ gallery|length }}</span></button>
-        {# PLACEHOLDER: needs TMDB images.posters #}
-        <button type="button" class="mtab" role="tab" aria-selected="false" data-media-tab="posters">Posters <span class="sk pulse sk-inline" style="width:14px;height:10px"></span></button>
+        <button type="button" class="mtab" role="tab" aria-selected="false" data-media-tab="posters">Posters <span>{{ posters|length }}</span></button>
       </div>
     </div>
     <div class="media">
@@ -166,7 +204,7 @@
         {% if trailer %}
           <span class="tr-bg" aria-hidden="true"></span>
           <button type="button" class="tr-btn" data-trailer-inline="{{ trailer.key }}" data-trailer-title="{{ trailer.name|default:data.title }}" aria-label="Play trailer: {{ data.title }}"><span class="tr-play"><svg class="ic"><use href="#i-play"/></svg></span></button>
-          {# PLACEHOLDER: needs the trailer duration #}
+          {# PLACEHOLDER: needs the trailer duration (TMDB videos carry no length; it would need the YouTube Data API) #}
           <div class="tr-cap"><b>{{ trailer.name|default:"Official Trailer" }}</b><em aria-hidden="true"><span class="sk pulse sk-inline" style="width:28px;height:10px"></span></em></div>
         {% else %}
           <div class="tr-none"><span class="ring"><svg class="ic"><use href="#i-film"/></svg></span><b>No trailer available</b><p>We couldn’t find an official trailer for this title yet.</p></div>
@@ -175,18 +213,23 @@
       <div class="gal-col">
         <div class="mtabs m-only" role="tablist" aria-label="Media" data-media-tabs>
           <button type="button" class="mtab on" role="tab" aria-selected="true" data-media-tab="stills">Stills <span>{{ gallery|length }}</span></button>
-          <button type="button" class="mtab" role="tab" aria-selected="false" data-media-tab="posters">Posters <span class="sk pulse sk-inline" style="width:14px;height:10px"></span></button>
+          <button type="button" class="mtab" role="tab" aria-selected="false" data-media-tab="posters">Posters <span>{{ posters|length }}</span></button>
         </div>
         <div class="gal" data-gallery data-media-panel="stills">
           {% for image_url in gallery|slice:":6" %}
             <a href="{{ image_url }}" class="gt" data-lb="{{ forloop.counter0 }}" aria-label="{{ data.title }} still {{ forloop.counter }}"><img src="{{ image_url }}" alt="{{ data.title }} still {{ forloop.counter }}" loading="lazy"></a>
           {% empty %}
-            {# PLACEHOLDER: needs TMDB images.backdrops for this title #}
+            {# PLACEHOLDER: TMDB has no backdrops for this title (or the details request failed) #}
             {% for i in 6|times %}<span class="gt sk pulse" aria-hidden="true"></span>{% endfor %}
           {% endfor %}
         </div>
-        <div class="gal posters" data-media-panel="posters" hidden aria-busy="true">
-          {% for i in 6|times %}<span class="gt sk pulse" aria-hidden="true"></span>{% endfor %}
+        <div class="gal posters" data-media-panel="posters" hidden>
+          {% for poster in posters|slice:":6" %}
+            <a href="{{ poster.full }}" class="gt" data-lb="{{ forloop.counter0 }}" aria-label="{{ data.title }} poster {{ forloop.counter }}"><img src="{{ poster.thumb }}" alt="{{ data.title }} poster {{ forloop.counter }}" loading="lazy"></a>
+          {% empty %}
+            {# PLACEHOLDER: TMDB has no posters for this title (or the details request failed) #}
+            {% for i in 6|times %}<span class="gt sk pulse" aria-hidden="true"></span>{% endfor %}
+          {% endfor %}
         </div>
       </div>
     </div>
@@ -211,29 +254,54 @@
           {% if actor.character %}<span class="rl">{{ actor.character }}</span>{% endif %}
         </div>
       {% empty %}
-        {# PLACEHOLDER: needs TMDB credits.cast for this title #}
+        {# PLACEHOLDER: TMDB has no cast for this title (or the details request failed) #}
         {% for i in 8|times %}<div class="cast-sk" aria-hidden="true"><div class="sk pulse" style="width:116px;height:116px;border-radius:50%"></div><div class="sk pulse sk-line" style="width:80%"></div><div class="sk pulse sk-line" style="width:56%;height:9px;margin-top:0"></div></div>{% endfor %}
       {% endfor %}
     </div>
-    {# PLACEHOLDER: needs more crew roles (writer, composer, ...) from credits.crew; the view passes only the director #}
+    {% if crew.director or crew.creator or crew.writer or crew.music %}
     <div class="crew">
-      <div><div class="cr-k">Director</div>{% if director %}<div class="cr-v">{{ director.name }}</div>{% else %}<div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div>{% endif %}</div>
-      <div aria-hidden="true"><div class="cr-k">Writer</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
-      <div aria-hidden="true"><div class="cr-k">Music</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
+      {% if crew.director %}<div><div class="cr-k">Director</div><div class="cr-v">{{ crew.director|slice:":2"|join:", " }}</div></div>{% elif crew.creator %}<div><div class="cr-k">Created by</div><div class="cr-v">{{ crew.creator|slice:":2"|join:", " }}</div></div>{% endif %}
+      {% if crew.writer %}<div><div class="cr-k">Writer</div><div class="cr-v">{{ crew.writer|slice:":2"|join:", " }}</div></div>{% endif %}
+      {% if crew.music %}<div><div class="cr-k">Music</div><div class="cr-v">{{ crew.music|slice:":2"|join:", " }}</div></div>{% endif %}
     </div>
+    {% elif not details %}
+    {# PLACEHOLDER: shown only when the TMDB details request failed (credits.crew) #}
+    <div class="crew" aria-hidden="true">
+      <div><div class="cr-k">Director</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
+      <div><div class="cr-k">Writer</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
+      <div><div class="cr-k">Music</div><div class="cr-v"><span class="sk pulse sk-inline" style="width:110px;height:16px"></span></div></div>
+    </div>
+    {% endif %}
   </div>
 </section>
 
-{# SEASONS (TV) / COLLECTION (movies) #}
-{# PLACEHOLDER: needs tv/{id}/season/{n} (seasons + episodes) for TV, belongs_to_collection + collection/{id} for movies #}
+{# SEASONS (TV): chips from tv/{id} "seasons", episodes from tv/{id}/season/{n} for the selected season only (?season=N) #}
+{# COLLECTION (movies): belongs_to_collection + collection/{id}; no section at all when the movie has no collection #}
+{% if data.media_type == "tv" %}
 <section class="dsec reveal" id="seasons" aria-labelledby="h-seasons">
   <div class="wrap">
-    {% if data.media_type == "movie" %}
-    <div class="coll" aria-busy="true">
-      <div><div class="eyebrow">Collection</div><h3 id="h-seasons">Part of a Collection</h3><p><span class="sk pulse sk-inline" style="width:200px"></span></p><span class="btn btn-ghost sm" aria-disabled="true" tabindex="-1">View collection</span></div>
-      <div class="coll-p">{% for i in 4|times %}<span class="sk pulse" style="display:block;width:96px;aspect-ratio:2/3;border-radius:12px" aria-hidden="true"></span>{% endfor %}</div>
+    {% if season %}
+    <div class="sec-head"><h2 id="h-seasons">Seasons</h2>
+      <nav class="schips" aria-label="Season">{% for s in seasons %}<a class="schip{% if s.season_number == selected_season %} on{% endif %}" href="?season={{ s.season_number }}#seasons"{% if s.season_number == selected_season %} aria-current="true"{% endif %}>{{ s.name }}</a>{% endfor %}</nav>
     </div>
+    <div class="se-sum"><span>{{ season.name }} · {{ season.episodes|length }} episode{{ season.episodes|length|pluralize }}{% if season.air_date %} · {{ season.air_date|year_of }}{% endif %}</span><button type="button" class="lnk" data-eps-toggle aria-expanded="true" aria-controls="eps">Hide episodes<svg class="ic sm"><use href="#i-down"/></svg></button></div>
+    <div class="eps" id="eps" data-eps>
+      {% for e in season.episodes %}
+        <article class="ep"{% if forloop.counter > 6 %} data-ep-more hidden{% endif %}>
+          <span class="ep-n">{{ e.episode_number }}</span>
+          <div class="ep-th{% if not e.still_path %} noimg{% endif %}" role="img" aria-label="Still: {{ e.name }}">{% if e.still_path %}<img src="https://image.tmdb.org/t/p/w300{{ e.still_path }}" alt="" loading="lazy">{% endif %}</div>
+          <div><div class="ep-t">{{ e.name }}</div><div class="ep-m">E{{ e.episode_number }}{% if e.air_date %} · {{ e.air_date|pretty_date }}{% endif %}{% if e.runtime %} · {{ e.runtime|runtime }}{% endif %}</div>{% if e.overview %}<p class="ep-s">{{ e.overview }}</p>{% endif %}</div>
+          {% if e.vote_average %}<span class="badge ep-r"><svg class="ic fill"><use href="#i-star"/></svg>{{ e.vote_average|floatformat:1 }}</span>{% else %}<span></span>{% endif %}
+        </article>
+      {% endfor %}
+      {% if season.episodes|length > 6 %}<button type="button" class="more-b" data-eps-more aria-expanded="false">Show all {{ season.episodes|length }} episodes<svg class="ic"><use href="#i-down"/></svg></button>{% endif %}
+    </div>
+    {% elif seasons is not None and not seasons and details %}
+    {# The show has no aired seasons yet: nothing to list #}
+    <div class="sec-head"><h2 id="h-seasons">Seasons</h2></div>
+    <p class="se-sum">No seasons have aired yet.</p>
     {% else %}
+    {# PLACEHOLDER: shown only when tv/{id} or tv/{id}/season/{n} failed #}
     <div class="sec-head"><h2 id="h-seasons">Seasons</h2>
       <div class="schips" role="tablist" aria-label="Season">{% for i in 3|times %}<span class="schip sk pulse" style="width:96px" aria-hidden="true"></span>{% endfor %}</div>
     </div>
@@ -244,13 +312,48 @@
     {% endif %}
   </div>
 </section>
+{% elif collection %}
+<section class="dsec reveal" id="seasons" aria-labelledby="h-seasons">
+  <div class="wrap">
+    <div class="coll">
+      <div>
+        <div class="eyebrow">Collection</div>
+        <h3 id="h-seasons">Part of {% if collection.name|lower|slice:":4" != "the " %}the {% endif %}{{ collection.name }}</h3>
+        <p>{{ collection.released|length }} film{{ collection.released|length|pluralize }}{% if collection.rating_range %} · rated {{ collection.rating_range.0|floatformat:1 }}{% if collection.rating_range.0 != collection.rating_range.1 %}–{{ collection.rating_range.1|floatformat:1 }}{% endif %} on TMDB{% endif %}</p>
+        {# PLACEHOLDER: needs a collection page; the button opens the first film of the collection until then #}
+        {% with first=collection.parts.0 %}<a href="{% url 'movie-detail' first.id 'movie' %}" class="btn btn-ghost sm">View collection</a>{% endwith %}
+      </div>
+      <div class="coll-p">
+        {% for part in collection.parts|slice:":6" %}
+          <a href="{% url 'movie-detail' part.id 'movie' %}" class="{% if part.id == data.tmdb_id %}cur{% endif %}{% if not part.poster_url %} noposter{% endif %}" aria-label="{{ part.title }}{% if part.release_date %} ({{ part.release_date|year_of }}){% endif %}{% if part.id == data.tmdb_id %}, this film{% endif %}">{% if part.poster_url %}<img src="{{ part.poster_url }}" alt="" loading="lazy">{% endif %}{% if part.id == data.tmdb_id %}<em>You are here</em>{% endif %}</a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% elif not no_collection %}
+{# PLACEHOLDER: shown only when the TMDB details or collection/{id} request failed #}
+<section class="dsec reveal" id="seasons" aria-labelledby="h-seasons">
+  <div class="wrap">
+    <div class="coll" aria-busy="true">
+      <div><div class="eyebrow">Collection</div><h3 id="h-seasons">Part of a Collection</h3><p><span class="sk pulse sk-inline" style="width:200px"></span></p><span class="btn btn-ghost sm" aria-disabled="true" tabindex="-1">View collection</span></div>
+      <div class="coll-p">{% for i in 4|times %}<span class="sk pulse" style="display:block;width:96px;aspect-ratio:2/3;border-radius:12px" aria-hidden="true"></span>{% endfor %}</div>
+    </div>
+  </div>
+</section>
+{% endif %}
 
-{# SIMILAR #}
-{# PLACEHOLDER: needs TMDB /recommendations (or /similar) for this title #}
+{# SIMILAR: TMDB recommendations (appended to the details request) #}
 <section class="dsec reveal sim" id="similar" aria-labelledby="h-sim">
   <div class="wrap">
+    {# PLACEHOLDER: needs a full recommendations page for "View all" #}
     <div class="sec-head"><h2 id="h-sim">You may also like</h2><a href="#" class="viewall" aria-disabled="true" tabindex="-1">View all <svg class="ic"><use href="#i-chr"/></svg></a></div>
+    {% if recommendations %}
+    <div class="track" role="list" aria-label="Similar titles">{% for item in recommendations %}{% include 'movies/partials/poster_card.html' %}{% endfor %}</div>
+    {% else %}
+    {# PLACEHOLDER: TMDB has no recommendations for this title (or the details request failed) #}
     <div class="track" aria-busy="true" aria-label="Similar titles (not loaded yet)">{% include 'movies/components/skeleton_cards.html' with count=7 variant='cc' %}</div>
+    {% endif %}
   </div>
 </section>
 
