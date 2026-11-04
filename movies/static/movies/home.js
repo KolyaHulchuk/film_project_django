@@ -67,20 +67,7 @@
     schedule();
   }
 
-  // ---- Carousel arrows ----
-  document.querySelectorAll("[data-row]").forEach((row) => {
-    const track = row.querySelector(".track");
-    const step = () => Math.max(track.clientWidth * 0.85, 200);
-    const by = (dir) => track.scrollBy({ left: dir * step(), behavior: reduce ? "auto" : "smooth" });
-    const prev = row.querySelector("[data-row-prev]");
-    const nextB = row.querySelector("[data-row-next]");
-    if (prev) prev.addEventListener("click", () => by(-1));
-    if (nextB) nextB.addEventListener("click", () => by(1));
-    track.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowRight") by(1);
-      if (e.key === "ArrowLeft") by(-1);
-    });
-  });
+  // Carousel arrows: shared with the Detail page -> carousel.js
 
   // ---- Tabs with the sliding red line (Popular Right Now: filters cards in one panel; TV & Categories: one panel per tab) ----
   document.querySelectorAll("[data-tabs]").forEach((group) => {

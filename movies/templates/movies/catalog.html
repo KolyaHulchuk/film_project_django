@@ -6,8 +6,7 @@
 <section class="tb" aria-labelledby="h-title">
   <div class="tb-bg" aria-hidden="true"></div>
   <span class="tb-tile" aria-hidden="true"></span><span class="tb-tile" aria-hidden="true"></span><span class="tb-tile" aria-hidden="true"></span><span class="tb-tile" aria-hidden="true"></span>
-  <div class="wrap tb-in">
-    <div class="eyebrow">Browse</div>
+  <div class="wrap tb-in tb-in--solo">
     {% if total_results %}
     <h1 id="h-title">{{ title }} <span class="count">{{ total_results|floatformat:"0g" }} title{{ total_results|pluralize }}</span></h1>
     {% else %}

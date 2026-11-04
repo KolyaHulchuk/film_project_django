@@ -1,6 +1,6 @@
 {% extends 'movies/base.html' %}
 {% load static catalog_tags %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/home.css' %}?v=4">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/home.css' %}?v=5">{% endblock %}
 {% block body_class %}mh-body home-page{% endblock %}
 {% block main_class %}mh-main{% endblock %}
 
@@ -447,4 +447,4 @@
 </div>
 {% endblock %}
 
-{% block page_js %}<script src="{% static 'movies/home.js' %}?v=4" defer></script>{% endblock %}
+{% block page_js %}<script src="{% static 'movies/carousel.js' %}?v=1" defer></script><script src="{% static 'movies/home.js' %}?v=5" defer></script>{% endblock %}

@@ -1,10 +1,10 @@
 {% extends "movies/base.html" %}
 {% load static catalog_tags %}
 
-{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/detail.css' %}?v=3">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'movies/detail.css' %}?v=7">{% endblock %}
 {% block body_class %}mh-body detail-page{% endblock %}
 {% block main_class %}mh-main{% endblock %}
-{% block page_js %}<script src="{% static 'movies/detail.js' %}?v=4" defer></script>{% endblock %}
+{% block page_js %}<script src="{% static 'movies/carousel.js' %}?v=1" defer></script><script src="{% static 'movies/detail.js' %}?v=5" defer></script>{% endblock %}
 
 {% block content %}
 {# HERO — data: Movies row (title, poster, rating, genres, description...), first backdrop from the TMDB gallery #}
@@ -239,14 +239,12 @@
 {# CAST & CREW #}
 <section class="dsec reveal" id="cast" aria-labelledby="h-cast">
   <div class="wrap">
-    <div class="sec-head"><h2 id="h-cast">Cast &amp; Crew</h2>
-      <div style="display:flex;align-items:center;gap:18px">
-        {# PLACEHOLDER: needs a full-cast page (credits for all cast) #}
-        <a href="#" class="viewall" aria-disabled="true" tabindex="-1">View full cast <svg class="ic"><use href="#i-chr"/></svg></a>
-        <div class="arrows"><button type="button" class="btn-icon" data-cast-prev aria-label="Scroll cast left"><svg class="ic"><use href="#i-chl"/></svg></button><button type="button" class="btn-icon" data-cast-next aria-label="Scroll cast right"><svg class="ic"><use href="#i-chr"/></svg></button></div>
-      </div>
-    </div>
-    <div class="track cast-track" role="list" data-cast-track>
+    {# TODO: add "View Full Cast" button when the full cast page exists #}
+    <div class="sec-head"><h2 id="h-cast">Cast &amp; Crew</h2></div>
+    <div class="row-wrap" data-row>
+      <button type="button" class="arrow l" data-row-prev aria-label="Scroll cast left"><svg class="ic"><use href="#i-chl"/></svg></button>
+      <button type="button" class="arrow r" data-row-next aria-label="Scroll cast right"><svg class="ic"><use href="#i-chr"/></svg></button>
+    <div class="track cast-track" role="list">
       {% for actor in cast %}
         <div class="cast" role="listitem">
           <span class="cast-ph" style="background:linear-gradient(160deg,#34343a,#18181b)"><span aria-hidden="true">{{ actor.name|slice:":1" }}</span>{% if actor.profile_path %}<img src="https://image.tmdb.org/t/p/w185{{ actor.profile_path }}" alt="Photo of {{ actor.name }}" loading="lazy" onerror="this.remove()">{% endif %}</span>
@@ -257,6 +255,7 @@
         {# PLACEHOLDER: TMDB has no cast for this title (or the details request failed) #}
         {% for i in 8|times %}<div class="cast-sk" aria-hidden="true"><div class="sk pulse" style="width:116px;height:116px;border-radius:50%"></div><div class="sk pulse sk-line" style="width:80%"></div><div class="sk pulse sk-line" style="width:56%;height:9px;margin-top:0"></div></div>{% endfor %}
       {% endfor %}
+    </div>
     </div>
     {% if crew.director or crew.creator or crew.writer or crew.music %}
     <div class="crew">
@@ -346,10 +345,14 @@
 {# SIMILAR: TMDB recommendations (appended to the details request) #}
 <section class="dsec reveal sim" id="similar" aria-labelledby="h-sim">
   <div class="wrap">
-    {# PLACEHOLDER: needs a full recommendations page for "View all" #}
-    <div class="sec-head"><h2 id="h-sim">You may also like</h2><a href="#" class="viewall" aria-disabled="true" tabindex="-1">View all <svg class="ic"><use href="#i-chr"/></svg></a></div>
+    {# "View all" removed: there is no full recommendations page/URL to link to #}
+    <div class="sec-head"><h2 id="h-sim">You may also like</h2></div>
     {% if recommendations %}
-    <div class="track" role="list" aria-label="Similar titles">{% for item in recommendations %}{% include 'movies/partials/poster_card.html' %}{% endfor %}</div>
+    <div class="row-wrap" data-row>
+      <button type="button" class="arrow l" data-row-prev aria-label="Scroll similar titles left"><svg class="ic"><use href="#i-chl"/></svg></button>
+      <button type="button" class="arrow r" data-row-next aria-label="Scroll similar titles right"><svg class="ic"><use href="#i-chr"/></svg></button>
+      <div class="track" role="list" aria-label="Similar titles">{% for item in recommendations %}{% include 'movies/partials/poster_card.html' %}{% endfor %}</div>
+    </div>
     {% else %}
     {# PLACEHOLDER: TMDB has no recommendations for this title (or the details request failed) #}
     <div class="track" aria-busy="true" aria-label="Similar titles (not loaded yet)">{% include 'movies/components/skeleton_cards.html' with count=7 variant='cc' %}</div>

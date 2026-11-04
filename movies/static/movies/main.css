@@ -204,6 +204,7 @@ html { scroll-padding-top: 76px; }
 .tb-tile:nth-of-type(3){right:12%;top:30px;--r:-4deg}
 .tb-tile:nth-of-type(4){right:3%;top:-12px;--r:9deg;background:linear-gradient(165deg,#3b3b41,#141416 70%)}
 .tb-in{padding:30px 0 28px}
+.tb-in--solo{padding:40px 0 34px} /* title without eyebrow: keeps the banner height close to before */
 .tb h1{font-size:clamp(40px,5vw,60px);font-weight:800;letter-spacing:-.045em;line-height:1;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
 .tb .count{font-size:16px;font-weight:600;letter-spacing:0;color:var(--text2)}
 
@@ -352,6 +353,7 @@ html { scroll-padding-top: 76px; }
 }
 @media (max-width:767px){
   .tb-in{padding:24px 0 22px}
+  .tb-in--solo{padding:32px 0 28px}
   .tb h1{font-size:40px;gap:12px}
   .tb-tile:nth-of-type(2),.tb-tile:nth-of-type(3){display:none}
   .fchips-d{display:none}
@@ -437,6 +439,7 @@ html { scroll-padding-top: 76px; }
 .foot-links { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 600; color: var(--meta); }
 .foot-links a { color: var(--text2); transition: color .2s; }
 .foot-links a:hover { color: var(--red-light); }
+.foot-links .foot-off { color: var(--text2); cursor: default; pointer-events: none; }
 .foot-links .sep { color: var(--muted); }
 .sb-dd { display: none; position: absolute; top: calc(100% + 10px); right: 0; left: 0; flex-direction: column; border-radius: 22px; background: rgba(20, 20, 22, .97); backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px); border: 1px solid var(--line); box-shadow: 0 30px 70px rgba(0, 0, 0, .65); padding: 6px 8px; animation: pop .22s var(--ease); }
 .s-bar:focus-within .sb-dd { display: flex; }
@@ -470,3 +473,10 @@ html { scroll-padding-top: 76px; }
 .so-row .ic{visibility:hidden}
 .so-row.on .ic{visibility:visible}
 .layer.w-sort .panel-h.sort-h{display:none}
+
+/* Carousel arrows (shared: Home + Detail; behaviour in carousel.js). Page files only override position. */
+.mh-body .arrow{position:absolute;top:calc(50% - 22px);z-index:30;pointer-events:auto;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(10,10,11,.8);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--line);transition:transform .25s var(--ease),border-color .25s}
+.mh-body .arrow:hover{border-color:var(--red);box-shadow:0 0 22px var(--glow)}
+.mh-body .arrow[hidden],.mh-body .arrow.is-end{opacity:0;visibility:hidden;pointer-events:none}
+.mh-body .arrow.l{left:-22px}
+.mh-body .arrow.r{right:-22px}

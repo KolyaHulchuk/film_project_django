@@ -244,15 +244,7 @@
     }
   }
 
-  // ---- Cast arrows ----
-  const track = $("[data-cast-track]");
-  if (track) {
-    const by = (dir) => track.scrollBy({ left: dir * Math.max(track.clientWidth * 0.8, 200), behavior: reduce ? "auto" : "smooth" });
-    const prev = $("[data-cast-prev]");
-    const next = $("[data-cast-next]");
-    if (prev) prev.addEventListener("click", () => by(-1));
-    if (next) next.addEventListener("click", () => by(1));
-  }
+  // Cast and Similar arrows: shared carousel.js
 
   // ---- Copy link ----
   const copy = $("[data-copy-link]");

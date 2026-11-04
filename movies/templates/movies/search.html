@@ -9,7 +9,6 @@
 <section class="rh" aria-labelledby="h-title">
   <div class="rh-bg" aria-hidden="true"></div>
   <div class="wrap rh-in">
-    <div class="eyebrow">Search</div>
     {% if query %}
       <h1 id="h-title"><span class="ttl">Results for “<span class="rq">{{ query }}</span>”</span> <span class="count" aria-live="polite" data-total-label>{{ results|length }} result{{ results|length|pluralize }}</span></h1>
     {% else %}

@@ -50,10 +50,7 @@
 .home-page .track::-webkit-scrollbar{display:none}
 .home-page .track > *{scroll-snap-align:start;flex:none}
 .home-page .track > .pc{flex:none;scroll-snap-align:start}
-.home-page .arrow{position:absolute;top:calc(50% - 22px);z-index:5;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(10,10,11,.8);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--line);transition:transform .25s var(--ease),border-color .25s}
-.home-page .arrow:hover{border-color:var(--red);box-shadow:0 0 22px var(--glow)}
-.home-page .arrow.l{left:-22px}
-.home-page .arrow.r{right:-22px}
+@media (hover:none){.home-page .arrow{display:none}}
 /* ===== POSTER CARD (component: poster-card) ===== */
 .home-page .pc{position:relative;display:block}
 .home-page .pc-frame{position:relative;aspect-ratio:2/3;border-radius:var(--r-card);transition:transform .38s var(--ease)}
@@ -109,10 +106,9 @@
 .home-page .ptab:hover,.home-page .ptab.on{color:var(--text)}
 .home-page .ptab-line{position:absolute;left:0;bottom:0;width:1px;height:2px;border-radius:2px;background:var(--red);transform-origin:left center;transition:transform .4s var(--ease)}
 .home-page .sec-pop .row-wrap{container-type:inline-size}
-.home-page .sec-pop .arrow{top:109px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s var(--ease),border-color .25s}
+.home-page .sec-pop .arrow{top:109px;transition:opacity .25s,transform .25s var(--ease),border-color .25s}
 .home-page .sec-pop .arrow.l{left:10px}
 .home-page .sec-pop .arrow.r{right:10px}
-.home-page .sec-pop .row-wrap:hover .arrow,.home-page .sec-pop .row-wrap:focus-within .arrow{opacity:1;pointer-events:auto}
 .home-page .pp-card{width:176px}
 .home-page .pp-cap{padding:10px 2px 0;min-width:0}
 .home-page .pp-cap h3{font-size:14px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -128,10 +124,9 @@
 @keyframes swapA{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
 @keyframes swapB{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
 /* ===== SHARED (sections 6–11): hover-only arrows, swap animation, mono placeholders ===== */
-.home-page .hov .arrow{top:var(--at,100px);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s var(--ease),border-color .25s}
+.home-page .hov .arrow{top:var(--at,100px);transition:opacity .25s,transform .25s var(--ease),border-color .25s}
 .home-page .hov .arrow.l{left:10px}
 .home-page .hov .arrow.r{right:10px}
-.home-page .hov .row-wrap:hover .arrow,.home-page .hov .row-wrap:focus-within .arrow{opacity:1;pointer-events:auto}
 .home-page .hov .track{gap:16px}
 .home-page .swap.sw-a{animation:swapA .5s var(--ease)}
 .home-page .swap.sw-b{animation:swapB .5s var(--ease)}

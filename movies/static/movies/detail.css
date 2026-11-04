@@ -335,6 +335,7 @@ html{scroll-padding-top:130px}
 .detail-page .coll-p a{width:72px}
 .detail-page .coll-p{gap:8px}
 .detail-page .sim .cc{width:calc((100% - 14px)/2.35)}
+.detail-page #cast .row-wrap > .arrow{--ay:64px}
 .detail-page .sim .track{gap:14px}
 .detail-page .lb{padding:72px 16px 90px}
 .detail-page .lb-nav{top:auto;bottom:20px;margin:0}
@@ -479,3 +480,9 @@ html{scroll-padding-top:130px}
 .detail-page .coll-p a em{z-index:1}
 .detail-page .schip{display:inline-flex;align-items:center}
 .detail-page .kwc{cursor:default}
+
+.detail-page .row-wrap{position:relative}
+/* arrows centred on the images: cast photo centre = 10px (track margin) + 6px padding + 58px radius */
+.detail-page #cast .row-wrap > .arrow{top:calc(var(--ay,74px) - 23px)}
+.detail-page .sim .row-wrap > .arrow{top:calc(50% - 23px)} /* wrap = exactly the poster row, so 50% is the poster centre */
+@media (hover:none){.detail-page .arrow{display:none}}
