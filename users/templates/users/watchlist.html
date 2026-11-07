@@ -6,9 +6,10 @@
 {% block page_js %}<script src="{% static 'movies/catalog.js' %}?v=2" defer></script><script src="{% static 'movies/profile.js' %}?v=2" defer></script>{% endblock %}
 
 {% block content %}
-{% if request.GET.tab == 'stats' %}{% include 'users/partials/profile_header.html' with active='stats' count=paginator.count %}{% else %}{% include 'users/partials/profile_header.html' with active='watchlist' count=paginator.count %}{% endif %}
+{# FUTURE: when the Stats tab returns, restore the `request.GET.tab == 'stats'` switch here and on the watchlist panel below, see FUTURE_NOTES.md #}
+{% include 'users/partials/profile_header.html' with active='watchlist' count=paginator.count %}
 
-<div data-tab-panel="watchlist"{% if request.GET.tab == 'stats' %} hidden{% endif %}>
+<div data-tab-panel="watchlist">
 
 {# FILTER TOOLBAR — the same component as the catalog, driven by HTMX against the existing search_watchlist endpoint #}
 <div class="tbar" data-filters>
@@ -92,7 +93,7 @@
 </div>
 
 {# STATS TAB #}
-{# PLACEHOLDER: needs aggregates over the user's Watchlist (watched titles, favourite genres, watched per year, movies vs TV, most-watched/highest-rated highlights) #}
+{% comment %}FUTURE: Stats tab panel is hidden until aggregates over the user's Watchlist exist (watched titles, favourite genres, watched per year, movies vs TV, highlights), see FUTURE_NOTES.md
 <div data-tab-panel="stats"{% if request.GET.tab != 'stats' %} hidden{% endif %}>
 <div class="wrap st-wrap" aria-busy="true">
   <div class="hl-grid">
@@ -111,4 +112,5 @@
   </div>
 </div>
 </div>
+{% endcomment %}
 {% endblock %}

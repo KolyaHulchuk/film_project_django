@@ -17,9 +17,11 @@
     {# PLACEHOLDER: needs watched count, average user rating and hours watched (aggregates over Watchlist/Rating/runtime) in the context; "In watchlist" is real when the page passes a count #}
     <ul class="stats" aria-label="Your stats">
       <li class="stat"><span class="stat-l">In watchlist</span>{% if count is not None and count != "" %}<b class="stat-v">{{ count }}</b>{% else %}<b class="stat-v"><span class="sk pulse sk-inline" style="width:36px;height:24px"></span></b>{% endif %}</li>
+      {% comment %}FUTURE: Stats strip (Watched / Avg. rating / Hours watched) is hidden until the aggregates exist, see FUTURE_NOTES.md
       <li class="stat" aria-hidden="true"><span class="stat-l">Watched</span><b class="stat-v"><span class="sk pulse sk-inline" style="width:36px;height:24px"></span></b></li>
       <li class="stat" aria-hidden="true"><span class="stat-l">Avg. rating</span><b class="stat-v"><span class="sk pulse sk-inline" style="width:44px;height:24px"></span></b></li>
       <li class="stat" aria-hidden="true"><span class="stat-l">Hours watched</span><b class="stat-v"><span class="sk pulse sk-inline" style="width:52px;height:24px"></span></b></li>
+      {% endcomment %}
     </ul>
   </div>
 </section>
@@ -27,7 +29,9 @@
   <div class="wrap">
     <div class="ptabs" role="tablist" aria-label="Profile sections">
       <a class="ptab{% if active == 'watchlist' %} on{% endif %}" role="tab" data-ptab="watchlist" aria-selected="{% if active == 'watchlist' %}true{% else %}false{% endif %}" href="{% url 'watchlist' %}">Watchlist{% if count %}<span class="ptn">{{ count }}</span>{% endif %}</a>
+      {% comment %}FUTURE: Stats tab is hidden until aggregates exist, see FUTURE_NOTES.md
       <a class="ptab{% if active == 'stats' %} on{% endif %}" role="tab" data-ptab="stats" aria-selected="{% if active == 'stats' %}true{% else %}false{% endif %}" href="{% url 'watchlist' %}?tab=stats">Stats</a>
+      {% endcomment %}
       <a class="ptab{% if active == 'settings' %} on{% endif %}" role="tab" aria-selected="{% if active == 'settings' %}true{% else %}false{% endif %}" href="{% url 'profile' %}">Settings</a>
       <span class="pline" aria-hidden="true"></span>
     </div>

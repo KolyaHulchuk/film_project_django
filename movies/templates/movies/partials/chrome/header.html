@@ -11,13 +11,13 @@
       <a href="{% url 'anime-tv' %}" {% if current == 'anime-tv' %}class="active" aria-current="page"{% endif %}>Anime</a>
       <a href="{% url 'dorams-tv' %}" {% if current == 'dorams-tv' %}class="active" aria-current="page"{% endif %}>Doramas</a>
       <a href="{% url 'cartoon-tv' %}" {% if current == 'cartoon-tv' %}class="active" aria-current="page"{% endif %}>Cartoons</a>
-      <a href="{% if user.is_authenticated %}{% url 'watchlist' %}{% else %}{% url 'register' %}{% endif %}" {% if current == 'watchlist' %}class="active" aria-current="page"{% endif %}>Watchlist</a>
+      {# Watchlist nav item removed: available via Profile #}
       <span class="nav-line" aria-hidden="true"></span>
     </nav>
     <div class="hdr-r">
       <button type="button" class="btn-icon min" aria-label="Open search" data-search-open><svg class="ic"><use href="#i-search"/></svg></button>
       {% if user.is_authenticated %}
-      <a href="{% url 'profile' %}" class="btn btn-ghost sm hide-m">Profile</a>
+      <a href="{% url 'watchlist' %}" class="btn btn-ghost sm hide-m">Profile</a>
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit" class="btn btn-red sm hide-m">Logout</button></form>
       {% else %}
       <a href="{% url 'login' %}" class="btn btn-ghost sm hide-m">Login</a>
@@ -57,10 +57,10 @@
   <a href="{% url 'anime-tv' %}" class="big {% if current == 'anime-tv' %}active{% endif %}">Anime</a>
   <a href="{% url 'dorams-tv' %}" class="big {% if current == 'dorams-tv' %}active{% endif %}">Doramas</a>
   <a href="{% url 'cartoon-tv' %}" class="big {% if current == 'cartoon-tv' %}active{% endif %}">Cartoons</a>
-  <a href="{% if user.is_authenticated %}{% url 'watchlist' %}{% else %}{% url 'register' %}{% endif %}" class="big {% if current == 'watchlist' %}active{% endif %}">Watchlist</a>
+  {# Watchlist nav item removed: available via Profile #}
   <div class="drawer-cta">
     {% if user.is_authenticated %}
-    <a href="{% url 'profile' %}" class="btn btn-ghost">Profile</a>
+    <a href="{% url 'watchlist' %}" class="btn btn-ghost">Profile</a>
     <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit" class="btn btn-red">Logout</button></form>
     {% else %}
     <a href="{% url 'register' %}" class="btn btn-red">Register</a>

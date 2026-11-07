@@ -4,3 +4,4 @@ __pycache__/
 .env
 .git
 *.sqlite3
+FUTURE_NOTES.md

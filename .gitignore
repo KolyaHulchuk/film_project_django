@@ -9,4 +9,5 @@ media/*
 staticfiles/
 .env
 CV_NOTES.md
+FUTURE_NOTES.md
 	
