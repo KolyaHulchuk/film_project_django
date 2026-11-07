@@ -72,6 +72,7 @@ LONG_TTL_LIST_ENDPOINTS = (
     "tv/top_rated",
     "tv/airing_today",
     "tv/on_the_air",
+    "keyword/",
 )
 
 
