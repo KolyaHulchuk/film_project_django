@@ -1,7 +1,10 @@
 import logging
 import time
+from collections.abc import Callable, Hashable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from functools import partial
+from typing import Any
 
 import requests
 from django.conf import settings
@@ -15,6 +18,11 @@ from .redis_services import (
     cache_items_detail,
     cache_tmdb,
 )
+
+# A decoded TMDB JSON object (or a dict shaped from one).
+TMDBData = dict[str, Any]
+
+IMAGE_BASE = "https://image.tmdb.org/t/p"
 
 # One request for everything the detail page shows (see TMDBClient.get_details).
 DETAIL_APPEND = {
@@ -34,8 +42,33 @@ CREW_ROLES = {
     "Music": "music",
 }
 
+# Media types shown as cards (search results, recommendations); "person" is dropped.
+CARD_MEDIA_TYPES = ("movie", "tv")
 
-def fetch_parallel(tasks, max_workers=10):
+# How much of each appended block the detail page keeps.
+CAST_LIMIT = 20
+KEYWORD_LIMIT = 12
+RECOMMENDATION_LIMIT = 14
+BACKDROP_LIMIT = 6
+POSTER_LIMIT = 12
+
+# Fields kept per entry when trimming TMDB responses before caching.
+CAST_FIELDS = ("id", "name", "character", "profile_path")
+EPISODE_FIELDS = ("episode_number", "name", "overview", "air_date", "runtime", "still_path", "vote_average")
+COLLECTION_PART_FIELDS = ("id", "title", "release_date", "poster_url", "vote_average", "vote_count")
+
+# release_dates "type" for a theatrical release, preferred for the US certification.
+THEATRICAL_RELEASE = 3
+
+# Pagination caps: TMDB reports far more pages than are worth browsing.
+DEFAULT_LIST_MAX_PAGE = 10
+POPULAR_ACTORS_MAX_PAGES = 50
+
+TRENDING_MEDIA_TYPES = ("all", "movie", "tv", "person")
+TRENDING_WINDOWS = ("day", "week")
+
+
+def fetch_parallel(tasks: dict[Hashable, Callable[[], Any]], max_workers: int = 10) -> dict[Hashable, Any]:
     """Run independent TMDB calls concurrently.
 
     tasks: {name: zero-argument callable}. Returns {name: result}; a call that
@@ -58,16 +91,44 @@ def fetch_parallel(tasks, max_workers=10):
     return results
 
 
+def _require(data: TMDBData, key: str, fallback: Any) -> None:
+    """Raise TMDBFetchError(fallback) unless `data` is a non-empty response containing `key`.
+
+    Used inside the cache `fetch()` closures: _request() returns {} on any
+    failure, and raising here is what keeps that failure out of the cache.
+    """
+    if not data or key not in data:
+        raise TMDBFetchError(fallback)
+
+
+def _image_url(path: str, size: str) -> str:
+    """Full TMDB image URL for a file_path/poster_path, e.g. size="w500"."""
+    return f"{IMAGE_BASE}/{size}{path}"
+
+
+def _dedupe_by_id(items: list[TMDBData]) -> list[TMDBData]:
+    """Keep the first item for each "id", preserving order."""
+    seen_ids = set()
+    unique = []
+    for item in items:
+        if item["id"] not in seen_ids:
+            seen_ids.add(item["id"])
+            unique.append(item)
+    return unique
+
+
 class TMDBClient:
     BASE_URL = "https://api.themoviedb.org/3"
     IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
     TIMEOUT = (3.05, 10)  # (connect, read) seconds
 
-    def __init__(self, api_key=None, languages=None):
+    def __init__(self, api_key: str | None = None, languages: list[str] | None = None) -> None:
         self.api_key = api_key or settings.TMDB_API_KEY
         self.languages = languages or ["en"]
 
-    def _request(self, endpoint, params=None):
+    # ------------------------------------------------------------------ HTTP
+
+    def _request(self, endpoint: str, params: dict[str, Any] | None = None) -> TMDBData:
         url = f"{self.BASE_URL}/{endpoint}"
         params = dict(params or {})
         params["api_key"] = self.api_key
@@ -84,27 +145,24 @@ class TMDBClient:
         # keeps a failed TMDB call from ever being written to the Redis cache.
         return {}
 
-    def get_movie_by_tmdb_id(self, tmdb_id):
+    # ------------------------------------------------------------------ Raw lookups
+
+    def get_movie_by_tmdb_id(self, tmdb_id: int) -> TMDBData:
         return self._request(f"movie/{tmdb_id}")
 
-    def get_tv_by_tmdb_id(self, tmdb_id):
+    def get_tv_by_tmdb_id(self, tmdb_id: int) -> TMDBData:
         return self._request(f"tv/{tmdb_id}")
 
-    def get_discover_tv(self, **kwargs):
-        return self._request("discover/tv", **kwargs)
-
-    def get_discover_movie(self, **kwargs):
-        return self._request("discover/movie", **kwargs)
-
-    def get_genres(self, media_type):
+    def get_genres(self, media_type: str) -> list[TMDBData]:
         def fetch():
             endpoint = "genre/tv/list" if media_type == "tv" else "genre/movie/list"
             data = self._request(endpoint)
-            if not data or "genres" not in data:
-                raise TMDBFetchError([])
+            _require(data, "genres", [])
             return data["genres"]
 
         return cache_genres(media_type, fetch)
+
+    # ------------------------------------------------------------------ Trailers and images
 
     # Priority order for _select_trailer(): (video "type", "official" flag).
     # Checked top to bottom; the first (type, official) pair with a matching
@@ -113,7 +171,7 @@ class TMDBClient:
     _TRAILER_PRIORITY = (("Trailer", True), ("Trailer", False), ("Teaser", True), ("Teaser", False))
 
     @staticmethod
-    def _select_trailer(videos):
+    def _select_trailer(videos: list[TMDBData]) -> TMDBData | None:
         """Pick the single most relevant YouTube video from a TMDB videos.results list.
 
         Priority: official Trailer > Trailer > official Teaser > Teaser > Clip.
@@ -133,51 +191,49 @@ class TMDBClient:
         return None
 
     @staticmethod
-    def _select_backdrops(images, limit=6):
+    def _select_backdrops(images: TMDBData | None, limit: int = BACKDROP_LIMIT) -> list[str]:
         """Return up to `limit` full-size URLs from a TMDB images.backdrops list."""
         backdrops = images.get("backdrops", []) if images else []
         return [
-            f"https://image.tmdb.org/t/p/w780{backdrop['file_path']}"
-            for backdrop in backdrops[:limit]
-            if backdrop.get("file_path")
+            _image_url(backdrop["file_path"], "w780") for backdrop in backdrops[:limit] if backdrop.get("file_path")
         ]
 
     @staticmethod
-    def _select_posters(images, limit=12):
+    def _select_posters(images: TMDBData | None, limit: int = POSTER_LIMIT) -> list[dict[str, str]]:
         """Return up to `limit` {thumb, full} URL pairs from a TMDB images.posters list."""
         posters = images.get("posters", []) if images else []
         return [
             {
-                "thumb": f"https://image.tmdb.org/t/p/w342{poster['file_path']}",
-                "full": f"https://image.tmdb.org/t/p/w780{poster['file_path']}",
+                "thumb": _image_url(poster["file_path"], "w342"),
+                "full": _image_url(poster["file_path"], "w780"),
             }
             for poster in posters[:limit]
             if poster.get("file_path")
         ]
 
-    def get_list_with_trailers(self, endpoint, page, media_type, limit=5):
+    def get_list_with_trailers(self, endpoint: str, page: int, media_type: str, limit: int = 5) -> list[TMDBData]:
         # List endpoints (popular, trending, ...) don't include videos, so the
         # trailer comes from each item's (cached) detail request. Only the first
         # `limit` items (the home hero slides) get one.
         result = self.get_list(endpoint, page)["results"][:limit]
         return self.attach_trailers(result, media_type)
 
-    def attach_trailers(self, items, media_type):
+    def attach_trailers(self, items: list[TMDBData], media_type: str) -> list[TMDBData]:
         """Set item["trailer"] from get_details() for every item, fetched in parallel.
 
         One detail request per item is unavoidable here (list endpoints can't
         append videos), so callers keep `items` short; the detail responses are
         cached and shared with the detail page.
         """
-        details = fetch_parallel(
-            {item["id"]: (lambda tmdb_id=item["id"]: self.get_details(tmdb_id, media_type)) for item in items}
-        )
+        details = fetch_parallel({item["id"]: partial(self.get_details, item["id"], media_type) for item in items})
         for item in items:
             item["trailer"] = (details.get(item["id"]) or {}).get("trailer")
         return items
 
+    # ------------------------------------------------------------------ Detail page
+
     @staticmethod
-    def _empty_details():
+    def _empty_details() -> TMDBData:
         return {
             "cast": [],
             "crew": {},
@@ -190,7 +246,7 @@ class TMDBClient:
             "language": None,
         }
 
-    def get_details(self, tmdb_id, media_type):
+    def get_details(self, tmdb_id: int, media_type: str) -> TMDBData:
         """Everything the detail page needs from TMDB in ONE request.
 
         movie/{id} or tv/{id} with append_to_response (see DETAIL_APPEND). The raw
@@ -208,13 +264,13 @@ class TMDBClient:
                 f"{media_type}/{tmdb_id}",
                 {"language": "en", "append_to_response": append, "include_image_language": "en,null"},
             )
-            if not data or "id" not in data:
-                raise TMDBFetchError(self._empty_details())
+            _require(data, "id", self._empty_details())
             return self._shape_details(data, media_type)
 
         return cache_tmdb(f"movies:details:v1:{media_type}:{tmdb_id}", fetch, TTL_DETAIL)
 
-    def _shape_details(self, data, media_type):
+    def _shape_details(self, data: TMDBData, media_type: str) -> TMDBData:
+        """Replace the appended blocks of a detail response with the trimmed lists (mutates `data`)."""
         credits = data.pop("credits", None) or {}
         videos = (data.pop("videos", None) or {}).get("results", [])
         images = data.pop("images", None) or {}
@@ -223,30 +279,22 @@ class TMDBClient:
         release_dates = (data.pop("release_dates", None) or {}).get("results", [])
         content_ratings = (data.pop("content_ratings", None) or {}).get("results", [])
 
-        crew = {}
-        for person in credits.get("crew", []):
-            role = CREW_ROLES.get(person.get("job"))
-            if role and person["name"] not in crew.setdefault(role, []):
-                crew[role].append(person["name"])
-        if media_type == "tv":
-            crew["creator"] = [person["name"] for person in data.get("created_by", [])]
-
-        # Movies list keywords under "keywords", TV under "results".
-        keyword_list = keywords.get("keywords") or keywords.get("results") or []
+        crew = self._extract_crew(credits, data.get("created_by", []), media_type)
 
         data.update(
             {
                 "cast": [
-                    {key: person.get(key) for key in ("id", "name", "character", "profile_path")}
-                    for person in credits.get("cast", [])[:20]
+                    {key: person.get(key) for key in CAST_FIELDS} for person in credits.get("cast", [])[:CAST_LIMIT]
                 ],
                 "crew": crew,
                 "trailer": self._select_trailer(videos),
                 "backdrops": self._select_backdrops(images),
                 "posters": self._select_posters(images),
-                "keywords": [{"id": k["id"], "name": k["name"]} for k in keyword_list[:12]],
+                "keywords": self._extract_keywords(keywords),
                 "recommendations": self._type_items(
-                    [r for r in recommendations if r.get("media_type", media_type) in ("movie", "tv")][:14]
+                    [r for r in recommendations if r.get("media_type", media_type) in CARD_MEDIA_TYPES][
+                        :RECOMMENDATION_LIMIT
+                    ]
                 ),
                 "certification": self._certification(media_type, release_dates, content_ratings),
                 "language": self._language_name(data),
@@ -255,7 +303,28 @@ class TMDBClient:
         return data
 
     @staticmethod
-    def _certification(media_type, release_dates, content_ratings, country="US"):
+    def _extract_crew(credits: TMDBData, created_by: list[TMDBData], media_type: str) -> dict[str, list[str]]:
+        """{role: [names]} for CREW_ROLES (deduplicated, TMDB order), plus "creator" for TV."""
+        crew = {}
+        for person in credits.get("crew", []):
+            role = CREW_ROLES.get(person.get("job"))
+            if role and person["name"] not in crew.setdefault(role, []):
+                crew[role].append(person["name"])
+        if media_type == "tv":
+            crew["creator"] = [person["name"] for person in created_by]
+        return crew
+
+    @staticmethod
+    def _extract_keywords(keywords: TMDBData) -> list[dict[str, Any]]:
+        """First KEYWORD_LIMIT keywords as {id, name}."""
+        # Movies list keywords under "keywords", TV under "results".
+        keyword_list = keywords.get("keywords") or keywords.get("results") or []
+        return [{"id": k["id"], "name": k["name"]} for k in keyword_list[:KEYWORD_LIMIT]]
+
+    @staticmethod
+    def _certification(
+        media_type: str, release_dates: list[TMDBData], content_ratings: list[TMDBData], country: str = "US"
+    ) -> str | None:
         """US age rating: release_dates (movies, theatrical release first) / content_ratings (TV)."""
         if media_type == "tv":
             return next(
@@ -264,40 +333,25 @@ class TMDBClient:
         for entry in release_dates:
             if entry.get("iso_3166_1") != country:
                 continue
-            dates = sorted(entry.get("release_dates", []), key=lambda d: d.get("type") != 3)  # 3 = theatrical
+            dates = sorted(entry.get("release_dates", []), key=lambda d: d.get("type") != THEATRICAL_RELEASE)
             return next((d["certification"] for d in dates if d.get("certification")), None)
         return None
 
     @staticmethod
-    def _language_name(data):
+    def _language_name(data: TMDBData) -> str | None:
         code = data.get("original_language")
         for language in data.get("spoken_languages", []):
             if language.get("iso_639_1") == code:
                 return language.get("english_name") or language.get("name")
         return code.upper() if code else None
 
-    def get_season(self, tv_id, season_number):
+    def get_season(self, tv_id: int, season_number: int) -> TMDBData | None:
         """tv/{id}/season/{n}, trimmed to what the Seasons tab shows (the raw one carries crew/guest stars)."""
 
         def fetch():
             data = self._request(f"tv/{tv_id}/season/{season_number}", {"language": "en"})
-            if not data or "episodes" not in data:
-                raise TMDBFetchError(None)
-            episodes = [
-                {
-                    key: episode.get(key)
-                    for key in (
-                        "episode_number",
-                        "name",
-                        "overview",
-                        "air_date",
-                        "runtime",
-                        "still_path",
-                        "vote_average",
-                    )
-                }
-                for episode in data["episodes"]
-            ]
+            _require(data, "episodes", None)
+            episodes = [{key: episode.get(key) for key in EPISODE_FIELDS} for episode in data["episodes"]]
             return {
                 "season_number": data.get("season_number"),
                 "name": data.get("name"),
@@ -307,63 +361,61 @@ class TMDBClient:
 
         return cache_tmdb(f"movies:season:v1:{tv_id}:{season_number}", fetch, TTL_DETAIL)
 
-    def get_collection(self, collection_id):
+    def get_collection(self, collection_id: int) -> TMDBData | None:
         """collection/{id}: name + parts sorted by release date (unreleased parts last)."""
 
         def fetch():
             data = self._request(f"collection/{collection_id}", {"language": "en"})
-            if not data or "parts" not in data:
-                raise TMDBFetchError(None)
+            _require(data, "parts", None)
             parts = self._type_items(sorted(data["parts"], key=lambda p: p.get("release_date") or "9999"))
             return {
                 "id": data["id"],
                 "name": data.get("name"),
                 "overview": data.get("overview"),
-                "parts": [
-                    {
-                        key: part.get(key)
-                        for key in ("id", "title", "release_date", "poster_url", "vote_average", "vote_count")
-                    }
-                    for part in parts
-                ],
+                "parts": [{key: part.get(key) for key in COLLECTION_PART_FIELDS} for part in parts],
             }
 
         return cache_tmdb(f"movies:collection:v1:{collection_id}", fetch, TTL_DETAIL)
 
-    def get_keyword(self, keyword_id):
+    def get_keyword(self, keyword_id: int) -> TMDBData | None:
         """keyword/{id} -> {"id", "name"}; keyword/{id}/movies doesn't carry the name."""
 
         def fetch():
             data = self._request(f"keyword/{keyword_id}")
-            if not data or "name" not in data:
-                raise TMDBFetchError(None)
+            _require(data, "name", None)
             return {"id": data["id"], "name": data["name"]}
 
         return cache_tmdb(f"movies:keyword:v1:{keyword_id}", fetch, TTL_DETAIL)
 
-    def get_keyword_movies(self, keyword_id, page=1):
+    # ------------------------------------------------------------------ Lists
+
+    def get_keyword_movies(self, keyword_id: int, page: int = 1) -> TMDBData:
         return self.get_list(f"keyword/{keyword_id}/movies", page)
 
-    def get_trending(self, media_type="all", time_window="day", page=1):
+    def get_trending(self, media_type: str = "all", time_window: str = "day", page: int = 1) -> TMDBData:
         """trending/{media_type}/{time_window}: media_type all|movie|tv|person, time_window day|week."""
-        if media_type not in ("all", "movie", "tv", "person") or time_window not in ("day", "week"):
+        if media_type not in TRENDING_MEDIA_TYPES or time_window not in TRENDING_WINDOWS:
             raise ValueError(f"Unsupported trending list: {media_type}/{time_window}")
         return self.get_list(f"trending/{media_type}/{time_window}", page)
 
-    def get_person(self, page=1):
+    def get_person(self, page: int = 1) -> TMDBData:
+        """Raw person/popular page (all departments, not cached); {} if TMDB fails."""
         return self._request("person/popular", {"page": page})
 
-    def get_popular_actors(self, page=1):
+    def get_popular_actors(self, page: int = 1) -> dict[str, Any]:
+        """One page of popular people filtered to actors, plus pagination for the template.
+
+        total_pages is capped at POPULAR_ACTORS_MAX_PAGES and current_page is
+        clamped into [1, total_pages] after the request; page_range is a
+        `range` (template pagination), not JSON-serializable.
+        """
         data = self.get_person(page)
 
-        total_pages = min(data.get("total_pages", 1), 50)
+        total_pages = min(data.get("total_pages", 1), POPULAR_ACTORS_MAX_PAGES)
         persons = data.get("results", [])
         page = max(1, min(page, total_pages))
 
-        actors = []
-        for person in persons:
-            if person.get("known_for_department") == "Acting":
-                actors.append(person)
+        actors = [person for person in persons if person.get("known_for_department") == "Acting"]
 
         return {
             "actors": actors,
@@ -372,10 +424,15 @@ class TMDBClient:
             "page_range": range(max(1, page - 3), min(total_pages + 1, page + 3)),
         }
 
-    def _type_items(self, items):
+    @staticmethod
+    def _type_items(items: list[TMDBData]) -> list[TMDBData]:
+        """Add card fields in place: poster_url, title/release_date unified across movie/TV, rating.
+
+        Items without "media_type" are treated as movies.
+        """
         for item in items:
             path = item.get("poster_path")
-            item["poster_url"] = f"https://image.tmdb.org/t/p/w500{path}" if path else None
+            item["poster_url"] = _image_url(path, "w500") if path else None
 
             media_type = item.get("media_type", "movie")
             item["title"] = item.get("title") if media_type == "movie" else item.get("name")
@@ -384,7 +441,16 @@ class TMDBClient:
 
         return items
 
-    def get_list(self, endpoint, page=1, ttl=None, **kwargs):
+    def get_list(self, endpoint: str, page: int = 1, ttl: int | None = None, **kwargs: Any) -> TMDBData:
+        """A paginated TMDB list (category, discover, trending, keyword, ...), Redis-cached.
+
+        kwargs are TMDB query filters. `max_page` caps the returned total_pages
+        (default DEFAULT_LIST_MAX_PAGE) and is kept out of the cache key; note it
+        is currently also passed through to TMDB, which ignores it. `ttl`
+        overrides the TTL cache_data_movie() would pick. Results are deduplicated
+        by id and normalized with _type_items().
+        """
+
         # `fetch` is only ever invoked by cache_data_movie() below on a cache
         # miss, so its return value is exactly what ends up written to Redis.
         # Raising TMDBFetchError instead of returning on failure is what tells
@@ -393,24 +459,15 @@ class TMDBClient:
         def fetch():
             data = self._request(endpoint, {"language": "en", "page": page, **kwargs})
 
-            max_page = kwargs.get("max_page", 10)
-            if not data or "results" not in data:
-                raise TMDBFetchError({"results": [], "page": page, "total_pages": 1, "total_results": 0})
+            max_page = kwargs.get("max_page", DEFAULT_LIST_MAX_PAGE)
+            _require(data, "results", {"results": [], "page": page, "total_pages": 1, "total_results": 0})
 
             # TMDB can repeat the same item across discover pages when filters
             # overlap; drop duplicates by id before normalizing.
-            uniq_results = []
-            seen_id = set()
-
-            for result in data["results"]:
-                if result["id"] not in seen_id:
-                    seen_id.add(result["id"])
-                    uniq_results.append(result)
-
-            uniq_results = self._type_items(uniq_results)
+            results = self._type_items(_dedupe_by_id(data["results"]))
 
             return {
-                "results": uniq_results,
+                "results": results,
                 "page": data.get("page", page),
                 "total_pages": min(data.get("total_pages", 1), max_page),
                 "total_results": data.get("total_results", 0),
@@ -422,35 +479,38 @@ class TMDBClient:
         logging.debug(f"[get_list] {endpoint} page={page} total {elapsed_ms:.1f}ms")
         return result
 
-    def search_movies(self, query):
-        seen_ids = set()
-        combined = []
+    # ------------------------------------------------------------------ Search
 
+    def search_movies(self, query: str) -> list[TMDBData]:
+        """search/multi in every configured language: movies and TV only, first hit per id wins.
+
+        Not cached here (the search view caches its own result). A failed
+        request just contributes no results.
+        """
+        found = []
         for lang in self.languages:
             data = self._request("search/multi", {"query": query, "language": lang})
+            found.extend(item for item in data.get("results", []) if item.get("media_type") in CARD_MEDIA_TYPES)
 
-            for item in data.get("results", []):
-                media_type = item.get("media_type")
-                if media_type not in ["movie", "tv"]:
-                    continue
-                if item["id"] not in seen_ids:
-                    combined.append(item)
-                    seen_ids.add(item["id"])
+        return self._type_items(_dedupe_by_id(found))
 
-        return self._type_items(combined)
-
-    def suggest(self, query, limit=6):
+    def suggest(self, query: str, limit: int = 6) -> list[TMDBData]:
         # Header search dropdown: one search/multi call, movies + TV only. Unlike
         # search_movies(), a failed TMDB call raises so the UI can show an error
         # instead of "No results found".
         data = self._request("search/multi", {"query": query, "language": self.languages[0]})
-        if "results" not in data:
-            raise TMDBFetchError([])
-        items = [i for i in data["results"] if i.get("media_type") in ("movie", "tv")]
+        _require(data, "results", [])
+        items = [i for i in data["results"] if i.get("media_type") in CARD_MEDIA_TYPES]
         return self._type_items(items[:limit])
 
+    # ------------------------------------------------------------------ Card helpers
+
     @staticmethod
-    def get_release_date(details, media_type):
+    def get_release_date(details: TMDBData, media_type: str) -> str | None:
+        """release_date (movie) / first_air_date (TV) as "dd.mm.YYYY".
+
+        None if the date is missing or empty; ValueError if it isn't YYYY-MM-DD.
+        """
         raw_date = details.get("release_date") if media_type == "movie" else details.get("first_air_date")
 
         if not raw_date:
@@ -460,9 +520,9 @@ class TMDBClient:
             date_obj = datetime.strptime(raw_date, "%Y-%m-%d")
             return date_obj.strftime("%d.%m.%Y")
         except (TypeError, ValueError) as err:
-            raise ValueError("Uknown") from err
+            raise ValueError("Unknown") from err
 
-    def _enrichment_fetcher(self, tmdb_id, media_type):
+    def _enrichment_fetcher(self, tmdb_id: int, media_type: str) -> Callable[[], TMDBData]:
         # Same TMDBFetchError pattern as get_list(): only the enrichment
         # fields get cached (per tmdb_id, not per list/page), so every
         # category page sharing an item reuses the same cache entry.
@@ -492,13 +552,13 @@ class TMDBClient:
 
         return fetch
 
-    def enrich_item(self, item, media_type):
+    def enrich_item(self, item: TMDBData, media_type: str) -> TMDBData:
         tmdb_id = item["id"]
         enrichment = cache_item_detail("item", media_type, tmdb_id, self._enrichment_fetcher(tmdb_id, media_type))
         item.update(enrichment)
         return item
 
-    def enrich_items(self, items, media_type):
+    def enrich_items(self, items: list[TMDBData], media_type: str) -> list[TMDBData]:
         # Batched: one Redis MGET for every item's cache key up front, then
         # one pipelined write for whatever missed - see cache_items_detail()
         # for why this matters a lot more against a hosted Redis than a
@@ -516,7 +576,7 @@ class TMDBClient:
             item.update(enrichment_by_id[item["id"]])
         return items
 
-    def annotate_items(self, items, media_type, genres):
+    def annotate_items(self, items: list[TMDBData], media_type: str, genres: list[TMDBData]) -> list[TMDBData]:
         """Derive card-display fields for a list of items from data the list
         response already carries, plus an already-fetched genre list. Makes
         zero TMDB calls - unlike enrich_items(), which fetches full detail
