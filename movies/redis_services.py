@@ -1,14 +1,71 @@
+"""Cache-aside helpers for TMDB data.
+
+Two paths to the same Redis:
+
+- the raw redis-py client `r`, values stored as JSON (lists, genres, search,
+  per-item details): on a hit the caller gets a JSON copy, so tuples come back
+  as lists and int dict keys as strings; on a miss it gets the object
+  fetch_function returned;
+- Django's cache framework via cache_tmdb() (details, seasons, collections,
+  keywords), values pickled, so Python types survive a hit.
+
+On every path a TMDBFetchError raised by fetch_function hands its fallback back
+without caching it, and a cache outage only means an uncached fetch.
+"""
+
 import json
 import logging
 import os
 import time
+from collections.abc import Callable
+from typing import Any
 
 import redis
 from django.core.cache import cache
 
+__all__ = [
+    "LONG_TTL_LIST_ENDPOINTS",
+    "TTL_DETAIL",
+    "TTL_GENRES",
+    "TTL_LIST",
+    "TTL_LIST_DEFAULT",
+    "TMDBFetchError",
+    "cache_data_movie",
+    "cache_genres",
+    "cache_item_detail",
+    "cache_items_detail",
+    "cache_search_results",
+    "cache_tmdb",
+    "r",
+]
+
 logger = logging.getLogger(__name__)
 
 r = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True)
+
+# TTLs for TMDB responses. Curated TMDB lists (trending, popular, ...) only
+# reshuffle a few times a day; filtered discover pages keep the short default
+# so every filter combination doesn't sit in Redis for half a day.
+TTL_LIST_DEFAULT = 900
+TTL_LIST = 43200  # 12h
+TTL_DETAIL = 86400  # 24h: movie/tv details (+ append_to_response), collection, season
+TTL_GENRES = 129600  # 36h
+# Private: per-item enrichment (cache_item_detail/cache_items_detail) and search results.
+TTL_ITEM_DETAIL = 21600  # 6h
+TTL_SEARCH = 604800  # 7 days
+
+LONG_TTL_LIST_ENDPOINTS = (
+    "trending/",
+    "movie/upcoming",
+    "movie/top_rated",
+    "movie/popular",
+    "movie/now_playing",
+    "tv/popular",
+    "tv/top_rated",
+    "tv/airing_today",
+    "tv/on_the_air",
+    "keyword/",
+)
 
 
 class TMDBFetchError(Exception):
@@ -18,12 +75,53 @@ class TMDBFetchError(Exception):
     without ever being written to the cache.
     """
 
-    def __init__(self, fallback):
+    def __init__(self, fallback: Any):
         self.fallback = fallback
         super().__init__("TMDB fetch failed")
 
 
-def _cache_aside(cache_key, fetch_function, ttl):
+# --------------------------------------------------------------------------- cache keys
+
+
+def _list_key(endpoint: str, page: int, kwargs: dict[str, Any]) -> str:
+    # max_page is a local pagination clamp, not a TMDB filter, so it stays out of
+    # the key. Values are formatted with plain str() (no URL-encoding).
+    cache_kwargs = {k: v for k, v in kwargs.items() if k != "max_page"}
+    params_str = "&".join(f"{k}={v}" for k, v in sorted(cache_kwargs.items()))
+    return f"movies:list:v2:{endpoint}:{page}:{params_str}"
+
+
+def _item_detail_key(kind: str, media_type: str, tmdb_id: int) -> str:
+    return f"movies:{kind}:v1:{media_type}:{tmdb_id}"
+
+
+def _search_key(query: str) -> str:
+    # Same case/whitespace-only normalization icontains + TMDB search already
+    # apply, applied here only to the cache key - "Batman"/" batman " collapse
+    # to one entry without changing what's actually sent to the DB/TMDB.
+    normalized_query = " ".join(query.split()).lower()
+    return f"movies:search:v1:{normalized_query}"
+
+
+def _genres_key(media_type: str) -> str:
+    return f"movies:genres:v1:{media_type}"
+
+
+def _default_list_ttl(endpoint: str) -> int:
+    return TTL_LIST if endpoint.startswith(LONG_TTL_LIST_ENDPOINTS) else TTL_LIST_DEFAULT
+
+
+# --------------------------------------------------------------------------- raw-client cache-aside
+
+
+def _cache_aside(cache_key: str, fetch_function: Callable[[], Any], ttl: int) -> Any:
+    """GET cache_key from Redis; on a miss call fetch_function() and SET the JSON result with `ex=ttl`.
+
+    A hit returns the decoded JSON (any non-None stored value is a hit, so a
+    None result is cached as "null"). A miss returns fetch_function's object
+    itself. TMDBFetchError -> its fallback is returned and nothing is stored.
+    RedisError on GET or SET is logged and skipped; other errors propagate.
+    """
     lookup_start = time.perf_counter()
     cached = None
     try:
@@ -54,38 +152,26 @@ def _cache_aside(cache_key, fetch_function, ttl):
     return result
 
 
-# TTLs for TMDB responses. Curated TMDB lists (trending, popular, ...) only
-# reshuffle a few times a day; filtered discover pages keep the short default
-# so every filter combination doesn't sit in Redis for half a day.
-TTL_LIST_DEFAULT = 900
-TTL_LIST = 43200  # 12h
-TTL_DETAIL = 86400  # 24h: movie/tv details (+ append_to_response), collection, season
-TTL_GENRES = 129600  # 36h
+def cache_data_movie(
+    endpoint: str, page: int, fetch_function: Callable[[], Any], ttl: int | None = None, **kwargs: Any
+) -> Any:
+    """Cache a paginated TMDB list response (movie, TV, trending, keyword, discover, ...).
 
-LONG_TTL_LIST_ENDPOINTS = (
-    "trending/",
-    "movie/upcoming",
-    "movie/top_rated",
-    "movie/popular",
-    "movie/now_playing",
-    "tv/popular",
-    "tv/top_rated",
-    "tv/airing_today",
-    "tv/on_the_air",
-    "keyword/",
-)
-
-
-def cache_data_movie(endpoint, page, fetch_function, ttl=None, **kwargs):
-    cache_kwargs = {k: v for k, v in kwargs.items() if k != "max_page"}
-    params_str = "&".join(f"{k}={v}" for k, v in sorted(cache_kwargs.items()))
-    cache_key = f"movies:list:v2:{endpoint}:{page}:{params_str}"
+    Key: movies:list:v2:{endpoint}:{page}:{k=v&... sorted, without max_page}.
+    TTL: `ttl` if given (only None picks a default, so 0 is passed through),
+    else TTL_LIST for endpoints starting with LONG_TTL_LIST_ENDPOINTS, else
+    TTL_LIST_DEFAULT. `ttl` is not part of the key.
+    """
+    cache_key = _list_key(endpoint, page, kwargs)
     if ttl is None:
-        ttl = TTL_LIST if endpoint.startswith(LONG_TTL_LIST_ENDPOINTS) else TTL_LIST_DEFAULT
+        ttl = _default_list_ttl(endpoint)
     return _cache_aside(cache_key, fetch_function, ttl=ttl)
 
 
-def cache_tmdb(cache_key, fetch_function, ttl):
+# --------------------------------------------------------------------------- Django-cache cache-aside
+
+
+def cache_tmdb(cache_key: str, fetch_function: Callable[[], Any], ttl: int) -> Any:
     """Cache-aside through Django's cache framework (CACHES["default"], the same Redis).
 
     Same contract as _cache_aside(): a TMDBFetchError from fetch_function hands its
@@ -111,12 +197,20 @@ def cache_tmdb(cache_key, fetch_function, ttl):
     return result
 
 
-def cache_item_detail(kind, media_type, tmdb_id, fetch_function):
-    cache_key = f"movies:{kind}:v1:{media_type}:{tmdb_id}"
-    return _cache_aside(cache_key, fetch_function, ttl=21600)
+# --------------------------------------------------------------------------- per-item, search, genres
 
 
-def cache_items_detail(kind, media_type, items):
+def cache_item_detail(kind: str, media_type: str, tmdb_id: int, fetch_function: Callable[[], Any]) -> Any:
+    """Cache one item's detail data. Key: movies:{kind}:v1:{media_type}:{tmdb_id}, TTL: TTL_ITEM_DETAIL.
+
+    Used by TMDBClient.enrich_item(), which currently has no callers (kept for
+    a future caller that needs `country`).
+    """
+    cache_key = _item_detail_key(kind, media_type, tmdb_id)
+    return _cache_aside(cache_key, fetch_function, ttl=TTL_ITEM_DETAIL)
+
+
+def cache_items_detail(kind: str, media_type: str, items: list[tuple[int, Callable[[], Any]]]) -> dict[int, Any]:
     """Batched sibling of cache_item_detail() for enrich_items().
 
     items: list of (tmdb_id, fetch_function) pairs. Returns a dict
@@ -135,8 +229,8 @@ def cache_items_detail(kind, media_type, items):
     if not items:
         return {}
 
-    ttl = 21600
-    cache_keys = [f"movies:{kind}:v1:{media_type}:{tmdb_id}" for tmdb_id, _ in items]
+    ttl = TTL_ITEM_DETAIL
+    cache_keys = [_item_detail_key(kind, media_type, tmdb_id) for tmdb_id, _ in items]
 
     lookup_start = time.perf_counter()
     try:
@@ -183,21 +277,23 @@ def cache_items_detail(kind, media_type, items):
     return results
 
 
-def cache_search_results(query, fetch_function):
-    # Same case/whitespace-only normalization icontains + TMDB search already
-    # apply, applied here only to the cache key - "Batman"/" batman " collapse
-    # to one entry without changing what's actually sent to the DB/TMDB.
-    normalized_query = " ".join(query.split()).lower()
-    cache_key = f"movies:search:v1:{normalized_query}"
+def cache_search_results(query: str, fetch_function: Callable[[], Any]) -> Any:
+    """Cache a search result list. Key: movies:search:v1:{query, whitespace-collapsed and lower()-ed}.
+
+    TTL: TTL_SEARCH. fetch_function is called without arguments (it carries
+    the original query itself).
+    """
+    cache_key = _search_key(query)
     # TTL much longer than the list/item caches: unlike category pages, a
     # search's underlying data (which titles match, their tmdb_ids) rarely
     # changes, and the expensive part - one TMDB detail call per result via
     # get_or_create_media() - is skipped entirely on a hit.
-    return _cache_aside(cache_key, fetch_function, ttl=604800)
+    return _cache_aside(cache_key, fetch_function, ttl=TTL_SEARCH)
 
 
-def cache_genres(media_type, fetch_function):
-    cache_key = f"movies:genres:v1:{media_type}"
+def cache_genres(media_type: str, fetch_function: Callable[[], Any]) -> Any:
+    """Cache TMDB's genre list. Key: movies:genres:v1:{media_type}, TTL: TTL_GENRES."""
+    cache_key = _genres_key(media_type)
     # TTL is much longer than even cache_item_detail's: TMDB's genre list is
     # effectively static, unlike per-item ratings/details.
     return _cache_aside(cache_key, fetch_function, ttl=TTL_GENRES)
