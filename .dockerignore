@@ -5,3 +5,4 @@ __pycache__/
 .git
 *.sqlite3
 FUTURE_NOTES.md
+REFACTOR_PLAN.md
