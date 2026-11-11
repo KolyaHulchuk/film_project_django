@@ -19,11 +19,9 @@ from redis.exceptions import RedisError
 
 from movies import redis_services
 from movies.redis_services import (
-    LONG_TTL_LIST_ENDPOINTS,
     TTL_DETAIL,
     TTL_GENRES,
     TTL_LIST,
-    TTL_LIST_DEFAULT,
     TMDBFetchError,
     _cache_aside,
     cache_data_movie,
@@ -68,27 +66,9 @@ def broken_pipeline(error_on):
 
 
 def test_ttl_constants():
-    assert TTL_LIST_DEFAULT == 900
     assert TTL_LIST == 43200
     assert TTL_DETAIL == 86400
     assert TTL_GENRES == 129600
-
-
-def test_long_ttl_list_endpoints():
-    assert LONG_TTL_LIST_ENDPOINTS == (
-        "trending/",
-        "movie/upcoming",
-        "movie/top_rated",
-        "movie/popular",
-        "movie/now_playing",
-        "tv/popular",
-        "tv/top_rated",
-        "tv/airing_today",
-        "tv/on_the_air",
-        "keyword/",
-    )
-    # A tuple, so it can be passed straight to str.startswith().
-    assert isinstance(LONG_TTL_LIST_ENDPOINTS, tuple)
 
 
 def test_tmdb_fetch_error_carries_fallback():
@@ -316,32 +296,28 @@ def test_cache_data_movie_page_is_part_of_key(isolated_cache):
         "tv/airing_today",
         "tv/on_the_air",
         "keyword/9715/movies",
+        "discover/movie",
+        "discover/tv",
+        "search/multi",
+        "person/popular",
+        "movie/550/similar",
+        "trending",
     ],
 )
-def test_cache_data_movie_long_ttl_for_curated_endpoints(isolated_cache, endpoint):
+def test_cache_data_movie_default_ttl_is_12h_for_every_endpoint(isolated_cache, endpoint):
+    # One list TTL for everything: curated lists and filtered discover pages alike.
     cache_data_movie(endpoint, 1, CountingFetch({}))
 
     assert isolated_cache.ttls[f"movies:list:v2:{endpoint}:1:"] == TTL_LIST == 43200
 
 
-@pytest.mark.parametrize(
-    "endpoint",
-    ["discover/movie", "discover/tv", "search/multi", "person/popular", "movie/550/similar", "trending"],
-)
-def test_cache_data_movie_short_ttl_for_other_endpoints(isolated_cache, endpoint):
-    cache_data_movie(endpoint, 1, CountingFetch({}))
+def test_cache_data_movie_default_ttl_ignores_filters(isolated_cache):
+    cache_data_movie("discover/movie", 1, CountingFetch({}), with_genres="28", primary_release_year="2020")
 
-    assert isolated_cache.ttls[f"movies:list:v2:{endpoint}:1:"] == TTL_LIST_DEFAULT == 900
+    assert isolated_cache.ttls["movies:list:v2:discover/movie:1:primary_release_year=2020&with_genres=28"] == TTL_LIST
 
 
-def test_cache_data_movie_long_ttl_match_is_a_plain_prefix(isolated_cache):
-    # str.startswith(): anything that merely begins with a listed prefix matches.
-    cache_data_movie("movie/popularity", 1, CountingFetch({}))
-
-    assert isolated_cache.ttls["movies:list:v2:movie/popularity:1:"] == TTL_LIST
-
-
-def test_cache_data_movie_explicit_ttl_overrides_both_defaults(isolated_cache):
+def test_cache_data_movie_explicit_ttl_overrides_default(isolated_cache):
     cache_data_movie("discover/movie", 1, CountingFetch({}), ttl=TTL_LIST, with_genres="1")
     cache_data_movie("movie/popular", 1, CountingFetch({}), ttl=60)
 

@@ -24,11 +24,9 @@ import redis
 from django.core.cache import cache
 
 __all__ = [
-    "LONG_TTL_LIST_ENDPOINTS",
     "TTL_DETAIL",
     "TTL_GENRES",
     "TTL_LIST",
-    "TTL_LIST_DEFAULT",
     "TMDBFetchError",
     "cache_data_movie",
     "cache_genres",
@@ -43,29 +41,13 @@ logger = logging.getLogger(__name__)
 
 r = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True)
 
-# TTLs for TMDB responses. Curated TMDB lists (trending, popular, ...) only
-# reshuffle a few times a day; filtered discover pages keep the short default
-# so every filter combination doesn't sit in Redis for half a day.
-TTL_LIST_DEFAULT = 900
-TTL_LIST = 43200  # 12h
+# TTLs for TMDB responses.
+TTL_LIST = 43200  # 12h: every paginated list (curated, trending, keyword, discover with any filters)
 TTL_DETAIL = 86400  # 24h: movie/tv details (+ append_to_response), collection, season
 TTL_GENRES = 129600  # 36h
 # Private: per-item enrichment (cache_item_detail/cache_items_detail) and search results.
 TTL_ITEM_DETAIL = 21600  # 6h
 TTL_SEARCH = 604800  # 7 days
-
-LONG_TTL_LIST_ENDPOINTS = (
-    "trending/",
-    "movie/upcoming",
-    "movie/top_rated",
-    "movie/popular",
-    "movie/now_playing",
-    "tv/popular",
-    "tv/top_rated",
-    "tv/airing_today",
-    "tv/on_the_air",
-    "keyword/",
-)
 
 
 class TMDBFetchError(Exception):
@@ -105,10 +87,6 @@ def _search_key(query: str) -> str:
 
 def _genres_key(media_type: str) -> str:
     return f"movies:genres:v1:{media_type}"
-
-
-def _default_list_ttl(endpoint: str) -> int:
-    return TTL_LIST if endpoint.startswith(LONG_TTL_LIST_ENDPOINTS) else TTL_LIST_DEFAULT
 
 
 # --------------------------------------------------------------------------- raw-client cache-aside
@@ -158,13 +136,12 @@ def cache_data_movie(
     """Cache a paginated TMDB list response (movie, TV, trending, keyword, discover, ...).
 
     Key: movies:list:v2:{endpoint}:{page}:{k=v&... sorted, without max_page}.
-    TTL: `ttl` if given (only None picks a default, so 0 is passed through),
-    else TTL_LIST for endpoints starting with LONG_TTL_LIST_ENDPOINTS, else
-    TTL_LIST_DEFAULT. `ttl` is not part of the key.
+    TTL: `ttl` if given (only None picks the default, so 0 is passed through),
+    else TTL_LIST (12h) for every endpoint. `ttl` is not part of the key.
     """
     cache_key = _list_key(endpoint, page, kwargs)
     if ttl is None:
-        ttl = _default_list_ttl(endpoint)
+        ttl = TTL_LIST
     return _cache_aside(cache_key, fetch_function, ttl=ttl)
 
 

@@ -600,7 +600,7 @@ def test_get_list_params_dedupe_cap_and_cache_key(mocker, client, isolated_cache
         (1, "A", "2000-01-01", f"{IMG}/w500/a.jpg", None),
         (2, "S", "2020-01-01", None, 7.5),
     ]
-    assert isolated_cache.ttls == {"movies:list:v2:discover/tv:2:with_genres=16": 900}
+    assert isolated_cache.ttls == {"movies:list:v2:discover/tv:2:with_genres=16": 43200}  # TTL_LIST, 12h
 
 
 def test_get_list_defaults(mocker, client, isolated_cache):
