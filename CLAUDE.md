@@ -8,13 +8,13 @@ Django movie/TV discovery app ("Movies.hub") backed by the TMDB API. Server-rend
 
 `crispy_forms`/`crispy_bootstrap4` are still in `INSTALLED_APPS` and `requirements.txt`, but no template uses them anymore.
 
-## Current state (2026-11-11)
+## Current state (2026-11-14)
 
-- **Branches:** `main` (= `origin/main`) is ~19 commits behind `redesign`. `redesign` holds the whole Movies.hub port and the TMDB wiring. `refactor/backend-cleanup` was branched from `redesign` @ `8d34cca` for a no-behavior-change backend refactor: `movies/tmdb_service.py` and `movies/redis_services.py` are done (characterization tests committed before each refactor); `movies/views.py` and `users/views.py` are not started yet.
-- **Tests:** 302 tests, all passing. They don't touch the dev Redis (see "Testing conventions").
+- **Branches:** `main` (= `origin/main`) is ~31 commits behind `redesign`. `redesign` (local only, no upstream) holds the whole Movies.hub port, the TMDB wiring and the finished no-behavior-change backend refactor: `refactor/backend-cleanup` was branched from `redesign` @ `8d34cca`, refactored `movies/tmdb_service.py`, `movies/redis_services.py`, `movies/views.py` and `users/views.py` (each with its characterization tests committed before the refactor), and was fast-forwarded back into `redesign` on 2026-11-14.
+- **Tests:** 471 tests, all passing. They don't touch the dev Redis (see "Testing conventions").
 - **Lint:** `ruff check .` is clean (ruff 0.16.6 — same rev as `.pre-commit-config.yaml`).
 - **Production runs `runserver`**, not gunicorn: see "Deploy (Render)".
-- **Private local docs, not in git:** `REFACTOR_PLAN.md` (excluded via `.git/info/exclude` and `.dockerignore`) — status and rules of the backend refactor; `FUTURE_NOTES.md` (in `.gitignore`) — e.g. the hidden profile Stats tab; `qa-report/REPORT.md` — the 2026-11-07 health check (1 critical / 9 major / 26 minor), its `screenshots/auth__*` contain personal data, never publish them. `REQUESTS_SESSION_NOTES.md` and `.claude/` are untracked too.
+- **Private local docs, not in git:** `REFACTOR_PLAN.md` (excluded via `.git/info/exclude` and `.dockerignore`) — rules and decisions of the backend refactor, plus its section 6: bugs found during it that were left alone because fixing them changes behavior; `FUTURE_NOTES.md` (in `.gitignore`) — e.g. the hidden profile Stats tab; `qa-report/REPORT.md` — the 2026-11-07 health check (1 critical / 9 major / 26 minor), its `screenshots/auth__*` contain personal data, never publish them. `REQUESTS_SESSION_NOTES.md` and `.claude/` are untracked too.
 
 ## Commands
 
@@ -100,13 +100,25 @@ Tests: `movies/tests/test_tmdb_details.py` and `test_tmdb_service.py` characteri
 
 ### Views (`movies/views.py`)
 
-`AllMoviesView` is the shared base class for every category page (popular, top rated, now playing, upcoming, anime, doramas, cartoons, TV, movie-only); subclasses set `item_func`, `template_name`, `media_type`, etc. It cross-references the logged-in user's `Watchlist` to annotate each item with watched state. The discover-based pages (`TVViews`, `AnimeTVView`, `DoramTVView`, `CartoonTVView`, `MovieView`) set `sortable = True` and build TMDB filters from the query string in `search_filter_movie()` (years / rating / genre / country / `sort` from `CATALOG_SORTS`; `vote_count.gte = MIN_VOTES` for rating/title sorts or a rating filter; "newest" gets an upper date bound of today). Base filters per page live in module constants (`DORAMA_TV_FILTERS`, `ANIME_TV_FILTERS`, `CARTOON_TV_FILTERS`). `HX-Request` renders only `movies/partials/movie_list.html`. `AllMoviesView.get` still has `print("[timing] ...")` lines and `PopularMoviesView.__init__` has `print(self.item_func)` — logging is a separate task for the owner, leave them alone during refactors.
+`AllMoviesView` is the shared base class for every category page (popular, top rated, now playing, upcoming, anime, doramas, cartoons, TV, movie-only); `AllMoviesView.get` calls `self.item_func(page)` and cross-references the logged-in user's `Watchlist` to annotate each item with watched state. Two declarative bases fill in `item_func`:
+- `ListCatalogView` — one fixed TMDB list, subclasses set `list_endpoint` (+ `media_type`, `template_name`, ...): `PopularMoviesView`, `TVPopularView`, `TopRatedView`, `NowPlayingsView`, `UpcomingView`.
+- `DiscoverCatalogView` — `discover/*`, subclasses set `discover_endpoint` and `base_filters`; `sortable = True`: `TVViews`, `AnimeTVView`, `DoramTVView`, `CartoonTVView`, `MovieView`. It builds TMDB filters from the query string in `search_filter_movie()` (years / rating / genre / country / `sort` from `CATALOG_SORTS`; `vote_count.gte = MIN_VOTES` for rating/title sorts or a rating filter; "newest" gets an upper date bound of today) and merges them as `{**base_filters, **extra_filters}`. The base filters are module constants (`TV_DISCOVER_FILTERS`, `ANIME_TV_FILTERS`, `DORAMA_TV_FILTERS`, `CARTOON_TV_FILTERS`, `MOVIE_DISCOVER_FILTERS`); the dorama/anime/cartoon ones are also used by the home TV showcase, so never mutate them.
+
+`?page` is parsed by `_parse_page()` (invalid → 1) in both `AllMoviesView` and `PopularActorView`. `HX-Request` renders only `movies/partials/movie_list.html`. `AllMoviesView.get` still has `print("[timing] ...")` lines and `PopularMoviesView.__init__` has `print(self.item_func)` — logging is a separate task for the owner, leave them alone during refactors.
 
 Public names with typos are interface — **don't rename them**: `SerachView`, `ai_recomendations` (URL name `ai-recomendations` is used by the frontend), `parials_name`, `GerneSerializer`, URL names `api-movie-datail`, `token_obtian`. Tests patch `movies.views.TMDBClient` and `users.views.get_or_create_media`, so `get_or_create_media` must stay in `movies/views.py` and keep resolving `TMDBClient` from its globals.
 
-**Home** (`HomeView`): one `fetch_parallel` round for all list rows (`trending/*`, `movie/*`, `tv/popular`, mood rows `discover/movie?with_genres=…` from `MOODS`, TV showcase rows from `TV_SHOWCASE`, Topic of the Day = a keyword from `TOPIC_KEYWORDS` picked by date), then a second round for Coming Soon trailers + Movie of the Week (`#1` of `trending/movie/week`, via `get_details`).
+**Home** (`HomeView`): one `fetch_parallel` round for all list rows (`trending/*`, `movie/*`, `tv/popular`, mood rows `discover/movie?with_genres=…` from `MOODS`, TV showcase rows from `TV_SHOWCASE`, Topic of the Day = a keyword from `TOPIC_KEYWORDS` picked by date), then a second round for Coming Soon trailers + Movie of the Week (`#1` of `trending/movie/week`, via `get_details`). `get` is split into `_first_round_tasks`, `_second_round_tasks`, `_moods`, `_topic` and `_tv_showcase`; the round-2 tasks stay lambdas on purpose (they read the round-1 result inside the worker thread), and the key order of the task dicts is pinned by tests.
 
 **Detail** (`MoviesDetailView`, `movie/<pk>/<media_type>/`): `get_details()` + a local `Movies` row (created by `get_or_create_media(pk, media_type, details)` without an extra TMDB call), `cast[:12]`, TV → `_seasons_context` (`?season=N`, default = latest season that has started airing, season 0 / empty seasons skipped), movie → `_collection_context`. Comments, rating count and the watchlist toggle state are rendered server-side.
+
+### Watchlist views (`users/views.py`)
+
+- `AddToWatchlist` (POST) calls `get_or_create_media`, then answers via `_json_response` (fetch() from `watchlist_toggle.js`, detected by `wants_json()` = `X-Requested-With: XMLHttpRequest`) or `_form_response` (flash message + redirect to POST `next`, else home).
+- `DeleteWatchlist` handles only HTTP `DELETE` (JSON for fetch(), empty 200 for HTMX, else redirect); `toggle_watched` flips `watched` on POST.
+- `search_watchlist` (HTMX filter) uses `_param()` and `_rating_bounds()` (`rating_search=7` → `[7, 8)`).
+- `WatchlistView` shows 20 per page, newest first; the filter options come from `WATCHLIST_YEARS`, `WATCHLIST_GENRES` (both hardcoded) and `_split_countries()` over a separate `DISTINCT` query.
+- Several known bugs here are pinned as is in `users/tests/test_watchlist_characterization.py` (`# Known bug, pinned as is:`): fixing one means changing its test in the same commit.
 
 **Search** (`SerachView`): TMDB `search_multi` results are cached per normalized query for 7 days (`cache_search_results`), merged with local `Movies` title matches; `search_suggest` (`search/suggest/?q=`) is the JSON for the header dropdown (min 2 chars, max 100, up to 6 results).
 
@@ -144,7 +156,7 @@ Rate limits: `CommentCreateThrottle` (10/hour) and `CommentVoteThrottle` (60/min
 
 **Template flow (Celery)**: `movies/views.py: ai_recomendations` enqueues `movies/tasks.py: get_ai_recommendation_task` (`.delay(user_id, message, media_type)`) and immediately returns `{"task_id": ...}`. `ai_recommendation_status(request, task_id)` polls `AsyncResult` and returns `{"status": "pending"}`, `{"status": "done", "result": {...}}`, or `{"status": "failed", "error": ...}`. The Alpine.js chat panel in `movies/templates/movies/partials/chrome/assistant.html` (included by `base.html`) polls `ai/status/<task_id>/` every 1.5s (up to ~45s) after posting a message. `docker-compose.yml` has a dedicated `worker` service (`celery -A config worker --loglevel=info`); `config/__init__.py` imports `celery_app` so Celery autodiscovers `movies/tasks.py`. Verified end-to-end via `docker compose up` (2026-09-05).
 
-**Rate limit**: the template view and the API share `AIRecommendationThrottle` (10/hour per user, `movies/throttling.py`; the API also has `AIRecommendationAnonThrottle` 3/hour). `ai_recomendations` returns 429 with `{"error": "... try again in N minutes.", "retry_after": seconds}`. `ai_recomendations` and `ai_recommendation_status` have no tests yet.
+**Rate limit**: the template view and the API share `AIRecommendationThrottle` (10/hour per user, `movies/throttling.py`; the API also has `AIRecommendationAnonThrottle` 3/hour). `ai_recomendations` returns 429 with `{"error": "... try again in N minutes.", "retry_after": seconds}`. Both views are covered in `movies/tests/test_views_characterization.py` (Celery task and `AsyncResult` mocked).
 
 **Model** (2026-09-05): Groq dropped the Llama 3.x chat line (`llama-3.3-70b-versatile` 404s). Every model available to this key is on the free tier (rate-limited, $0); `openai/gpt-oss-120b` was picked as the closest general-purpose match (30 RPM / 1K RPD).
 
@@ -173,8 +185,8 @@ The module docstring and `movies/tests/test_redis_services.py` are the source of
 Tests live under `movies/tests/` and `users/tests/` (one file per view/service/model, e.g. `test_movie_view.py`, `test_tmdb_service.py`). Pattern used throughout: `pytest.mark.django_db` for DB-touching tests, `pytest-mock`'s `mocker.patch` to stub `TMDBClient` (and its methods) rather than hitting the real TMDB API, `RequestFactory` for view-level tests.
 
 - **Cache isolation (autouse):** `movies/tests/conftest.py` has `isolated_cache` — locmem Django cache + an in-memory `FakeRedis` patched over `movies.redis_services.r`; it returns the `FakeRedis`, so a test can inspect `fake.store` / `fake.ttls` to assert cache keys and TTLs. `users/tests/conftest.py` swaps the Django cache to locmem. So tests never read or overwrite the dev site's Redis.
-- **Characterization tests** (pin current behavior before a refactor) are the style reference: `movies/tests/test_tmdb_details.py` and `movies/tests/test_redis_services.py`. They are committed **separately and before** the refactor commit, so history shows they passed on the old code.
-- **Gaps:** `api/tests.py` is empty — the DRF layer has no tests apart from the comment endpoints covered in `movies/tests/test_comments.py`. Also untested: `HomeView`, `MoviesDetailView` (seasons/collection), `ai_recomendations`, `ai_recommendation_status`, most of the watchlist filter view.
+- **Characterization tests** (pin current behavior before a refactor) are the style reference: `movies/tests/test_tmdb_details.py`, `movies/tests/test_redis_services.py`, `movies/tests/test_views_characterization.py` (catalog, filters, Home, Detail, AI, `get_or_create_media`, incl. SQL query counts) and `users/tests/test_watchlist_characterization.py`. They are committed **separately and before** the refactor commit, so history shows they passed on the old code. A test that pins a known bug says so in a `# Known bug, pinned as is:` comment.
+- **Gaps:** `api/tests.py` is empty — the DRF layer has no tests apart from the comment endpoints covered in `movies/tests/test_comments.py`.
 - Other test files: `test_search_suggest.py`, `test_unique_email.py`, `test_auth_flows.py`, `test_google_login.py`.
 
 ## Deploy (Render)
