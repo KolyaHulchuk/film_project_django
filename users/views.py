@@ -1,10 +1,13 @@
-import math
+from collections.abc import Iterable
+from typing import Any
 
 from django.contrib import messages
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import SetPasswordForm
 from django.db import IntegrityError, transaction
-from django.http import HttpResponse, JsonResponse
+from django.db.models import QuerySet
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
@@ -12,6 +15,7 @@ from django.views import View
 from django.views.decorators.http import require_POST
 from django.views.generic import DeleteView, ListView
 
+from movies.models import Movies
 from movies.views import get_or_create_media
 
 from .emails import (
@@ -24,14 +28,18 @@ from .emails import (
 from .forms import ProfileUpdateForm, UserRegisterForm, UserUpdateForm
 from .models import Watchlist
 
+# Watchlist page filter panel. Both lists are hardcoded, so the years go stale in 2027.
+WATCHLIST_YEARS = range(2026, 2020, -1)
+WATCHLIST_GENRES = ("Comedy", "Horror", "Adventure", "Action")
 
-# Truncate to 1 decimal place
-def truncate(number, decimals=1):
-    multiplier = 10**decimals
-    return math.floor(number * multiplier) / multiplier  # math.floor always rounds down
+MOVIE_NOT_FOUND_MESSAGE = "Could not find data for this movie"
 
 
-def register(request):
+# == Auth & profile ==
+
+
+def register(request: HttpRequest) -> HttpResponse:
+    """Sign-up form. On success: send the verification link, flash a message and redirect home."""
     if request.method == "POST":
         form = UserRegisterForm(request.POST)
         if form.is_valid():
@@ -55,7 +63,8 @@ def register(request):
 
 
 @login_required
-def profile(request):
+def profile(request: HttpRequest) -> HttpResponse:
+    """Profile page: edit username, email and avatar; also shows the email-verified and Google-connected state."""
     if request.method == "POST":
         u_form = UserUpdateForm(request.POST, instance=request.user)
         p_form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user.profile)
@@ -91,7 +100,7 @@ def profile(request):
 
 @login_required
 @require_POST
-def resend_verification(request):
+def resend_verification(request: HttpRequest) -> HttpResponse:
     """Profile button: re-send the confirmation link for the current email (allauth rate-limits repeats)."""
     if is_email_verified(request.user):
         messages.info(request, "Your email is already verified.")
@@ -102,43 +111,61 @@ def resend_verification(request):
 
 
 class SitePasswordResetConfirmView(auth_views.PasswordResetConfirmView):
-    def form_valid(self, form):
+    """Django's "set a new password" step that also marks the user's email as verified."""
+
+    def form_valid(self, form: SetPasswordForm) -> HttpResponse:
         response = super().form_valid(form)
         # Following the emailed link proves the user owns this address.
         mark_email_verified(form.user)
         return response
 
 
-def wants_json(request):
+# == Watchlist ==
+
+
+def wants_json(request: HttpRequest) -> bool:
     """True for fetch() calls from static/movies/watchlist_toggle.js (plain form posts keep redirect + messages)."""
     return request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
 
 @method_decorator(login_required, name="dispatch")
 class AddToWatchlist(View):
-    def post(self, request, tmdb_id, media_type):
+    """POST: add a TMDB title to the user's watchlist, creating its local Movies row if needed."""
+
+    def post(self, request: HttpRequest, tmdb_id: int, media_type: str) -> HttpResponse:
         movie = get_or_create_media(tmdb_id, media_type)
         if wants_json(request):
-            if not movie:
-                return JsonResponse({"ok": False, "error": "Could not find data for this movie"}, status=404)
-            item, created = Watchlist.objects.get_or_create(user=request.user, movie=movie)
-            return JsonResponse(
-                {
-                    "ok": True,
-                    "in_watchlist": True,
-                    "created": created,
-                    "watchlist_id": item.id,
-                    "remove_url": reverse("delete_watchlist", args=[item.id]),
-                }
-            )
+            return self._json_response(request, movie)
+        return self._form_response(request, movie)
+
+    @staticmethod
+    def _json_response(request: HttpRequest, movie: Movies | None) -> JsonResponse:
+        """The entry's id and remove URL for watchlist_toggle.js, or a 404 when there's no movie data."""
+        if not movie:
+            return JsonResponse({"ok": False, "error": MOVIE_NOT_FOUND_MESSAGE}, status=404)
+        item, created = Watchlist.objects.get_or_create(user=request.user, movie=movie)
+        return JsonResponse(
+            {
+                "ok": True,
+                "in_watchlist": True,
+                "created": created,
+                "watchlist_id": item.id,
+                "remove_url": reverse("delete_watchlist", args=[item.id]),
+            }
+        )
+
+    @staticmethod
+    def _form_response(request: HttpRequest, movie: Movies | None) -> HttpResponse:
+        """A flash message, then a redirect to POST `next` or, without it, to the home page."""
         if movie:
-            watchlist_item, created = Watchlist.objects.get_or_create(user=request.user, movie=movie)
-            if created:  # if just create
-                messages.success(request, f"{movie.title or movie.name} added to your watchlist")
+            _, created = Watchlist.objects.get_or_create(user=request.user, movie=movie)
+            title = movie.title or movie.name
+            if created:
+                messages.success(request, f"{title} added to your watchlist")
             else:
-                messages.info(request, f"{movie.title or movie.name} is already in your watchlist")
+                messages.info(request, f"{title} is already in your watchlist")
         else:
-            messages.error(request, "Could not find data for this movie")
+            messages.error(request, MOVIE_NOT_FOUND_MESSAGE)
         next_url = request.POST.get("next") or request.META.get("HTTP-REFERER") or "movies-home"
         print("AddToWatchlist called")
 
@@ -147,24 +174,29 @@ class AddToWatchlist(View):
 
 @method_decorator(login_required, name="dispatch")
 class DeleteWatchlist(DeleteView):
+    """DELETE: remove one of the user's watchlist entries."""
+
     model = Watchlist
 
-    def get_queryset(self):  # filter movies by current user
+    def get_queryset(self) -> QuerySet[Watchlist]:
+        """Only the current user's entries, so someone else's id is a 404."""
         return Watchlist.objects.filter(user=self.request.user)
 
-    def delete(self, request, *args, **kwargs):
+    def delete(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        """JSON for fetch(), an empty 200 for HTMX (the card is swapped out), otherwise a redirect to the watchlist."""
         self.object = self.get_object()
         self.object.delete()
 
         if wants_json(request):
             return JsonResponse({"ok": True, "in_watchlist": False})
         if request.headers.get("HX-Request"):
-            return HttpResponse("")  # return empty response for HTMX requests
-        return redirect("watchlist")  # regular request — redirect to watchlist page
+            return HttpResponse("")
+        return redirect("watchlist")
 
 
 @login_required
-def toggle_watched(request, watchlist_id):
+def toggle_watched(request: HttpRequest, watchlist_id: int) -> HttpResponse | None:
+    """POST: flip the entry's `watched` flag and answer "OK". Any other method returns None."""
     item = Watchlist.objects.get(id=watchlist_id, user=request.user)
     if request.method == "POST":
         item.watched = not item.watched
@@ -172,40 +204,48 @@ def toggle_watched(request, watchlist_id):
         return HttpResponse("OK")
 
 
+def _param(request: HttpRequest, name: str) -> str:
+    """A GET parameter with surrounding whitespace stripped; "" when it's missing."""
+    return (request.GET.get(name) or "").strip()
+
+
+def _rating_bounds(value: str) -> tuple[float, float] | None:
+    """The half-open range [rating, rating + 1) for a rating filter, or None if it isn't a number."""
+    try:
+        rating = float(value)
+    except ValueError:
+        return None
+    return rating, rating + 1
+
+
 @login_required
-def search_watchlist(request):
+def search_watchlist(request: HttpRequest) -> HttpResponse:
+    """HTMX filter of the Watchlist page: the user's entries narrowed by every non-blank GET filter.
+
+    years_search, country_search, genre_search and name_search are case-insensitive substring
+    matches on the related movie's release date, country, genre names and title; rating_search=7
+    keeps ratings in [7, 8). A non-numeric rating is ignored. Renders the results partial.
+    """
     watchlist_items = Watchlist.objects.filter(user=request.user)
 
-    years_search = (request.GET.get("years_search") or "").strip()
+    years_search = _param(request, "years_search")
     if years_search:
-        watchlist_items = watchlist_items.filter(
-            movie__release_date__icontains=years_search
-        )  #  __icontains performs case-insensitive search in the DB
+        watchlist_items = watchlist_items.filter(movie__release_date__icontains=years_search)
 
-    country_search = (request.GET.get("country_search") or "").strip()
+    country_search = _param(request, "country_search")
     if country_search:
-        watchlist_items = watchlist_items.filter(
-            movie__country__icontains=country_search
-        )  #  movie is the relation between Movie and Watchlist tables
+        watchlist_items = watchlist_items.filter(movie__country__icontains=country_search)
 
-    genre_search = (request.GET.get("genre_search") or "").strip()
+    genre_search = _param(request, "genre_search")
     if genre_search:
         watchlist_items = watchlist_items.filter(movie__genres__name__icontains=genre_search)
 
-    rating_search = (request.GET.get("rating_search") or "").strip()
-    if rating_search:
-        try:
-            rating = float(rating_search)
+    rating_bounds = _rating_bounds(_param(request, "rating_search"))
+    if rating_bounds:
+        low, high = rating_bounds
+        watchlist_items = watchlist_items.filter(movie__tmdb_rating__gte=low, movie__tmdb_rating__lt=high)
 
-            # Create a range: rating=5.0, add 1 gives 6.0, resulting in range from 5.0 to 6.0
-            watchlist_items = watchlist_items.filter(
-                movie__tmdb_rating__gte=rating,  # gte operator >= (greater than or equal)
-                movie__tmdb_rating__lt=rating + 1,  # lt operator < (less than)
-            )
-        except ValueError:
-            pass
-
-    name_search = (request.GET.get("name_search") or "").strip()
+    name_search = _param(request, "name_search")
     if name_search:
         watchlist_items = watchlist_items.filter(movie__title__icontains=name_search)
 
@@ -218,33 +258,39 @@ def search_watchlist(request):
     )
 
 
+def _split_countries(values: Iterable[str]) -> list[str]:
+    """Sorted unique names from Movies.country values, each of which may list several countries.
+
+    A blank value is skipped, but an empty part after a stray comma is kept as "".
+    """
+    countries: set[str] = set()
+    for value in values:
+        if value:
+            countries.update(part.strip() for part in value.split(","))
+    return sorted(countries)
+
+
 @method_decorator(login_required, name="dispatch")
 class WatchlistView(ListView):
+    """The Watchlist page: the user's entries, newest first, 20 per page, plus the filter panel options."""
+
     model = Watchlist
     template_name = "users/watchlist.html"
     context_object_name = "watchlist"
     paginate_by = 20
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[Watchlist]:
         return Watchlist.objects.filter(user=self.request.user).order_by("-id")
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """Add `years`, `genres` and `countries` (taken from all the user's entries, not just this page)."""
         context = super().get_context_data(**kwargs)
 
-        context["years"] = range(2026, 2020, -1)
-        context["genres"] = ["Comedy", "Horror", "Adventure", "Action"]
+        context["years"] = WATCHLIST_YEARS
+        context["genres"] = list(WATCHLIST_GENRES)
 
-        countries_list = (
-            Watchlist.objects.filter(user=self.request.user).values_list("movie__country", flat=True).distinct()
-        )  # distinct removes duplicates, flat returns a plain list instead of tuples
-
-        all_countries = set()
-
-        for country_str in countries_list:
-            if country_str:
-                for country in country_str.split(","):  # split by comma where one entry may contain multiple countries
-                    all_countries.add(country.strip())
-
-        context["countries"] = sorted(all_countries)  # sort alphabetically
+        # A separate query, not get_queryset(): its ORDER BY id would be added to the DISTINCT.
+        countries = Watchlist.objects.filter(user=self.request.user).values_list("movie__country", flat=True).distinct()
+        context["countries"] = _split_countries(countries)
 
         return context
