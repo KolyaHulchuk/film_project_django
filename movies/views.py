@@ -1,17 +1,14 @@
 import math
 import time
+from collections.abc import Callable
 from datetime import date, datetime
-from functools import wraps
+from functools import partial, wraps
+from typing import Any
 
 import requests
 from celery.result import AsyncResult
 from django.contrib.auth.decorators import login_required
-
-# instance – the model object
-# created – a boolean value:
-# True if the object was created,
-# False if it already existed in the database
-from django.http import JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views import View
@@ -27,6 +24,7 @@ from .redis_services import TTL_LIST, TMDBFetchError, cache_search_results
 from .throttling import AIRecommendationThrottle, CommentCreateThrottle, CommentVoteThrottle
 from .tmdb_service import (
     TMDBClient,
+    TMDBData,
     fetch_parallel,
 )
 from .utils import COUNTRY_CODES, normalize_countries
@@ -54,7 +52,12 @@ MOOD_DISCOVER_FILTERS = {"sort_by": "popularity.desc", "vote_count.gte": 300}
 # haunted house, whodunit, space travel.
 TOPIC_KEYWORDS = (4379, 10051, 4565, 12190, 7312, 10349, 310, 3358, 12570, 3801)
 
-# discover/tv base filters, shared by the catalog pages and the home TV showcase.
+# Every Home row shows the first page of its TMDB list.
+HOME_PAGE = 1
+# Home "Coming Soon": how many upcoming movies get a trailer lookup.
+COMING_SOON_LIMIT = 8
+
+# discover/* base filters of the catalog pages; the first three are shared with the home TV showcase.
 DORAMA_TV_FILTERS = {"with_original_language": "ko", "without_genres": 16, "max_page": 100}
 ANIME_TV_FILTERS = {
     "with_genres": 16,  # 16 = Animation in TMDB
@@ -63,6 +66,8 @@ ANIME_TV_FILTERS = {
     "max_page": 100,
 }
 CARTOON_TV_FILTERS = {"with_genres": 16, "with_origin_country": "US|GB|FR|CA|AU", "max_page": 100}
+TV_DISCOVER_FILTERS = {"without_genres": 16, "max_page": 100}  # all TV except animation
+MOVIE_DISCOVER_FILTERS = {"max_page": 100}
 
 # Home "TV & Categories" tabs: (slug, label, catalog url name). "tv" uses tv/popular.
 TV_SHOWCASE_TABS = (
@@ -85,36 +90,55 @@ CATALOG_SORTS = {
     "newest": ("Release date", "primary_release_date.desc", "first_air_date.desc"),
     "title": ("A–Z", "title.asc", "name.asc"),
 }
+# (key, label) pairs for the Sort chip; templates only iterate over it.
+CATALOG_SORT_OPTIONS = [(key, label) for key, (label, _, _) in CATALOG_SORTS.items()]
 # Rating / A-Z sorts and the min-rating filter would otherwise surface titles with a handful of votes.
 MIN_VOTES = 100
 
+# Detail page: how many cast members are shown.
+DETAIL_CAST_LIMIT = 12
 
-def topic_of_the_day(today=None):
+# Comment feed sort switch: (normalize_sort() key, label).
+COMMENT_SORT_OPTIONS = [("new", "Newest"), ("old", "Oldest")]
+
+
+def topic_of_the_day(today: date | None = None) -> int:
     """Rotate TOPIC_KEYWORDS by calendar day: same topic for everyone all day."""
     today = today or date.today()
     return TOPIC_KEYWORDS[today.toordinal() % len(TOPIC_KEYWORDS)]
 
 
+def _parse_page(request: HttpRequest) -> int:
+    """`?page` as an int; 1 when it is missing or not a number (not clamped here)."""
+    try:
+        return int(request.GET.get("page", 1))
+    except ValueError:
+        return 1
+
+
+# == Catalog ==
+
+
 class AllMoviesView(View):
-    """
-    Base view for all movie and TV category pages.
-    Subclasses override title, template_name, base_filters and media_type.
+    """Base view for all movie and TV category pages.
+
+    Subclasses set title, template_name, media_type and item_func(page), which
+    returns one page of a TMDB list. The page is annotated with genre names and,
+    for a logged-in user, with their watchlist state (is_watched, watchlist_id).
     """
 
     title = "Default Title"
     template_name = "movies/category/default.html"  # class attribute, can be overridden in subclasses
-    parials_name = "movies/partials/movie_list.html"  # class attribute, overriden in subclasses
-    item_func = None
+    parials_name = "movies/partials/movie_list.html"  # rendered instead of template_name for HTMX requests
+    item_func: Callable[[int], TMDBData] | None = None
     media_type = "movie"
     sortable = False  # True on the discover-based pages, where search_filter_movie() sends sort_by
 
-    def get(self, request):
+    def get(self, request: HttpRequest) -> HttpResponse:
+        """Render one catalog page (`?page=N`, clamped to TMDB's total_pages)."""
         view_start = time.perf_counter()
         client = TMDBClient()
-        try:
-            page = int(request.GET.get("page", 1))
-        except ValueError:
-            page = 1
+        page = _parse_page(request)
 
         step_start = time.perf_counter()
         data = self.item_func(page)  #  Call the function that returns raw data from TMDB
@@ -137,11 +161,7 @@ class AllMoviesView(View):
         if request.user.is_authenticated:
             step_start = time.perf_counter()
             watchlist = Watchlist.objects.filter(user=request.user).select_related("movie")
-
-            watched_map = {}
-
-            for w in watchlist:
-                watched_map[w.movie.tmdb_id] = w
+            watched_map = {w.movie.tmdb_id: w for w in watchlist}
 
             for item in items:
                 if item["id"] in watched_map:
@@ -166,15 +186,12 @@ class AllMoviesView(View):
             "current_filters": current_filters,
             "total_results": data.get("total_results"),
             "sortable": self.sortable,
-            "sort_options": [(key, label) for key, (label, _, _) in CATALOG_SORTS.items()],
+            "sort_options": CATALOG_SORT_OPTIONS,
             "current_sort": self.current_sort(request),
         }
 
-        # # If the request comes from HTMX, render only the partial template
-        if request.headers.get("HX-Request"):
-            template = self.parials_name
-        else:
-            template = self.template_name
+        # If the request comes from HTMX, render only the partial template
+        template = self.parials_name if request.headers.get("HX-Request") else self.template_name
 
         step_start = time.perf_counter()
         response = render(request, template, context)
@@ -182,9 +199,8 @@ class AllMoviesView(View):
         print(f"[timing] AllMoviesView.get total: {(time.perf_counter() - view_start) * 1000:.1f}ms")
         return response
 
-    # Build extra filters from user input (query parameters)
-    def search_filter_movie(self, request):
-
+    def search_filter_movie(self, request: HttpRequest) -> dict[str, Any]:
+        """TMDB discover filters from the query string (years, rating, genre, country, sort)."""
         extra_filters = {}
 
         years = request.GET.get("years_search")
@@ -224,191 +240,287 @@ class AllMoviesView(View):
         return extra_filters
 
     @staticmethod
-    def current_sort(request):
+    def current_sort(request: HttpRequest) -> str:
+        """The `?sort` key if it is in CATALOG_SORTS, otherwise "popularity"."""
         sort = request.GET.get("sort", "popularity")
         return sort if sort in CATALOG_SORTS else "popularity"
 
 
-class PopularMoviesView(AllMoviesView):
+class ListCatalogView(AllMoviesView):
+    """Catalog page of one fixed TMDB list (list_endpoint); the query-string filters are not used."""
+
+    list_endpoint = ""
+
+    def item_func(self, page: int) -> TMDBData:
+        """One page of list_endpoint."""
+        return TMDBClient().get_list(self.list_endpoint, page)
+
+
+class PopularMoviesView(ListCatalogView):
     title = "Popular Movies"
     template_name = "movies/category/popular.html"
+    list_endpoint = "movie/popular"
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.item_func = lambda page: TMDBClient().get_list("movie/popular", page)
         print(self.item_func)
 
 
-class TVPopularView(AllMoviesView):
+class TVPopularView(ListCatalogView):
     title = "Popular Tv"
     template_name = "movies/category/tv.html"
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.item_func = lambda page: TMDBClient().get_list("tv/popular", page)
-        self.media_type = "tv"
+    list_endpoint = "tv/popular"
+    media_type = "tv"
 
 
-class TopRatedView(AllMoviesView):
+class TopRatedView(ListCatalogView):
     title = "Top rated"
     template_name = "movies/category/top_rated.html"
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.item_func = lambda page: TMDBClient().get_list("movie/top_rated", page)
+    list_endpoint = "movie/top_rated"
 
 
-class NowPlayingsView(AllMoviesView):
+class NowPlayingsView(ListCatalogView):
     title = "Now Playings"
     template_name = "movies/category/now_playings.html"
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.item_func = lambda page: TMDBClient().get_list("movie/now_playing", page)
+    list_endpoint = "movie/now_playing"
 
 
-class UpcomingView(AllMoviesView):
+class UpcomingView(ListCatalogView):
     title = "Upcoming"
     template_name = "movies/category/upcoming.html"
+    list_endpoint = "movie/upcoming"
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.item_func = lambda page: TMDBClient().get_list("movie/upcoming", page)
+
+class DiscoverCatalogView(AllMoviesView):
+    """Catalog page on TMDB discover/*: base_filters plus the user's filters and sort from the query string."""
+
+    sortable = True
+    discover_endpoint = ""
+    base_filters: dict[str, Any] = {}  # never mutated, only merged into a new dict
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        """Build this request's filters (query string wins over base_filters), then render the page."""
+        extra_filters = self.search_filter_movie(request)
+        self.filters = {**self.base_filters, **extra_filters}
+        return super().get(request)
+
+    def item_func(self, page: int) -> TMDBData:
+        """One page of discover_endpoint with this request's filters."""
+        return TMDBClient().get_list(self.discover_endpoint, page, **self.filters)
+
+
+class TVViews(DiscoverCatalogView):
+    title = "TV"
+    template_name = "movies/type/tv.html"
+    discover_endpoint = "discover/tv"
+    base_filters = TV_DISCOVER_FILTERS
+    media_type = "tv"
+
+
+class AnimeTVView(DiscoverCatalogView):
+    title = "Anime TV"
+    template_name = "movies/type/anime.html"
+    discover_endpoint = "discover/tv"
+    base_filters = ANIME_TV_FILTERS
+    media_type = "tv"
+
+
+class DoramTVView(DiscoverCatalogView):
+    title = "Dorams TV"
+    template_name = "movies/type/dorams.html"
+    discover_endpoint = "discover/tv"
+    base_filters = DORAMA_TV_FILTERS
+    media_type = "tv"
+
+
+class CartoonTVView(DiscoverCatalogView):
+    title = "Cartoon TV"
+    template_name = "movies/type/cartoons.html"
+    discover_endpoint = "discover/tv"
+    base_filters = CARTOON_TV_FILTERS
+    media_type = "tv"
+
+
+class MovieView(DiscoverCatalogView):
+    title = "Movie"
+    template_name = "movies/type/movie.html"
+    discover_endpoint = "discover/movie"
+    base_filters = MOVIE_DISCOVER_FILTERS
+    media_type = "movie"
+
+
+# == Popular actors ==
 
 
 class PopularActorView(View):
-    # TMDB's "popular people" endpoint returns actors, directors, producers,
-    # etc. mixed together; get_popular_actors() filters that down to actors
-    # only, since the template just needs poster/name/one known-for title.
-    def get(self, request):
+    """Paginated popular actors page.
+
+    TMDB's "popular people" endpoint returns actors, directors, producers, etc.
+    mixed together; get_popular_actors() filters that down to actors only,
+    since the template just needs poster/name/one known-for title.
+    """
+
+    def get(self, request: HttpRequest) -> HttpResponse:
         client = TMDBClient()
-        try:
-            page = int(request.GET.get("page", 1))
-        except ValueError:
-            page = 1
+        page = _parse_page(request)
 
         context = client.get_popular_actors(page)
 
         return render(request, "movies/popular_actors.html", context)
 
 
+# == Home ==
+
+
 class HomeView(View):
-    def get(self, request):
-        page = 1
+    """Home page. Every row comes from TMDB in two fetch_parallel rounds:
+
+    1. all list rows, genres and the Topic of the Day;
+    2. what depends on round 1: Coming Soon trailers and the Movie of the Week details.
+    """
+
+    def get(self, request: HttpRequest) -> HttpResponse:
         client = TMDBClient()
-        topic_id = topic_of_the_day()
+        data = fetch_parallel(self._first_round_tasks(client, topic_of_the_day()))
 
-        tasks = {
-            "hero_movies": lambda: client.get_list_with_trailers("movie/popular", page, "movie"),
-            "trending_all_week": lambda: client.get_trending("all", "week"),
-            "trending_all_day": lambda: client.get_trending("all", "day"),
-            "trending_movie_week": lambda: client.get_trending("movie", "week"),
-            "trending_people": lambda: client.get_trending("person", "week"),
-            "now_playings": lambda: client.get_list("movie/now_playing", page),
-            "upcoming": lambda: client.get_list("movie/upcoming", page),
-            "tv_serials_popular": lambda: client.get_list("tv/popular", page),
-            "now_popular": lambda: client.get_list("movie/popular", page),
-            "top_rated": lambda: client.get_list("movie/top_rated", page),
-            "movie_genres": lambda: client.get_genres("movie"),
-            "topic": lambda: client.get_keyword(topic_id),
-            "topic_movies": lambda: client.get_keyword_movies(topic_id),
-        }
-        for slug, (genre_id, _icon) in MOODS.items():
-            tasks[f"mood:{slug}"] = lambda genre_id=genre_id: client.get_list(
-                "discover/movie", page, ttl=TTL_LIST, with_genres=genre_id, **MOOD_DISCOVER_FILTERS
-            )
-        for slug, (endpoint, filters) in TV_SHOWCASE.items():
-            tasks[f"tv:{slug}"] = lambda endpoint=endpoint, filters=filters: client.get_list(
-                endpoint, page, ttl=TTL_LIST, **filters
-            )
-        data = fetch_parallel(tasks)
-
-        def results(name):
-            return (data.get(name) or {}).get("results", [])
-
-        now_playings = results("now_playings")
-        now_popular = results("now_popular")
+        now_playings = self._results(data, "now_playings")
+        now_popular = self._results(data, "now_popular")
         now_playing_ids = {m["id"] for m in now_playings}
         popular_ids = {m["id"] for m in now_popular}
-        filtered_upcoming = [m for m in results("upcoming") if m["id"] not in now_playing_ids]
+        filtered_upcoming = [m for m in self._results(data, "upcoming") if m["id"] not in now_playing_ids]
         filtered_now_playings = [m for m in now_playings if m["id"] not in popular_ids]
 
-        # Second round, depends on the lists above: trailers for the Coming Soon
-        # cards and the Movie of the Week details (credits) - both from the same
-        # cached get_details() request the detail page uses.
         # Movie of the Week rule: the #1 movie of TMDB trending/movie/week.
-        coming_soon = filtered_upcoming[:8]
-        motw_item = next(iter(results("trending_movie_week")), None)
-        second = {"coming_soon": lambda: client.attach_trailers(coming_soon, "movie")}
-        if motw_item:
-            second["motw"] = lambda: client.get_details(motw_item["id"], "movie")
-        data.update(fetch_parallel(second))
+        coming_soon = filtered_upcoming[:COMING_SOON_LIMIT]
+        motw_item = next(iter(self._results(data, "trending_movie_week")), None)
+        data.update(fetch_parallel(self._second_round_tasks(client, coming_soon, motw_item)))
 
         motw = None
         if motw_item and (data.get("motw") or {}).get("id"):
             motw = data["motw"]
 
+        context = {
+            "hero_movies": data.get("hero_movies") or [],
+            "trending_all_week": self._results(data, "trending_all_week"),
+            "trending_all_day": self._results(data, "trending_all_day"),
+            "now_popular": now_popular,
+            "tv_serials_popular": self._results(data, "tv_serials_popular"),
+            "top_rated": self._results(data, "top_rated"),
+            "now_playings": now_playings,
+            "upcoming": self._results(data, "upcoming"),
+            "filtered_upcoming": data.get("coming_soon") or coming_soon,
+            "filtered_now_playings": filtered_now_playings,
+            "actors": [a for a in self._results(data, "trending_people") if a.get("known_for_department") == "Acting"],
+            "motw": motw,
+            "moods": self._moods(data),
+            "topic": self._topic(data),
+            "tv_showcase": self._tv_showcase(data),
+        }
+
+        return render(request, "movies/home.html", context)
+
+    @staticmethod
+    def _results(data: dict[str, Any], name: str) -> list[TMDBData]:
+        """The "results" list of one fetched block; [] when the block failed or is empty."""
+        return (data.get(name) or {}).get("results", [])
+
+    @staticmethod
+    def _first_round_tasks(client: TMDBClient, topic_id: int) -> dict[str, Callable[[], Any]]:
+        """Round 1: every independent TMDB call of the page, keyed by block name."""
+        tasks = {
+            "hero_movies": partial(client.get_list_with_trailers, "movie/popular", HOME_PAGE, "movie"),
+            "trending_all_week": partial(client.get_trending, "all", "week"),
+            "trending_all_day": partial(client.get_trending, "all", "day"),
+            "trending_movie_week": partial(client.get_trending, "movie", "week"),
+            "trending_people": partial(client.get_trending, "person", "week"),
+            "now_playings": partial(client.get_list, "movie/now_playing", HOME_PAGE),
+            "upcoming": partial(client.get_list, "movie/upcoming", HOME_PAGE),
+            "tv_serials_popular": partial(client.get_list, "tv/popular", HOME_PAGE),
+            "now_popular": partial(client.get_list, "movie/popular", HOME_PAGE),
+            "top_rated": partial(client.get_list, "movie/top_rated", HOME_PAGE),
+            "movie_genres": partial(client.get_genres, "movie"),
+            "topic": partial(client.get_keyword, topic_id),
+            "topic_movies": partial(client.get_keyword_movies, topic_id),
+        }
+        for slug, (genre_id, _icon) in MOODS.items():
+            tasks[f"mood:{slug}"] = partial(
+                client.get_list,
+                "discover/movie",
+                HOME_PAGE,
+                ttl=TTL_LIST,
+                with_genres=genre_id,
+                **MOOD_DISCOVER_FILTERS,
+            )
+        for slug, (endpoint, filters) in TV_SHOWCASE.items():
+            tasks[f"tv:{slug}"] = partial(client.get_list, endpoint, HOME_PAGE, ttl=TTL_LIST, **filters)
+        return tasks
+
+    @staticmethod
+    def _second_round_tasks(
+        client: TMDBClient, coming_soon: list[TMDBData], motw_item: TMDBData | None
+    ) -> dict[str, Callable[[], Any]]:
+        """Round 2: trailers for the Coming Soon cards and the Movie of the Week details (credits).
+
+        Both come from the same cached get_details() request the detail page uses.
+        These stay lambdas on purpose: motw_item["id"] is read inside the worker
+        thread, so a malformed item only empties its own block (see fetch_parallel).
+        """
+        tasks = {"coming_soon": lambda: client.attach_trailers(coming_soon, "movie")}
+        if motw_item:
+            tasks["motw"] = lambda: client.get_details(motw_item["id"], "movie")
+        return tasks
+
+    @classmethod
+    def _moods(cls, data: dict[str, Any]) -> list[dict[str, Any]]:
+        """Pick by Mood chips with their rows; only moods whose genre is in genre/movie/list."""
         genre_names = {genre["id"]: genre["name"] for genre in data.get("movie_genres") or []}
-        moods = [
+        return [
             {
                 "slug": slug,
                 "genre_id": genre_id,
                 "icon": icon,
                 "name": genre_names.get(genre_id),
-                "items": results(f"mood:{slug}"),
+                "items": cls._results(data, f"mood:{slug}"),
             }
             for slug, (genre_id, icon) in MOODS.items()
             if genre_id in genre_names
         ]
 
+    @staticmethod
+    def _topic(data: dict[str, Any]) -> dict[str, Any] | None:
+        """Topic of the Day: the keyword plus its movies; None without either."""
         topic_movies = data.get("topic_movies") or {}
-        topic = None
         if data.get("topic") and topic_movies.get("results"):
-            topic = {**data["topic"], "movies": topic_movies["results"], "total": topic_movies.get("total_results")}
+            return {**data["topic"], "movies": topic_movies["results"], "total": topic_movies.get("total_results")}
+        return None
 
-        tv_showcase = [
+    @classmethod
+    def _tv_showcase(cls, data: dict[str, Any]) -> list[dict[str, Any]]:
+        """TV & Categories tabs: label, catalog link and items for each of TV_SHOWCASE_TABS."""
+        return [
             {
                 "slug": slug,
                 "label": label,
                 "url": reverse(url_name),
-                "items": results("tv_serials_popular") if slug == "tv" else results(f"tv:{slug}"),
+                "items": cls._results(data, "tv_serials_popular") if slug == "tv" else cls._results(data, f"tv:{slug}"),
             }
             for slug, label, url_name in TV_SHOWCASE_TABS
         ]
 
-        context = {
-            "hero_movies": data.get("hero_movies") or [],
-            "trending_all_week": results("trending_all_week"),
-            "trending_all_day": results("trending_all_day"),
-            "now_popular": now_popular,
-            "tv_serials_popular": results("tv_serials_popular"),
-            "top_rated": results("top_rated"),
-            "now_playings": now_playings,
-            "upcoming": results("upcoming"),
-            "filtered_upcoming": data.get("coming_soon") or coming_soon,
-            "filtered_now_playings": filtered_now_playings,
-            "actors": [a for a in results("trending_people") if a.get("known_for_department") == "Acting"],
-            "motw": motw,
-            "moods": moods,
-            "topic": topic,
-            "tv_showcase": tv_showcase,
-        }
 
-        return render(request, "movies/home.html", context)
+# == Search ==
 
 
 class SerachView(View):
-    def get(self, request):
+    """Search page (`?q=`): local title matches plus TMDB search/multi, as local Movies rows."""
+
+    def get(self, request: HttpRequest) -> HttpResponse:
         query = request.GET.get("q", "").strip()
         results = []
 
         watched_map = {}
-
         if request.user.is_authenticated:
-            watchlist = Watchlist.objects.filter(user=request.user)
-
-            for w in watchlist:
-                watched_map[w.movie.tmdb_id] = w
+            watched_map = {w.movie.tmdb_id: w for w in Watchlist.objects.filter(user=request.user)}
 
         if query:
             # matched: ordered, deduped list of (tmdb_id, media_type) pairs -
@@ -448,7 +560,7 @@ class SerachView(View):
         return render(request, "movies/search.html", {"query": query, "results": results})
 
     @staticmethod
-    def _search_fetcher(query):
+    def _search_fetcher(query: str) -> Callable[[], list[tuple[int, str]]]:
         # Reproduces the original (pre-cache) search exactly: local title
         # match first, then TMDB search/multi, deduped by tmdb_id. The only
         # difference is it returns (tmdb_id, media_type) pairs instead of the
@@ -496,15 +608,42 @@ class SerachView(View):
         return fetch
 
 
-def get_country(data, media_type):
-    """
-    pull code country from data TMDB
+@require_GET
+def search_suggest(request: HttpRequest) -> JsonResponse:
+    """JSON for the header search dropdown: up to 6 movie/TV matches. 502 if TMDB fails."""
+    query = " ".join(request.GET.get("q", "").split())[:100]
+    if len(query) < 2:
+        return JsonResponse({"results": []})
+    try:
+        items = TMDBClient().suggest(query)
+    except (TMDBFetchError, requests.RequestException):
+        return JsonResponse({"error": "TMDB unavailable"}, status=502)
+    results = [
+        {
+            "title": item.get("title") or "",
+            "year": (item.get("release_date") or "")[:4],
+            "media_type": item["media_type"],
+            "poster_url": item.get("poster_url"),
+            "rating": round(item["vote_average"], 1) if item.get("vote_average") else None,
+            "url": reverse("movie-detail", args=[item["id"], item["media_type"]]),
+        }
+        for item in items
+    ]
+    return JsonResponse({"results": results})
+
+
+# == Local Movies rows ==
+
+
+def get_country(data: TMDBData, media_type: str) -> list[str]:
+    """Country codes of a TMDB movie/{id} or tv/{id} response.
+
     Args:
-        data: data from  TMDB API
-        media_type: "movie" or "tv"
+        data: the TMDB response.
+        media_type: "movie" or "tv".
 
     Returns:
-        Lsit of country codes : ['US', 'UA']
+        A list of ISO 3166-1 codes, e.g. ['US', 'UA'].
     """
 
     if media_type == "tv":
@@ -516,24 +655,24 @@ def get_country(data, media_type):
         return [country["iso_3166_1"] for country in production_countries]
 
 
-def get_or_create_media(tmdb_id, media_type="movie", data=None):
-    # `data`: an already fetched movie/{id} or tv/{id} response (the detail page
-    # passes get_details()), so creating the local row costs no extra TMDB call.
+def get_or_create_media(tmdb_id: int, media_type: str = "movie", data: TMDBData | None = None) -> Movies | None:
+    """The local Movies row for a TMDB movie/TV show, created from TMDB data if missing.
+
+    `data`: an already fetched movie/{id} or tv/{id} response (the detail page
+    passes get_details()), so creating the local row costs no extra TMDB call.
+    Without it the details are fetched here. Returns None if TMDB has no data.
+    An existing row keeps its fields; only its genres are re-synced.
+    """
     client = TMDBClient()
+    is_movie = media_type == "movie"
 
-    if media_type == "movie":
-        if data is None:
-            data = client.get_movie_by_tmdb_id(tmdb_id)
-        title = data.get("title") if data else None
-        raw_date = data.get("release_date") if data else None
-    else:
-        if data is None:
-            data = client.get_tv_by_tmdb_id(tmdb_id)
-        title = data.get("name") if data else None
-        raw_date = data.get("first_air_date") if data else None
-
+    if data is None:
+        data = client.get_movie_by_tmdb_id(tmdb_id) if is_movie else client.get_tv_by_tmdb_id(tmdb_id)
     if not data:
         return None
+
+    title = data.get("title" if is_movie else "name")
+    raw_date = data.get("release_date" if is_movie else "first_air_date")
 
     # Get country codes for both movies and TV shows
     country_code = get_country(data, media_type)
@@ -541,18 +680,18 @@ def get_or_create_media(tmdb_id, media_type="movie", data=None):
     # Convert country codes to full country names
     normalize = normalize_countries(country_code)
 
+    poster_path = data.get("poster_path")
+    companies = data.get("production_companies")
     movie, created = Movies.objects.get_or_create(
         tmdb_id=tmdb_id,
         defaults={
             "title": title,
             "description": data.get("overview", ""),
-            "poster_url": f"https://image.tmdb.org/t/p/w500{data.get('poster_path')}"
-            if data.get("poster_path")
-            else "",
+            "poster_url": f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else "",
             "media_type": media_type,
             "tmdb_rating": data.get("vote_average"),
             "country": normalize,
-            "author": data.get("production_companies")[0]["name"] if data.get("production_companies") else "",
+            "author": companies[0]["name"] if companies else "",
         },
     )
 
@@ -576,8 +715,16 @@ def get_or_create_media(tmdb_id, media_type="movie", data=None):
     return movie
 
 
+# == Detail ==
+
+
 class MoviesDetailView(View):
-    def get(self, request, pk, media_type="movie"):
+    """Movie / TV detail page: TMDB details, the local row's comments and ratings, watchlist state.
+
+    TV pages add the seasons block, movie pages the collection block.
+    """
+
+    def get(self, request: HttpRequest, pk: int, media_type: str = "movie") -> HttpResponse:
         client = TMDBClient()
         # One cached TMDB request: details + videos, credits, images, keywords,
         # recommendations and release dates / content ratings (get_details).
@@ -597,7 +744,7 @@ class MoviesDetailView(View):
             "details": details if has_details else None,
             "director": director,
             "crew": crew,
-            "cast": details.get("cast", [])[:12],
+            "cast": details.get("cast", [])[:DETAIL_CAST_LIMIT],
             "trailer": details.get("trailer"),
             "gallery": gallery,
             "posters": details.get("posters", []),
@@ -620,7 +767,7 @@ class MoviesDetailView(View):
         return render(request, "movies/movies_detail.html", context)
 
     @staticmethod
-    def _seasons_context(request, client, pk, details):
+    def _seasons_context(request: HttpRequest, client: TMDBClient, pk: int, details: TMDBData) -> dict[str, Any]:
         """Season chips from the details response; episodes only for the selected season (?season=N).
 
         Default season: the latest one that has already started airing (skips
@@ -645,7 +792,8 @@ class MoviesDetailView(View):
         }
 
     @staticmethod
-    def _collection_context(client, details):
+    def _collection_context(client: TMDBClient, details: TMDBData) -> dict[str, Any]:
+        """The movie's collection with its rating range and released parts; no_collection if it has none."""
         info = details.get("belongs_to_collection")
         if not info:
             return {"no_collection": True}  # nothing to show, not a failure
@@ -657,97 +805,12 @@ class MoviesDetailView(View):
         return {"collection": collection}
 
 
-class TVViews(AllMoviesView):
-    title = "TV"
-    template_name = "movies/type/tv.html"
-    sortable = True
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.base_filters = {"without_genres": 16, "max_page": 100}
-        self.media_type = "tv"
-
-    def get(self, request):
-        extra_filters = self.search_filter_movie(request)
-        filters = {**self.base_filters, **(extra_filters or {})}
-        self.item_func = lambda page: TMDBClient().get_list("discover/tv", page, **filters)
-        return super().get(request)
-
-
-# Type tv/movie
-
-
-class AnimeTVView(AllMoviesView):
-    title = "Anime TV"
-    template_name = "movies/type/anime.html"
-    sortable = True
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.base_filters = ANIME_TV_FILTERS  # Base TMDB query parameters
-
-        self.media_type = "tv"
-
-    def get(self, request):
-        extra_filters = self.search_filter_movie(request)
-        filters = {**self.base_filters, **(extra_filters or {})}
-        self.item_func = lambda page: TMDBClient().get_list("discover/tv", page, **filters)
-        return super().get(request)
-
-
-class DoramTVView(AllMoviesView):
-    title = "Dorams TV"
-    template_name = "movies/type/dorams.html"
-    sortable = True
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.base_filters = DORAMA_TV_FILTERS
-        self.media_type = "tv"
-
-    def get(self, request):
-        extra_filters = self.search_filter_movie(request)
-        filters = {**self.base_filters, **(extra_filters or {})}
-        self.item_func = lambda page: TMDBClient().get_list("discover/tv", page, **filters)
-        return super().get(request)
-
-
-class CartoonTVView(AllMoviesView):
-    title = "Cartoon TV"
-    template_name = "movies/type/cartoons.html"
-    sortable = True
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.base_filters = CARTOON_TV_FILTERS
-        self.media_type = "tv"
-
-    def get(self, request):
-        extra_filters = self.search_filter_movie(request)  # Additional filters from user input
-        filters = {**self.base_filters, **(extra_filters or {})}
-        self.item_func = lambda page: TMDBClient().get_list("discover/tv", page, **filters)
-        return super().get(request)
-
-
-class MovieView(AllMoviesView):
-    title = "Movie"
-    template_name = "movies/type/movie.html"
-    sortable = True
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.base_filters = {"max_page": 100}
-        self.media_type = "movie"
-
-    def get(self, request):
-        extra_filters = self.search_filter_movie(request)
-        filters = {**self.base_filters, **(extra_filters or {})}
-        self.item_func = lambda page: TMDBClient().get_list("discover/movie", page, **filters)
-        return super().get(request)
+# == AI ==
 
 
 @login_required
-def ai_recomendations(request):
+def ai_recomendations(request: HttpRequest) -> JsonResponse:
+    """Queue an AI recommendation task; returns {"task_id": ...}, or 429 over the per-user limit."""
     message = request.GET.get("message", "")
     media_type = request.GET.get("type", "all")
 
@@ -767,32 +830,9 @@ def ai_recomendations(request):
     return JsonResponse({"task_id": task.id})
 
 
-@require_GET
-def search_suggest(request):
-    """JSON for the header search dropdown: up to 6 movie/TV matches. 502 if TMDB fails."""
-    query = " ".join(request.GET.get("q", "").split())[:100]
-    if len(query) < 2:
-        return JsonResponse({"results": []})
-    try:
-        items = TMDBClient().suggest(query)
-    except (TMDBFetchError, requests.RequestException):
-        return JsonResponse({"error": "TMDB unavailable"}, status=502)
-    results = [
-        {
-            "title": item.get("title") or "",
-            "year": (item.get("release_date") or "")[:4],
-            "media_type": item["media_type"],
-            "poster_url": item.get("poster_url"),
-            "rating": round(item["vote_average"], 1) if item.get("vote_average") else None,
-            "url": reverse("movie-detail", args=[item["id"], item["media_type"]]),
-        }
-        for item in items
-    ]
-    return JsonResponse({"results": results})
-
-
 @login_required
-def ai_recommendation_status(request, task_id):
+def ai_recommendation_status(request: HttpRequest, task_id: str) -> JsonResponse:
+    """Poll an AI task: {"status": "pending"/"started"/...}, "done" with the result, or "failed" with the error."""
     task = AsyncResult(task_id)
 
     if not task.ready():
@@ -813,21 +853,25 @@ def ai_recommendation_status(request, task_id):
 # Error responses are retargeted into the section's #cm-flash box, see _comment_error().
 
 
-def _comment_error(request, message, status):
+def _comment_error(request: HttpRequest, message: str, status: int) -> HttpResponse:
     response = render(request, "movies/partials/comments/flash.html", {"message": message}, status=status)
     response["HX-Retarget"] = "#cm-flash"
     response["HX-Reswap"] = "innerHTML"
     return response
 
 
-def _throttled_error(request, throttle):
+def _throttled_error(request: HttpRequest, throttle: CommentCreateThrottle | CommentVoteThrottle) -> HttpResponse:
     minutes = max(1, math.ceil((throttle.wait() or 60) / 60))
     return _comment_error(request, f"Too many requests. Try again in {minutes} min.", 429)
 
 
-def comment_login_required(view):
-    # @login_required would answer with a 302 to the login page, which HTMX
-    # follows and then swaps the whole login page into the comment list.
+def comment_login_required(view: Callable[..., HttpResponse]) -> Callable[..., HttpResponse]:
+    """Like @login_required, but answers anonymous users with a 401 flash message instead of a redirect.
+
+    @login_required would answer with a 302 to the login page, which HTMX
+    follows and then swaps the whole login page into the comment list.
+    """
+
     @wraps(view)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -837,7 +881,7 @@ def comment_login_required(view):
     return wrapper
 
 
-def _compose_context(request, movie, form=None):
+def _compose_context(request: HttpRequest, movie: Movies, form: CommentForm | None = None) -> dict[str, Any]:
     # `form` is passed back in on a validation error so the textarea keeps what the user typed
     return {
         "movie": movie,
@@ -847,7 +891,7 @@ def _compose_context(request, movie, form=None):
     }
 
 
-def _feed_context(request, movie, sort=None, offset=0):
+def _feed_context(request: HttpRequest, movie: Movies, sort: str | None = None, offset: int = 0) -> dict[str, Any]:
     sort = normalize_sort(sort)
     # Offset (the number of comments already on screen) instead of a page
     # number: deleting your own comment shifts both sides by one, so
@@ -856,7 +900,7 @@ def _feed_context(request, movie, sort=None, offset=0):
     return {
         "movie": movie,
         "sort": sort,
-        "sort_options": [("new", "Newest"), ("old", "Oldest")],
+        "sort_options": COMMENT_SORT_OPTIONS,
         "comments": window[:COMMENTS_PER_PAGE],
         "has_more": len(window) > COMMENTS_PER_PAGE,
         "total": Comment.objects.filter(movie=movie).count(),  # whole thread, not just the visible batch
@@ -864,12 +908,13 @@ def _feed_context(request, movie, sort=None, offset=0):
     }
 
 
-def _comments_context(request, movie, form=None):
+def _comments_context(request: HttpRequest, movie: Movies, form: CommentForm | None = None) -> dict[str, Any]:
     return {**_compose_context(request, movie, form), **_feed_context(request, movie)}
 
 
 @require_GET
-def comment_list(request, movie_id):
+def comment_list(request: HttpRequest, movie_id: int) -> HttpResponse:
+    """Comment feed fragment: the whole feed for a sort switch, or the next batch with `append=1`."""
     movie = get_object_or_404(Movies, pk=movie_id)
     try:
         offset = max(0, int(request.GET.get("offset", 0)))
@@ -883,7 +928,8 @@ def comment_list(request, movie_id):
 
 @require_POST
 @comment_login_required
-def comment_create(request, movie_id):
+def comment_create(request: HttpRequest, movie_id: int) -> HttpResponse:
+    """Post a comment; re-renders the feed from the top, or the form with errors (422)."""
     movie = get_object_or_404(Movies, pk=movie_id)
     # The throttle is checked before validation on purpose: rejected (blank/too long)
     # submissions count towards the limit too, so they can't be used to hammer the endpoint.
@@ -908,7 +954,8 @@ def comment_create(request, movie_id):
 
 @require_POST
 @comment_login_required
-def comment_delete(request, pk):
+def comment_delete(request: HttpRequest, pk: int) -> HttpResponse:
+    """Delete your own comment; returns the new comment total."""
     comment = get_object_or_404(Comment.objects.select_related("movie"), pk=pk)
     # Authors only; there is no edit flow, deleting is the one thing an author can do to their comment.
     # Votes are removed with the comment (CASCADE).
@@ -923,7 +970,8 @@ def comment_delete(request, pk):
 
 @require_POST
 @comment_login_required
-def comment_vote(request, pk):
+def comment_vote(request: HttpRequest, pk: int) -> HttpResponse:
+    """Like (1) / dislike (-1) someone else's comment; voting the same way again removes the vote."""
     comment = get_object_or_404(Comment, pk=pk)
     # Cheap input checks come before the throttle so a malformed request doesn't burn the voter's quota.
     # toggle_vote() re-checks the own-comment rule; the check here just gives a flash message instead of a 500.
