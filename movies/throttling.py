@@ -1,7 +1,12 @@
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
+from users.throttling import ClientIPMixin
 
-class AIRecommendationThrottle(UserRateThrottle):
+# ClientIPMixin: anonymous clients are counted per real IP (users/client_ip.py), not per
+# X-Forwarded-For string, which the client controls.
+
+
+class AIRecommendationThrottle(ClientIPMixin, UserRateThrottle):
     """Shared per-user AI recommendation budget.
 
     Used by both api.views.RecommendationsAiView and movies.views.ai_recomendations
@@ -17,7 +22,7 @@ class AIRecommendationThrottle(UserRateThrottle):
         return self.rate
 
 
-class AIRecommendationAnonThrottle(AnonRateThrottle):
+class AIRecommendationAnonThrottle(ClientIPMixin, AnonRateThrottle):
     scope = "ai_recommendation_anon"
     rate = "3/hour"
 
@@ -25,7 +30,7 @@ class AIRecommendationAnonThrottle(AnonRateThrottle):
         return self.rate
 
 
-class CommentCreateThrottle(UserRateThrottle):
+class CommentCreateThrottle(ClientIPMixin, UserRateThrottle):
     """Shared by movies.views.comment_create and api.views.CommentListCreateView."""
 
     scope = "comment_create"
@@ -35,7 +40,7 @@ class CommentCreateThrottle(UserRateThrottle):
         return self.rate
 
 
-class CommentVoteThrottle(UserRateThrottle):
+class CommentVoteThrottle(ClientIPMixin, UserRateThrottle):
     """Shared by movies.views.comment_vote and api.views.CommentVoteView."""
 
     scope = "comment_vote"

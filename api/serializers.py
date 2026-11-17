@@ -1,7 +1,10 @@
+from axes.handlers.proxy import AxesProxyHandler
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed, Throttled
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from movies.models import COMMENT_MAX_LENGTH, Comment, CommentVote, Genre, Movies, Rating
+from users.lockout import cooloff_seconds, lockout_message
 from users.models import Profile, Watchlist
 from users.security_log import security_event
 
@@ -143,9 +146,23 @@ class CommentVoteSerializer(serializers.Serializer):
 
 class LoggedTokenObtainPairSerializer(TokenObtainPairSerializer):
     """/api/token/ (SIMPLE_JWT["TOKEN_OBTAIN_SERIALIZER"]): the default serializer plus a security log line
-    for each issued token pair. Wrong credentials are already logged by the user_login_failed signal."""
+    for each issued token pair. Wrong credentials are already logged by the user_login_failed signal.
+
+    django-axes (users/lockout.py) counts the failures here too, but its middleware only sees Django's
+    request, not DRF's, so the lockout answer (429 + Retry-After) and the reset on success are done here."""
 
     def validate(self, attrs):
-        data = super().validate(attrs)
-        security_event("login", self.context.get("request"), user_id=self.user.pk, backend="jwt")
+        request = self.context.get("request")
+        try:
+            data = super().validate(attrs)
+        except AuthenticationFailed:
+            if getattr(request, "axes_locked_out", False):
+                locked = Throttled(detail=lockout_message())
+                locked.wait = cooloff_seconds()  # Retry-After, without DRF's "Expected available in ..." suffix
+                raise locked from None
+            raise
+        # The site's logins clear the failure counter through Django's user_logged_in signal,
+        # which issuing a token doesn't send.
+        AxesProxyHandler.user_logged_in(type(self), request, self.user)
+        security_event("login", request, user_id=self.user.pk, backend="jwt")
         return data

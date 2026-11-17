@@ -101,6 +101,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.google",
     "rest_framework",
     "api",
+    "axes",  # brute-force lockout, see AXES_* below
 ]
 
 # django.contrib.sites: the Site row with this id is kept in sync with the
@@ -117,6 +118,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    # Last: turns a login that django-axes refused into the lockout page (users/lockout.py).
+    "axes.middleware.AxesMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -235,7 +238,10 @@ LOGOUT_REDIRECT_URL = "movies-home"
 
 # Site login is email + password (users/backends.py); ModelBackend keeps
 # username login for /admin/. allauth's backend handles social login.
+# AxesStandaloneBackend must stay first: it logs nobody in, it refuses every
+# authenticate() call (site, /admin/, allauth, /api/token/) for a locked-out client.
 AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
     "users.backends.EmailBackend",
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
@@ -269,6 +275,28 @@ ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 # Login works before the email is confirmed; a verified email is only required
 # to auto-link a Google account to an existing user (see users/adapters.py).
 ACCOUNT_EMAIL_VERIFICATION = "optional"
+
+
+# The client's IP (users/client_ip.py): this header when it holds a valid IP, else
+# REMOTE_ADDR. Render puts Cloudflare in front, which sets CF-Connecting-IP to the
+# real client; X-Forwarded-For can be spoofed. Empty = always REMOTE_ADDR.
+CLIENT_IP_HEADER = os.getenv("CLIENT_IP_HEADER", "CF-Connecting-IP")
+
+# Brute-force protection (django-axes, hooks in users/lockout.py): 5 wrong passwords
+# for the same email/username from the same IP lock that pair out for 15 minutes
+# (each further attempt restarts the 15 minutes); other IPs and other accounts are
+# not affected, so nobody can lock a victim out of their own account. A successful
+# login or a completed password reset clears the counter. Counters live in the
+# cache (Redis), so the axes tables created by its migrations stay empty.
+AXES_HANDLER = "axes.handlers.cache.AxesCacheHandler"
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(minutes=15)
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+AXES_RESET_ON_SUCCESS = True
+AXES_USERNAME_CALLABLE = "users.lockout.axes_username"
+AXES_CLIENT_IP_CALLABLE = "users.client_ip.client_ip"
+AXES_LOCKOUT_CALLABLE = "users.lockout.lockout_response"
+AXES_ENABLE_ADMIN = False  # its admin pages would only show the empty DB tables
 
 if not DEBUG:
     # Render terminates TLS at its proxy and forwards plain HTTP, so Django has
@@ -332,6 +360,9 @@ LOGGING = {
         # 4xx are WARNING, unhandled exceptions ERROR -> also mailed to ADMINS.
         "django.request": {"handlers": ["mail_admins"], "level": "WARNING"},
         "security": {"level": "INFO"},
+        # Axes logs every failed login as a WARNING; the security log already has
+        # them (login_failed / login_locked_out), so only its errors are kept.
+        "axes": {"level": "ERROR"},
         "movies": {"level": LOG_LEVEL},
         "users": {"level": LOG_LEVEL},
         "api": {"level": LOG_LEVEL},

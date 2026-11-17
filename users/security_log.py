@@ -7,10 +7,12 @@ on the Render logs finds every failed login.
 Events written by the signal receivers below:
 login, login_failed, logout (site, /admin/, allauth and Google), signup (allauth and Google),
 password_changed / password_set / password_reset_completed (allauth's own pages), email_confirmed,
-email_changed (allauth's own pages), google_connected, google_disconnected.
+email_changed (allauth's own pages), google_connected, google_disconnected,
+login_locked_out (django-axes refused a login: users/lockout.py).
 Written directly by the views: signup (site form), password_reset_requested, password_reset_completed,
 email_changed (profile), comment_deleted / comment_delete_denied, login via /api/token/
-(api.serializers.LoggedTokenObtainPairSerializer), google_login_refused (users.adapters).
+(api.serializers.LoggedTokenObtainPairSerializer), google_login_refused (users.adapters),
+password_reset_throttled / signup_throttled (users.views, rate limits in users/throttling.py).
 
 Never logged: passwords (Django's user_login_failed already replaces them with stars), tokens,
 session ids. An email or username typed into a login/reset form is masked (`mask()`), because anyone
@@ -22,9 +24,12 @@ from typing import Any
 
 from allauth.account import signals as account_signals
 from allauth.socialaccount import signals as social_signals
+from axes.signals import user_locked_out
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.dispatch import receiver
 from django.http import HttpRequest
+
+from .client_ip import client_ip
 
 logger = logging.getLogger("security")
 
@@ -45,12 +50,13 @@ def _format(value: Any) -> str:
 
 
 def _request_fields(request: HttpRequest | None) -> dict[str, Any]:
-    """Client address and path of the request. `fwd` is X-Forwarded-For as received: on Render
-    REMOTE_ADDR is the proxy, and the real client is in that header (which the client can prepend to)."""
+    """Client address and path of the request. `ip` is the client as the lockout and rate limits
+    see it (users/client_ip.py); `fwd` is X-Forwarded-For as received, kept for investigations
+    (its first entries are whatever the client sent)."""
     if request is None:
         return {}
     meta = getattr(request, "META", {})
-    fields = {"ip": meta.get("REMOTE_ADDR") or "-"}
+    fields = {"ip": client_ip(request) or "-"}
     if meta.get("HTTP_X_FORWARDED_FOR"):
         fields["fwd"] = meta["HTTP_X_FORWARDED_FOR"]
     fields["path"] = getattr(request, "path", "-")
@@ -145,3 +151,12 @@ def log_social_account_added(sender, request, sociallogin, **kwargs):
 @receiver(social_signals.social_account_removed, dispatch_uid="security_log_social_removed")
 def log_social_account_removed(sender, request, socialaccount, **kwargs):
     security_event("google_disconnected", request, user_id=socialaccount.user_id, provider=socialaccount.provider)
+
+
+# == django-axes (users/lockout.py) ==
+
+
+@receiver(user_locked_out, dispatch_uid="security_log_locked_out")
+def log_locked_out(sender, request=None, username=None, ip_address=None, **kwargs):
+    # Sent for the attempt that reaches the limit and again for every attempt during the cool-off.
+    security_event("login_locked_out", request, logging.WARNING, ident=mask(username))

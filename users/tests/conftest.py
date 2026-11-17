@@ -1,4 +1,5 @@
 import pytest
+from axes.handlers.proxy import AxesProxyHandler
 from django.core.cache import cache
 
 
@@ -8,3 +9,5 @@ def locmem_cache(settings):
     # dev/prod); keep tests independent of a running Redis and of each other.
     settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
     cache.clear()
+    # django-axes keeps the cache object it was first created with: point it at this one.
+    AxesProxyHandler.get_implementation(force=True)

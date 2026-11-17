@@ -10,7 +10,7 @@ def test_profile(client):
     user = User.objects.create_user(username="Kolya", password="Password_123")
 
     #  Let's log in, because only logged-in users can access their profiles.
-    client.login(username="Kolya", password="Password_123")
+    client.force_login(user)
 
     response = client.post("/users/profile/", {"username": "Mac_Dub", "email": "mac@gmail.com", "image": "name.png"})
 

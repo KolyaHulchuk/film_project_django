@@ -1,0 +1,11 @@
+{% extends "users/auth_card_base.html" %}
+{# django-axes lockout (users/lockout.py: lockout_response), shown with HTTP 429 instead of a login form. #}
+{% block auth_card %}
+<div class="state" role="alert">
+  <span class="big red"><svg class="ic"><use href="#i-lock"/></svg></span>
+  <h1>Too many attempts</h1>
+  <p class="sub">There were too many wrong passwords for this account, so we’ve paused signing in to it from your network. Try again in {{ minutes }} minutes.</p>
+  <div class="acts"><a href="{% url 'password_reset' %}" class="btn btn-red full">Reset your password</a></div>
+  <p class="resend"><a href="{% url 'movies-home' %}" class="lnk-a strong">Back to home</a></p>
+</div>
+{% endblock %}

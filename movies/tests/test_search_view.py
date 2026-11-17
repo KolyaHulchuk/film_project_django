@@ -79,7 +79,7 @@ def test_not_auth_user(client, db_movie):
 def test_search_with_watchlist(client, tmdb, db_movie, user):
     Watchlist.objects.create(user=user, movie=db_movie, watched=True)
 
-    client.login(username="Kolya", password="test123")
+    client.force_login(user)
 
     response = client.get("/movies/search/", {"q": "Pirates"})
 

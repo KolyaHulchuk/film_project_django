@@ -30,7 +30,8 @@ def user():
 
 @pytest.fixture
 def login(client, user):
-    return client.login(username="Kolya", password="Password_123")
+    client.force_login(user)  # client.login() has no request, which django-axes requires
+    return True
 
 
 @pytest.fixture

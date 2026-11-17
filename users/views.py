@@ -1,4 +1,5 @@
 import logging
+import math
 from collections.abc import Iterable
 from typing import Any
 
@@ -26,9 +27,11 @@ from .emails import (
     replace_email_address,
     send_verification,
 )
-from .forms import ProfileUpdateForm, UserRegisterForm, UserUpdateForm
+from .forms import ProfileUpdateForm, SitePasswordResetForm, UserRegisterForm, UserUpdateForm
+from .lockout import clear_lockout
 from .models import Watchlist
 from .security_log import mask, security_event
+from .throttling import PasswordResetEmailThrottle, PasswordResetIPThrottle, SignupIPThrottle, throttle_wait
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +44,23 @@ MOVIE_NOT_FOUND_MESSAGE = "Could not find data for this movie"
 
 # == Auth & profile ==
 
+SIGNUP_THROTTLED_MESSAGE = "Too many sign-up attempts from your network. Try again in {minutes} min."
+PASSWORD_RESET_THROTTLED_MESSAGE = "Too many password reset requests. Try again in {minutes} min."
+
+
+def _minutes(seconds: int) -> int:
+    return max(1, math.ceil(seconds / 60))
+
 
 def register(request: HttpRequest) -> HttpResponse:
     """Sign-up form. On success: send the verification link, flash a message and redirect home."""
     if request.method == "POST":
         form = UserRegisterForm(request.POST)
+        wait = throttle_wait(request, SignupIPThrottle())
+        if wait is not None:
+            form.add_error(None, SIGNUP_THROTTLED_MESSAGE.format(minutes=_minutes(wait)))
+            security_event("signup_throttled", request, logging.WARNING)
+            return render(request, "users/register.html", {"form": form, "title": "Register"}, status=429)
         if form.is_valid():
             try:
                 with transaction.atomic():
@@ -123,13 +138,33 @@ def resend_verification(request: HttpRequest) -> HttpResponse:
     return redirect("profile")
 
 
+class SitePasswordResetView(auth_views.PasswordResetView):
+    """Django's "send me a reset link" form, rate limited per client IP and per typed-in address
+    (users/throttling.py). A refused request sends nothing and shows the form with an error."""
+
+    template_name = "users/password_reset.html"
+    form_class = SitePasswordResetForm
+
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        email = request.POST.get("email")
+        wait = throttle_wait(request, PasswordResetIPThrottle(), PasswordResetEmailThrottle(email))
+        if wait is None:
+            return super().post(request, *args, **kwargs)
+        form = self.get_form()
+        form.add_error(None, PASSWORD_RESET_THROTTLED_MESSAGE.format(minutes=_minutes(wait)))
+        security_event("password_reset_throttled", request, logging.WARNING, ident=mask(email))
+        return self.render_to_response(self.get_context_data(form=form), status=429)
+
+
 class SitePasswordResetConfirmView(auth_views.PasswordResetConfirmView):
-    """Django's "set a new password" step that also marks the user's email as verified."""
+    """Django's "set a new password" step that also marks the user's email as verified
+    and lifts a login lockout (users/lockout.py) of this account from this client."""
 
     def form_valid(self, form: SetPasswordForm) -> HttpResponse:
         response = super().form_valid(form)
         # Following the emailed link proves the user owns this address.
         mark_email_verified(form.user)
+        clear_lockout(self.request, form.user)
         security_event("password_reset_completed", self.request, user_id=form.user.pk, via="site")
         return response
 

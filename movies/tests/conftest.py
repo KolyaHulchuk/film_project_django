@@ -1,4 +1,5 @@
 import pytest
+from axes.handlers.proxy import AxesProxyHandler
 from django.core.cache import cache
 
 from movies import redis_services
@@ -54,6 +55,8 @@ def isolated_cache(settings, monkeypatch):
     # read or overwrite the dev site's cache, and never see each other's data.
     settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
     cache.clear()
+    # django-axes keeps the cache object it was first created with: point it at this one.
+    AxesProxyHandler.get_implementation(force=True)
     fake = FakeRedis()
     monkeypatch.setattr(redis_services, "r", fake)
     return fake

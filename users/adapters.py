@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.shortcuts import redirect
 
+from .client_ip import client_ip
 from .emails import DUPLICATE_EMAIL_MESSAGE, is_email_verified, normalize_email, send_verification
 from .security_log import mask, security_event
 
@@ -33,6 +34,11 @@ class AccountAdapter(DefaultAccountAdapter):
         # an email-less "user" account. Uniqueness is enforced by allauth's forms
         # (ACCOUNT_UNIQUE_EMAIL), our own forms and the DB index.
         return normalize_email(super().clean_email(email))
+
+    def get_client_ip(self, request):
+        # allauth's rate limits (failed logins, reset/confirmation emails) key on this. Its default
+        # is REMOTE_ADDR, which on Render is the proxy, so every user shared one counter.
+        return client_ip(request) or super().get_client_ip(request)
 
 
 class SocialAccountAdapter(DefaultSocialAccountAdapter):

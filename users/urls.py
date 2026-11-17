@@ -2,7 +2,7 @@ from django.contrib.auth import views as auth_views  # A collection of ready-to-
 from django.urls import path
 
 from . import views
-from .forms import EmailLoginForm, SitePasswordResetForm
+from .forms import EmailLoginForm
 
 urlpatterns = [
     path("logout/", auth_views.LogoutView.as_view(next_page="login"), name="logout"),
@@ -24,9 +24,7 @@ urlpatterns = [
     # reset password
     path(
         "password-reset/",
-        auth_views.PasswordResetView.as_view(
-            template_name="users/password_reset.html", form_class=SitePasswordResetForm
-        ),
+        views.SitePasswordResetView.as_view(),
         name="password_reset",
     ),
     path(
