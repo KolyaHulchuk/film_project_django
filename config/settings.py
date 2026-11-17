@@ -289,3 +289,49 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_PASS")
 # EMAIL_USER so a personal address isn't what recipients see.
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL") or f"Movies.hub <{EMAIL_HOST_USER or 'noreply@localhost'}>"
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+# Comma-separated addresses that get an email for every unhandled 500 while DEBUG=False.
+# Unset = nobody is mailed (the error is still in the logs).
+ADMINS = [("Admin", address.strip()) for address in os.getenv("ADMINS", "").split(",") if address.strip()]
+
+
+# Logging
+# Everything goes to stdout, which Render keeps in the service logs. Loggers have
+# no handlers of their own: records propagate to the root console handler (that
+# also lets pytest's caplog see them). LOG_LEVEL sets the project's own loggers;
+# DEBUG adds the catalog timings and Redis cache hits/misses. The "security"
+# logger (users/security_log.py: logins, failed logins, password and email
+# changes, ...) always logs at INFO.
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
+    },
+    "formatters": {
+        "standard": {"format": "%(asctime)s %(levelname)s %(name)s: %(message)s"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "stream": "ext://sys.stdout", "formatter": "standard"},
+        "mail_admins": {
+            "class": "django.utils.log.AdminEmailHandler",
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+        },
+    },
+    "root": {"handlers": ["console"], "level": "WARNING"},
+    "loggers": {
+        # Replaces Django's default handlers for "django" (console only when DEBUG
+        # + mail_admins for every ERROR, incl. DisallowedHost from bots): records
+        # just propagate to root.
+        "django": {"handlers": [], "level": "INFO"},
+        # 4xx are WARNING, unhandled exceptions ERROR -> also mailed to ADMINS.
+        "django.request": {"handlers": ["mail_admins"], "level": "WARNING"},
+        "security": {"level": "INFO"},
+        "movies": {"level": LOG_LEVEL},
+        "users": {"level": LOG_LEVEL},
+        "api": {"level": LOG_LEVEL},
+    },
+}

@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Iterable
 from typing import Any
 
@@ -27,6 +28,8 @@ from .emails import (
 )
 from .forms import ProfileUpdateForm, UserRegisterForm, UserUpdateForm
 from .models import Watchlist
+
+logger = logging.getLogger(__name__)
 
 # Watchlist page filter panel. Both lists are hardcoded, so the years go stale in 2027.
 WATCHLIST_YEARS = range(2026, 2020, -1)
@@ -167,7 +170,7 @@ class AddToWatchlist(View):
         else:
             messages.error(request, MOVIE_NOT_FOUND_MESSAGE)
         next_url = request.POST.get("next") or request.META.get("HTTP-REFERER") or "movies-home"
-        print("AddToWatchlist called")
+        logger.debug("AddToWatchlist: user_id=%s redirect to %r", request.user.pk, next_url)
 
         return redirect(next_url)
 

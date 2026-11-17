@@ -1,3 +1,4 @@
+import logging
 import math
 import time
 from collections.abc import Callable
@@ -28,6 +29,8 @@ from .tmdb_service import (
     fetch_parallel,
 )
 from .utils import COUNTRY_CODES, normalize_countries
+
+logger = logging.getLogger(__name__)
 
 # Home "Pick by Mood": mood -> (TMDB movie genre id, icon). Chip labels come from
 # genre/movie/list, the picks row from discover/movie?with_genres={id}.
@@ -142,7 +145,7 @@ class AllMoviesView(View):
 
         step_start = time.perf_counter()
         data = self.item_func(page)  #  Call the function that returns raw data from TMDB
-        print(f"[timing] item_func/get_list: {(time.perf_counter() - step_start) * 1000:.1f}ms")
+        logger.debug("[timing] item_func/get_list: %.1fms", (time.perf_counter() - step_start) * 1000)
 
         total_pages = data.get("total_pages", 1)
 
@@ -150,13 +153,13 @@ class AllMoviesView(View):
 
         step_start = time.perf_counter()
         genres = client.get_genres(self.media_type)
-        print(f"[timing] get_genres: {(time.perf_counter() - step_start) * 1000:.1f}ms")
+        logger.debug("[timing] get_genres: %.1fms", (time.perf_counter() - step_start) * 1000)
 
         step_start = time.perf_counter()
         items = client.annotate_items(
             data["results"], self.media_type, genres
         )  #  Add extra data for each item (rating, genres, etc.) from data already in the list response - no TMDB calls
-        print(f"[timing] annotate_items: {(time.perf_counter() - step_start) * 1000:.1f}ms")
+        logger.debug("[timing] annotate_items: %.1fms", (time.perf_counter() - step_start) * 1000)
 
         if request.user.is_authenticated:
             step_start = time.perf_counter()
@@ -168,7 +171,7 @@ class AllMoviesView(View):
                     watchlist_obj = watched_map[item["id"]]
                     item["is_watched"] = watchlist_obj.watched  # is_watched — flag from watchlist
                     item["watchlist_id"] = watchlist_obj.id
-            print(f"[timing] watchlist_annotation: {(time.perf_counter() - step_start) * 1000:.1f}ms")
+            logger.debug("[timing] watchlist_annotation: %.1fms", (time.perf_counter() - step_start) * 1000)
 
         without_filters_page = request.GET.copy()  # Copy current filters without the page parameter
         without_filters_page.pop("page", None)  # Prevent duplicating the page parameter in the URL
@@ -195,8 +198,8 @@ class AllMoviesView(View):
 
         step_start = time.perf_counter()
         response = render(request, template, context)
-        print(f"[timing] render: {(time.perf_counter() - step_start) * 1000:.1f}ms")
-        print(f"[timing] AllMoviesView.get total: {(time.perf_counter() - view_start) * 1000:.1f}ms")
+        logger.debug("[timing] render: %.1fms", (time.perf_counter() - step_start) * 1000)
+        logger.debug("[timing] AllMoviesView.get total: %.1fms", (time.perf_counter() - view_start) * 1000)
         return response
 
     def search_filter_movie(self, request: HttpRequest) -> dict[str, Any]:
@@ -260,10 +263,6 @@ class PopularMoviesView(ListCatalogView):
     title = "Popular Movies"
     template_name = "movies/category/popular.html"
     list_endpoint = "movie/popular"
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        print(self.item_func)
 
 
 class TVPopularView(ListCatalogView):
