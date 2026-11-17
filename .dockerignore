@@ -6,3 +6,4 @@ __pycache__/
 *.sqlite3
 FUTURE_NOTES.md
 REFACTOR_PLAN.md
+FIX_PLAN.md
