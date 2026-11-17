@@ -28,6 +28,7 @@ from .emails import (
 )
 from .forms import ProfileUpdateForm, UserRegisterForm, UserUpdateForm
 from .models import Watchlist
+from .security_log import mask, security_event
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ def register(request: HttpRequest) -> HttpResponse:
             else:
                 # The email starts unverified; logging in with the password does not verify it.
                 send_verification(request, user)
+                security_event("signup", request, user_id=user.pk, via="site")
                 username = form.cleaned_data.get("username")
                 messages.success(request, f"Your account has been created! You are now able to log in {username}")
                 return redirect("movies-home")
@@ -69,6 +71,7 @@ def register(request: HttpRequest) -> HttpResponse:
 def profile(request: HttpRequest) -> HttpResponse:
     """Profile page: edit username, email and avatar; also shows the email-verified and Google-connected state."""
     if request.method == "POST":
+        old_email = request.user.email  # form validation writes the new value onto request.user
         u_form = UserUpdateForm(request.POST, instance=request.user)
         p_form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user.profile)
 
@@ -84,6 +87,13 @@ def profile(request: HttpRequest) -> HttpResponse:
                 if email_changed:
                     # A new address has to be verified again.
                     replace_email_address(request, request.user)
+                    security_event(
+                        "email_changed",
+                        request,
+                        user_id=request.user.pk,
+                        old=mask(old_email),
+                        new=mask(request.user.email),
+                    )
                 messages.success(request, "Your account has been update")
 
     else:
@@ -120,6 +130,7 @@ class SitePasswordResetConfirmView(auth_views.PasswordResetConfirmView):
         response = super().form_valid(form)
         # Following the emailed link proves the user owns this address.
         mark_email_verified(form.user)
+        security_event("password_reset_completed", self.request, user_id=form.user.pk, via="site")
         return response
 
 

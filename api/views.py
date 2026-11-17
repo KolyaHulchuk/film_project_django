@@ -1,3 +1,5 @@
+import logging
+
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.shortcuts import get_object_or_404
 from rest_framework import generics
@@ -24,6 +26,7 @@ from movies.throttling import (
 )
 from movies.tmdb_service import TMDBClient
 from users.models import Watchlist
+from users.security_log import security_event
 
 from .serializers import (
     CommentSerializer,
@@ -123,7 +126,17 @@ class IsCommentOwner(BasePermission):
     message = "You can only delete your own comments."
 
     def has_object_permission(self, request, view, obj):
-        return request.method in SAFE_METHODS or obj.user_id == request.user.id
+        allowed = request.method in SAFE_METHODS or obj.user_id == request.user.id
+        if not allowed:
+            security_event(
+                "comment_delete_denied",
+                request,
+                logging.WARNING,
+                comment_id=obj.pk,
+                user_id=request.user.pk,
+                owner_id=obj.user_id,
+            )
+        return allowed
 
 
 class CommentListCreateView(generics.ListCreateAPIView):
@@ -152,6 +165,13 @@ class CommentDetailView(generics.RetrieveDestroyAPIView):
 
     def get_queryset(self):
         return annotate_comments(Comment.objects.all(), self.request.user)
+
+    def perform_destroy(self, instance):
+        comment_id, movie_id = instance.pk, instance.movie_id
+        super().perform_destroy(instance)
+        security_event(
+            "comment_deleted", self.request, comment_id=comment_id, movie_id=movie_id, user_id=self.request.user.pk
+        )
 
 
 class CommentVoteView(APIView):

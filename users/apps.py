@@ -6,4 +6,4 @@ class UsersConfig(AppConfig):
     name = "users"
 
     def ready(self):
-        from . import signals  # noqa: F401
+        from . import security_log, signals  # noqa: F401

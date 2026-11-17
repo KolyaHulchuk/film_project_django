@@ -152,6 +152,8 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # Same as the default serializer, plus a security log line for each issued token pair.
+    "TOKEN_OBTAIN_SERIALIZER": "api.serializers.LoggedTokenObtainPairSerializer",
 }
 
 

@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 
 from .emails import DUPLICATE_EMAIL_MESSAGE, email_taken, normalize_email
 from .models import Profile
+from .security_log import mask, security_event
 
 INVALID_LOGIN_MESSAGE = "Invalid email or password."
 
@@ -43,10 +44,24 @@ class SitePasswordResetForm(PasswordResetForm):
     def get_users(self, email):
         return User.objects.filter(email__iexact=normalize_email(email), is_active=True)
 
+    def save(self, *args, request=None, **kwargs):
+        # One security log line per request: the (masked) address typed in and the
+        # accounts that got a link - an empty list means an unknown address.
+        self._emailed_user_ids = []
+        super().save(*args, request=request, **kwargs)
+        security_event(
+            "password_reset_requested",
+            request,
+            ident=mask(self.cleaned_data.get("email")),
+            emailed_user_ids=self._emailed_user_ids,
+        )
+
     def send_mail(self, subject_template_name, email_template_name, context, *args, **kwargs):
         if not context["user"].has_usable_password():
             email_template_name = self.set_password_email_template
         super().send_mail(subject_template_name, email_template_name, context, *args, **kwargs)
+        if hasattr(self, "_emailed_user_ids"):  # only set by save()
+            self._emailed_user_ids.append(context["user"].pk)
 
 
 class UniqueEmailMixin:

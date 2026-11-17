@@ -1,3 +1,5 @@
+import logging
+
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.account.models import EmailAddress
 from allauth.account.utils import user_email
@@ -10,6 +12,7 @@ from django.core.validators import validate_email
 from django.shortcuts import redirect
 
 from .emails import DUPLICATE_EMAIL_MESSAGE, is_email_verified, normalize_email, send_verification
+from .security_log import mask, security_event
 
 SOCIAL_NO_EMAIL_MESSAGE = "Google did not share an email address, so we can't sign you in. Please allow email access or register with a password."
 SOCIAL_UNVERIFIED_MESSAGE = (
@@ -40,9 +43,9 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
 
         email, verified = self._provider_email(sociallogin)
         if not email:
-            self._reject(request, SOCIAL_NO_EMAIL_MESSAGE)
+            self._reject(request, SOCIAL_NO_EMAIL_MESSAGE, reason="no_email")
         if not verified:
-            self._reject(request, SOCIAL_UNVERIFIED_MESSAGE)
+            self._reject(request, SOCIAL_UNVERIFIED_MESSAGE, reason="google_email_unverified", email=email)
 
         # Use the normalized email for both linking and a possible new account.
         user_email(sociallogin.user, email)
@@ -52,7 +55,12 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         if not matches:
             return  # new user: allauth signs them up (no password, SocialAccount.uid = Google "sub")
         if len(matches) > 1:
-            self._reject(request, DUPLICATE_EMAIL_MESSAGE + " Please log in with your email and password.")
+            self._reject(
+                request,
+                DUPLICATE_EMAIL_MESSAGE + " Please log in with your email and password.",
+                reason="duplicate_local_email",
+                email=email,
+            )
 
         user = matches[0]
         if not is_email_verified(user):
@@ -61,7 +69,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             # owner can confirm the email (link sent now) or log in and connect Google
             # from the profile page.
             send_verification(request, user)
-            self._reject(request, SOCIAL_EXISTING_UNVERIFIED_MESSAGE)
+            self._reject(request, SOCIAL_EXISTING_UNVERIFIED_MESSAGE, reason="local_email_unverified", email=email)
 
         # Only adds a SocialAccount: the password, staff/superuser flags and sessions are untouched.
         sociallogin.connect(request, user)
@@ -83,6 +91,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         return email, verified
 
     @staticmethod
-    def _reject(request, message):
+    def _reject(request, message, reason, email=None):
+        security_event("google_login_refused", request, logging.WARNING, reason=reason, ident=mask(email))
         messages.error(request, message)
         raise ImmediateHttpResponse(redirect("login"))

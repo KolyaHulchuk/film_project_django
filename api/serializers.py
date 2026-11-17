@@ -1,7 +1,9 @@
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from movies.models import COMMENT_MAX_LENGTH, Comment, CommentVote, Genre, Movies, Rating
 from users.models import Profile, Watchlist
+from users.security_log import security_event
 
 
 class GerneSerializer(serializers.ModelSerializer):
@@ -137,3 +139,13 @@ class CommentSerializer(serializers.ModelSerializer):
 
 class CommentVoteSerializer(serializers.Serializer):
     value = serializers.ChoiceField(choices=[CommentVote.LIKE, CommentVote.DISLIKE])
+
+
+class LoggedTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """/api/token/ (SIMPLE_JWT["TOKEN_OBTAIN_SERIALIZER"]): the default serializer plus a security log line
+    for each issued token pair. Wrong credentials are already logged by the user_login_failed signal."""
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        security_event("login", self.context.get("request"), user_id=self.user.pk, backend="jwt")
+        return data

@@ -17,6 +17,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from movies.tasks import get_ai_recommendation_task
 from users.models import Watchlist
+from users.security_log import security_event
 
 from .comments import COMMENTS_PER_PAGE, get_annotated_comment, movie_comments, normalize_sort, toggle_vote
 from .forms import CommentForm
@@ -959,10 +960,19 @@ def comment_delete(request: HttpRequest, pk: int) -> HttpResponse:
     # Authors only; there is no edit flow, deleting is the one thing an author can do to their comment.
     # Votes are removed with the comment (CASCADE).
     if comment.user_id != request.user.id:
+        security_event(
+            "comment_delete_denied",
+            request,
+            logging.WARNING,
+            comment_id=pk,
+            user_id=request.user.pk,
+            owner_id=comment.user_id,
+        )
         return _comment_error(request, "You can only delete your own comments.", 403)
 
     movie = comment.movie
     comment.delete()
+    security_event("comment_deleted", request, comment_id=pk, movie_id=movie.pk, user_id=request.user.pk)
     context = {"total": Comment.objects.filter(movie=movie).count()}
     return render(request, "movies/partials/comments/deleted.html", context)
 
